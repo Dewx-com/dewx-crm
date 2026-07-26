@@ -12,9 +12,9 @@ RUN set -e; F=/app/packages/twenty-server/dist/front; \
              $F/images/icons/ios/192.png $F/images/icons/ios/512.png; do \
       [ -e "$f" ] && cp /tmp/dewx-icon.png "$f"; done; \
     find $F -type f \( -name "*.js" -o -name "*.html" \) -print0 | xargs -0 sed -i \
-      -e "s|https://twenty.com/legal/terms|https://dewx.com/terms|g" \
-      -e "s|https://twenty.com/legal/privacy|https://dewx.com/privacy|g" \
-      -e "s|https://twenty.com/legal/dpa|https://dewx.com/terms|g" \
+      -e "s|https://twenty.com/legal/terms|https://dewx.com/legal/terms|g" \
+      -e "s|https://twenty.com/legal/privacy|https://dewx.com/legal/privacy|g" \
+      -e "s|https://twenty.com/legal/dpa|https://dewx.com/legal/terms|g" \
       -e "s|https://docs.twenty.com[a-zA-Z0-9/_-]*|https://dewx.com|g" \
       -e "s|https://cal.com/team/twenty[a-zA-Z0-9/_-]*|https://dewx.com/meeting|g" \
       -e "s|https://twenty.com/developers[a-zA-Z0-9/_-]*|https://dewx.com|g" \
