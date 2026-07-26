@@ -31,5 +31,13 @@ RUN F=/app/packages/twenty-server/dist/front; \
       -e "s|#9eb1ff|#a8b5a0|g" -e "s|#9EB1FF|#a8b5a0|g" ; \
     echo "moss theme applied; remaining blue accents:"; grep -rhoE "#4c6ef5|#3e63dd" $F/assets/*.css 2>/dev/null | wc -l
 
-# Rebrand transactional emails (invite/welcome/OTP): locale strings say "Twenty"
-RUN F=/app/packages/twenty-emails/dist;     find  -type f \( -name "*.js" -o -name "*.mjs" \) -print0 | xargs -0 sed -i       -e "s/Twenty/Dewx CRM/g" -e "s|https://twenty\.com|https://dewx.com|g";     echo "emails rebranded:"; grep -rhoE "Dewx CRM[.!]?" /locales/generated/en.js 2>/dev/null | head -2
+# Rebrand transactional emails (invite/welcome/OTP locale strings say "Twenty").
+# Scoped STRICTLY to the twenty-emails package; word-boundary match only.
+RUN E=/app/packages/twenty-emails/dist && test -d "$E" && \
+    find "$E" -type f \( -name "*.js" -o -name "*.mjs" \) -print0 | xargs -0 sed -i \
+      -e 's/\bTwenty\b/Dewx CRM/g' \
+      -e 's|https://twenty\.com|https://dewx.com|g' && \
+    echo "emails rebranded:" && \
+    (grep -rhoE "Dewx CRM" "$E/locales/generated/en.js" 2>/dev/null | head -1) && \
+    echo "server dist untouched check:" && \
+    ! grep -rq "Dewx CRM" /app/packages/twenty-server/dist/engine 2>/dev/null
