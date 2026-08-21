@@ -1,3 +1,4 @@
+import { CreateRoleRecordScopeTableFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-32/2-32-instance-command-fast-1787000000000-create-role-record-scope-table';
 // Auto-edited by generate:instance-command — do not edit manually
 
 import { AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand } from 'src/database/commands/upgrade-version-command/1-21/1-21-instance-command-fast-1775129420309-add-view-field-group-id-index-on-view-field';
@@ -298,4 +299,5 @@ export const INSTANCE_COMMANDS = [
   AddWritabilityToMetadataFastInstanceCommand,
   AddUninstallLogicFunctionIdToApplicationFastInstanceCommand,
   BackfillUninstallLogicFunctionIdOnApplicationSlowInstanceCommand,
+  CreateRoleRecordScopeTableFastInstanceCommand,
 ];

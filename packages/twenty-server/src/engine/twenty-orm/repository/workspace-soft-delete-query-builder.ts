@@ -23,6 +23,7 @@ import { type WorkspaceDeleteQueryBuilder } from 'src/engine/twenty-orm/reposito
 import { type WorkspaceSelectQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-select-query-builder';
 import { type WorkspaceUpdateQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-update-query-builder';
 import { applyRowLevelPermissionPredicates } from 'src/engine/twenty-orm/utils/apply-row-level-permission-predicates.util';
+import { applyRecordScopeToMainAlias } from 'src/engine/twenty-orm/utils/apply-record-scope.util';
 import { applyTableAliasOnWhereCondition } from 'src/engine/twenty-orm/utils/apply-table-alias-on-where-condition';
 import { computeEventSelectQueryBuilder } from 'src/engine/twenty-orm/utils/compute-event-select-query-builder.util';
 import { formatResult } from 'src/engine/twenty-orm/utils/format-result.util';
@@ -73,6 +74,7 @@ export class WorkspaceSoftDeleteQueryBuilder<
   override async execute(): Promise<UpdateResult> {
     try {
       this.applyRowLevelPermissionPredicates();
+      this.applyRecordScopes();
       validateQueryIsPermittedOrThrow({
         expressionMap: this.expressionMap,
         objectsPermissions: this.objectRecordsPermissions,
@@ -195,6 +197,25 @@ export class WorkspaceSoftDeleteQueryBuilder<
     }
 
     return mainAliasTarget;
+  }
+
+  // Prospect Engine record scopes — our own, AGPL (twenty-orm/utils/apply-record-scope.util.ts)
+  private applyRecordScopes(): void {
+    if (this.shouldBypassPermissionChecks || this.expressionMap.mainAlias?.subQuery) {
+      return;
+    }
+
+    const objectMetadata = getObjectMetadataFromEntityTarget(
+      this.getMainAliasTarget(),
+      this.internalContext,
+    );
+
+    applyRecordScopeToMainAlias({
+      queryBuilder: this,
+      objectMetadata,
+      objectsPermissions: this.objectRecordsPermissions,
+      internalContext: this.internalContext,
+    });
   }
 
   private applyRowLevelPermissionPredicates(): void {

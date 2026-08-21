@@ -17,6 +17,8 @@ import { ObjectPermissionEntity } from 'src/engine/metadata-modules/object-permi
 import { ObjectPermissionModule } from 'src/engine/metadata-modules/object-permission/object-permission.module';
 import { RolePermissionFlagEntity } from 'src/engine/metadata-modules/role-permission-flag/role-permission-flag.entity';
 import { RolePermissionFlagModule } from 'src/engine/metadata-modules/role-permission-flag/role-permission-flag.module';
+import { RoleRecordScopeEntity } from 'src/engine/metadata-modules/role-record-scope/role-record-scope.entity';
+import { RoleRecordScopeModule } from 'src/engine/metadata-modules/role-record-scope/role-record-scope.module';
 import { PermissionsModule } from 'src/engine/metadata-modules/permissions/permissions.module';
 import { RoleTargetEntity } from 'src/engine/metadata-modules/role-target/role-target.entity';
 import { RoleEntity } from 'src/engine/metadata-modules/role/role.entity';
@@ -43,6 +45,7 @@ import { WorkspaceMigrationModule } from 'src/engine/workspace-manager/workspace
       RoleTargetEntity,
       ObjectPermissionEntity,
       RolePermissionFlagEntity,
+      RoleRecordScopeEntity,
       FieldPermissionEntity,
       UserWorkspaceEntity,
       ObjectMetadataEntity,
@@ -56,6 +59,7 @@ import { WorkspaceMigrationModule } from 'src/engine/workspace-manager/workspace
     PermissionsModule,
     ObjectPermissionModule,
     RolePermissionFlagModule,
+    RoleRecordScopeModule,
     RowLevelPermissionModule,
     WorkspaceManyOrAllFlatEntityMapsCacheModule,
     WorkspaceMigrationModule,

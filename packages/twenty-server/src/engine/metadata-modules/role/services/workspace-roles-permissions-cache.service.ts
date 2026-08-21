@@ -21,6 +21,7 @@ import { FieldPermissionEntity } from 'src/engine/metadata-modules/object-permis
 import { ObjectPermissionEntity } from 'src/engine/metadata-modules/object-permission/object-permission.entity';
 import { RolePermissionFlagEntity } from 'src/engine/metadata-modules/role-permission-flag/role-permission-flag.entity';
 import { RoleEntity } from 'src/engine/metadata-modules/role/role.entity';
+import { RoleRecordScopeEntity } from 'src/engine/metadata-modules/role-record-scope/role-record-scope.entity';
 import { RowLevelPermissionPredicateGroupEntity } from 'src/engine/metadata-modules/row-level-permission-predicate/entities/row-level-permission-predicate-group.entity';
 import { RowLevelPermissionPredicateEntity } from 'src/engine/metadata-modules/row-level-permission-predicate/entities/row-level-permission-predicate.entity';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
@@ -54,6 +55,8 @@ export class WorkspaceRolesPermissionsCacheService extends WorkspaceCacheProvide
     private readonly rowLevelPermissionPredicateRepository: WorkspaceScopedRepository<RowLevelPermissionPredicateEntity>,
     @InjectWorkspaceScopedRepository(RowLevelPermissionPredicateGroupEntity)
     private readonly rowLevelPermissionPredicateGroupRepository: WorkspaceScopedRepository<RowLevelPermissionPredicateGroupEntity>,
+    @InjectRepository(RoleRecordScopeEntity)
+    private readonly roleRecordScopeRepository: Repository<RoleRecordScopeEntity>,
   ) {
     super();
   }
@@ -101,6 +104,18 @@ export class WorkspaceRolesPermissionsCacheService extends WorkspaceCacheProvide
         entities: fieldPermissions,
         foreignKey: 'roleId',
       });
+    // Prospect Engine record scopes (our own table), grouped by role
+    const recordScopesByRoleId = new Map<string, RoleRecordScopeEntity[]>();
+
+    for (const scope of await this.roleRecordScopeRepository.find({
+      where: { workspaceId },
+    })) {
+      recordScopesByRoleId.set(scope.roleId, [
+        ...(recordScopesByRoleId.get(scope.roleId) ?? []),
+        scope,
+      ]);
+    }
+
     const rowLevelPermissionPredicatesByRoleId =
       regroupEntitiesByRelatedEntityId<'rowLevelPermissionPredicate'>({
         entities: rowLevelPermissionPredicates,
@@ -231,6 +246,12 @@ export class WorkspaceRolesPermissionsCacheService extends WorkspaceCacheProvide
           canSoftDeleteObjectRecords: canSoftDelete,
           canDestroyObjectRecords: canDestroy,
           restrictedFields,
+          recordScopes: (recordScopesByRoleId.get(role.id) ?? [])
+            .filter((scope) => scope.objectMetadataId === objectMetadataId)
+            .map((scope) => ({
+              fieldMetadataId: scope.fieldMetadataId,
+              value: scope.value,
+            })),
           rowLevelPermissionPredicates: roleRowLevelPermissionPredicates.filter(
             (rowLevelPermissionPredicate) =>
               rowLevelPermissionPredicate.objectMetadataId === objectMetadataId,

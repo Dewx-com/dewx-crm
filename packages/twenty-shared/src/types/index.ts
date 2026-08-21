@@ -173,6 +173,7 @@ export type { Nullable } from './Nullable';
 export type { NullablePartial } from './NullablePartial';
 export { ObjectOpenRecordIn } from './ObjectOpenRecordIn';
 export type { ObjectPermissions } from './ObjectPermissions';
+export type { RecordScope } from './RecordScope';
 export type { ObjectRecord } from './ObjectRecord';
 export type {
   AggregateOrderByWithGroupByField,
