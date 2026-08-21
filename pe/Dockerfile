@@ -4,9 +4,12 @@
 #
 #   docker build -t pe-crm:<tag> -f overlay/Dockerfile overlay/
 #
-# Upgrade = bump TWENTY_TAG, rebuild, test on the staging port, then "deploy prod go".
-ARG TWENTY_TAG=v2.32.0
-FROM twentycrm/twenty:${TWENTY_TAG}
+# Upgrade = bump BASE_IMAGE, rebuild, test on the staging port, then "deploy prod go".
+# BASE_IMAGE is either the upstream community image (branding only) or our own source build
+# (pe-crm-src:<tag>, built from branch pe-scope with upstream's packages/twenty-docker/twenty/Dockerfile),
+# so the same overlay applies to both.
+ARG BASE_IMAGE=twentycrm/twenty:v2.32.0
+FROM ${BASE_IMAGE}
 COPY pe-icon.png /tmp/pe-icon.png
 
 # 1 · name, PWA manifest, icons
