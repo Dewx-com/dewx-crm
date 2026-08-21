@@ -1,12 +1,7 @@
 import { FieldMetadataType, type ObjectsPermissions } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import {
-  type DeleteQueryBuilder,
-  type ObjectLiteral,
-  type SelectQueryBuilder,
-  type SoftDeleteQueryBuilder,
-  type UpdateQueryBuilder,
-} from 'typeorm';
+import { type ObjectLiteral } from 'typeorm';
+import { type QueryExpressionMap } from 'typeorm/query-builder/QueryExpressionMap';
 
 import { type WorkspaceInternalContext } from 'src/engine/twenty-orm/interfaces/workspace-internal-context.interface';
 
@@ -27,11 +22,14 @@ import {
 // rather than silently widening it. Idempotent per query builder and alias, because the builders
 // validate permissions more than once per statement.
 
-type ScopedQueryBuilder =
-  | SelectQueryBuilder<ObjectLiteral>
-  | UpdateQueryBuilder<ObjectLiteral>
-  | DeleteQueryBuilder<ObjectLiteral>
-  | SoftDeleteQueryBuilder<ObjectLiteral>;
+// Structural on purpose: the workspace builders are generic subclasses of TypeORM's select / update /
+// delete / soft-delete builders, and `this` of a generic subclass is not assignable to the concrete
+// TypeORM types. Everything we need is these three members, shared by all four.
+type ScopedQueryBuilder = {
+  expressionMap: QueryExpressionMap;
+  andWhere: (where: string, parameters?: ObjectLiteral) => unknown;
+  setParameter: (key: string, value: unknown) => unknown;
+};
 
 const appliedAliasesByBuilder = new WeakMap<object, Set<string>>();
 
@@ -118,7 +116,7 @@ export const applyRecordScopeToJoinedRelations = ({
   objectsPermissions,
   internalContext,
 }: {
-  queryBuilder: SelectQueryBuilder<ObjectLiteral>;
+  queryBuilder: ScopedQueryBuilder;
   objectsPermissions: ObjectsPermissions;
   internalContext: WorkspaceInternalContext;
 }): void => {
@@ -153,7 +151,10 @@ export const applyRecordScopeToJoinedRelations = ({
     });
 
     if (!isDefined(objectMetadata)) {
-      deny();
+      throw new PermissionsException(
+        PermissionsExceptionMessage.PERMISSION_DENIED,
+        PermissionsExceptionCode.PERMISSION_DENIED,
+      );
     }
 
     const conditions = scopes.map((scope, index) => {

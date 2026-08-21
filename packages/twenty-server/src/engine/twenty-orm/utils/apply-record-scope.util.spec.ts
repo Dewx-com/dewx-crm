@@ -9,25 +9,26 @@ const PERSON_ID = 'b9c0d7e4-0000-4000-8000-000000000001';
 const COMPANY_ID = 'b9c0d7e4-0000-4000-8000-000000000002';
 const CLIENT_FIELD_ID = 'f1e2d3c4-0000-4000-8000-000000000010';
 
+// The real FlatEntityMaps shape: id → universalIdentifier → entity (see flat-entity-maps.type.ts)
+const maps = (entities: Record<string, object>) => ({
+  universalIdentifierById: Object.fromEntries(Object.keys(entities).map((id) => [id, `uid-${id}`])),
+  byUniversalIdentifier: Object.fromEntries(Object.entries(entities).map(([id, e]) => [`uid-${id}`, { ...e, universalIdentifier: `uid-${id}` }])),
+  universalIdentifiersByApplicationId: {},
+});
+
 const internalContext = {
-  flatFieldMetadataMaps: {
-    byId: {
-      [CLIENT_FIELD_ID]: {
-        id: CLIENT_FIELD_ID,
-        name: 'client',
-        type: FieldMetadataType.SELECT,
-        objectMetadataId: PERSON_ID,
-      },
+  flatFieldMetadataMaps: maps({
+    [CLIENT_FIELD_ID]: {
+      id: CLIENT_FIELD_ID,
+      name: 'client',
+      type: FieldMetadataType.SELECT,
+      objectMetadataId: PERSON_ID,
     },
-    idByUniversalIdentifier: {},
-  },
-  flatObjectMetadataMaps: {
-    byId: {
-      [PERSON_ID]: { id: PERSON_ID, nameSingular: 'person' },
-      [COMPANY_ID]: { id: COMPANY_ID, nameSingular: 'company' },
-    },
-    idByUniversalIdentifier: {},
-  },
+  }),
+  flatObjectMetadataMaps: maps({
+    [PERSON_ID]: { id: PERSON_ID, nameSingular: 'person' },
+    [COMPANY_ID]: { id: COMPANY_ID, nameSingular: 'company' },
+  }),
   objectIdByNameSingular: { person: PERSON_ID, company: COMPANY_ID },
   // oxlint-disable-next-line typescript/no-explicit-any
 } as any;

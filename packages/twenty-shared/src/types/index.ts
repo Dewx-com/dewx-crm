@@ -173,7 +173,6 @@ export type { Nullable } from './Nullable';
 export type { NullablePartial } from './NullablePartial';
 export { ObjectOpenRecordIn } from './ObjectOpenRecordIn';
 export type { ObjectPermissions } from './ObjectPermissions';
-export type { RecordScope } from './RecordScope';
 export type { ObjectRecord } from './ObjectRecord';
 export type {
   AggregateOrderByWithGroupByField,
@@ -282,6 +281,7 @@ export type { RecordGqlOperationGqlRecordFields } from './RecordGqlOperationGqlR
 export type { RecordGqlOperationOrderBy } from './RecordGqlOperationOrderBy';
 export type { RecordGqlOperationSignature } from './RecordGqlOperationSignature';
 export type { RecordGqlOperationVariables } from './RecordGqlOperationVariables';
+export type { RecordScope } from './RecordScope';
 export type { RelationAndMorphRelationFieldMetadataType } from './RelationAndMorphRelationFieldMetadataType';
 export type { RelationCreationPayload } from './RelationCreationPayload';
 export { RelationOnDeleteAction } from './RelationOnDeleteAction.type';
