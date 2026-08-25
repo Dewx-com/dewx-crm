@@ -18,6 +18,8 @@ export const fromUserWorkspacePermissionsToUserWorkspacePermissionsDto = ({
       rowLevelPermissionPredicates: permissions.rowLevelPermissionPredicates,
       rowLevelPermissionPredicateGroups:
         permissions.rowLevelPermissionPredicateGroups,
+      // Prospect Engine: the cache computes recordScopes per object; carry them to the seat.
+      recordScopes: permissions.recordScopes,
     }),
   );
 

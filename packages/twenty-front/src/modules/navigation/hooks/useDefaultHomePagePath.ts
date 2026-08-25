@@ -1,4 +1,5 @@
 import { currentUserState } from '@/auth/states/currentUserState';
+import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { metadataStoreStatusFamilySelector } from '@/metadata-store/states/metadataStoreStatusFamilySelector';
 import { useNavigationMenuItemSectionItems } from '@/navigation-menu-item/display/hooks/useNavigationMenuItemSectionItems';
@@ -21,6 +22,8 @@ import { getAppPath, getSettingsPath, isDefined } from 'twenty-shared/utils';
 export const useDefaultHomePagePath = () => {
   const currentUser = useAtomStateValue(currentUserState);
   const isMobile = useIsMobile();
+  // Prospect Engine: a client's seat opens on its own workspace page.
+  const { isClientSeat } = useClientSeat();
   const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
   const metadataStore = useAtomFamilyStateValue(
     metadataStoreState,
@@ -102,6 +105,9 @@ export const useDefaultHomePagePath = () => {
     if (!areObjectMetadataItemsLoaded || !areNavigationMenuItemsLoaded) {
       return AppPath.Index;
     }
+    if (isClientSeat) {
+      return '/client';
+    }
 
     if (isEmpty(readableNonSystemObjectMetadataItems)) {
       return getSettingsPath(SettingsPath.ProfilePage);
@@ -125,6 +131,7 @@ export const useDefaultHomePagePath = () => {
   }, [
     currentUser,
     isMobile,
+    isClientSeat,
     readableNonSystemObjectMetadataItems,
     areObjectMetadataItemsLoaded,
     areNavigationMenuItemsLoaded,

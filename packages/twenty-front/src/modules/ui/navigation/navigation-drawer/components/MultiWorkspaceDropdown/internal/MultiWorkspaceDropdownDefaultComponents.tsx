@@ -17,6 +17,7 @@ import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/Drop
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { useOpenSettingsMenu } from '@/navigation/hooks/useOpenSettings';
+import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { MULTI_WORKSPACE_DROPDOWN_ID } from '@/ui/navigation/navigation-drawer/constants/MultiWorkspaceDropdownId';
 import { multiWorkspaceDropdownState } from '@/ui/navigation/navigation-drawer/states/multiWorkspaceDropdownState';
 import { useColorScheme } from '@/ui/theme/hooks/useColorScheme';
@@ -78,6 +79,8 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
   );
 
   const { openSettingsMenu } = useOpenSettingsMenu();
+  // Prospect Engine: a client's seat gets Theme and Log out, nothing that reaches into ours.
+  const { isClientSeat } = useClientSeat();
 
   const handleSupport = () => {
     window.FrontChat?.('show');
@@ -126,11 +129,13 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
               <DropdownContent>
                 <DropdownMenuItemsContainer>
                   {isMultiWorkspaceEnabled && (
-                    <MenuItem
-                      LeftIcon={IconPlus}
-                      text={t`Create Workspace`}
-                      onClick={createWorkspace}
-                    />
+                    {!isClientSeat && (
+                      <MenuItem
+                        LeftIcon={IconPlus}
+                        text={t`Create Workspace`}
+                        onClick={createWorkspace}
+                      />
+                    )}
                   )}
                   <MenuItem
                     LeftIcon={IconLogout}
@@ -203,14 +208,16 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
           hasSubMenu={true}
           onClick={() => setMultiWorkspaceDropdown('themes')}
         />
-        <UndecoratedLink
-          to={`${getSettingsPath(SettingsPath.WorkspaceMembersPage)}#invite`}
-          onClick={() => {
-            closeDropdown(MULTI_WORKSPACE_DROPDOWN_ID);
-          }}
-        >
-          <MenuItem LeftIcon={IconUserPlus} text={t`Invite user`} />
-        </UndecoratedLink>
+        {!isClientSeat && (
+          <UndecoratedLink
+            to={`${getSettingsPath(SettingsPath.WorkspaceMembersPage)}#invite`}
+            onClick={() => {
+              closeDropdown(MULTI_WORKSPACE_DROPDOWN_ID);
+            }}
+          >
+            <MenuItem LeftIcon={IconUserPlus} text={t`Invite user`} />
+          </UndecoratedLink>
+        )}
         {isSupportChatConfigured && (
           <MenuItem
             LeftIcon={IconMessage}
@@ -218,15 +225,17 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
             onClick={handleSupport}
           />
         )}
-        <UndecoratedLink
-          to={getSettingsPath(SettingsPath.ProfilePage)}
-          onClick={() => {
-            openSettingsMenu();
-            closeDropdown(MULTI_WORKSPACE_DROPDOWN_ID);
-          }}
-        >
-          <MenuItem LeftIcon={IconSettings} text={t`Settings`} />
-        </UndecoratedLink>
+        {!isClientSeat && (
+          <UndecoratedLink
+            to={getSettingsPath(SettingsPath.ProfilePage)}
+            onClick={() => {
+              openSettingsMenu();
+              closeDropdown(MULTI_WORKSPACE_DROPDOWN_ID);
+            }}
+          >
+            <MenuItem LeftIcon={IconSettings} text={t`Settings`} />
+          </UndecoratedLink>
+        )}
       </DropdownMenuItemsContainer>
     </DropdownContent>
   );

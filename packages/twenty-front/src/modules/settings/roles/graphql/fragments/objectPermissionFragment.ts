@@ -16,6 +16,10 @@ export const OBJECT_PERMISSION_FRAGMENT = gql`
     rowLevelPermissionPredicateGroups {
       ...RowLevelPermissionPredicateGroupFragment
     }
+    recordScopes {
+      fieldMetadataId
+      value
+    }
   }
   ${ROW_LEVEL_PERMISSION_PREDICATE_FRAGMENT}
   ${ROW_LEVEL_PERMISSION_PREDICATE_GROUP_FRAGMENT}

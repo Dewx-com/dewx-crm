@@ -2,7 +2,18 @@ import { NavigationDrawerOpenedSection } from '@/navigation-menu-item/display/se
 import { NavigationDrawerWorkspaceSectionSkeletonLoader } from '@/object-metadata/components/NavigationDrawerWorkspaceSectionSkeletonLoader';
 
 import { styled } from '@linaria/react';
-import { IconInbox, IconPresentation, IconSun } from 'twenty-ui/icon';
+import {
+  IconInbox,
+  IconLayoutDashboard,
+  IconMap,
+  IconPackage,
+  IconPresentation,
+  IconReportAnalytics,
+  IconSun,
+  IconTargetArrow,
+  IconUsers,
+} from 'twenty-ui/icon';
+import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
 import { NavigationDrawerSection } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSection';
@@ -50,6 +61,25 @@ const StyledScrollableItemsContainer = styled.div`
 `;
 
 export const MainNavigationDrawerScrollableItems = () => {
+  // Prospect Engine: a client's seat sees ITS menu — Overview · Plan · Reports · Deliverables ·
+  // Prospects · Deals — and nothing of ours (no Clients list, no Tasks, no Snapshots, no Inbox,
+  // no Today). Roki, 2026-08-25: "why a client should see Clients? That's for us." Staff keep the
+  // full drawer below, unchanged.
+  const { isClientSeat } = useClientSeat();
+  if (isClientSeat) {
+    return (
+      <StyledScrollableItemsContainer>
+        <NavigationDrawerSection>
+          <NavigationDrawerItem label="Overview" to="/client" Icon={IconLayoutDashboard} />
+          <NavigationDrawerItem label="Plan" to="/objects/clientPlans" Icon={IconMap} />
+          <NavigationDrawerItem label="Reports" to="/objects/clientReports" Icon={IconReportAnalytics} />
+          <NavigationDrawerItem label="Deliverables" to="/objects/clientDeliverables" Icon={IconPackage} />
+          <NavigationDrawerItem label="Prospects" to="/objects/people" Icon={IconUsers} />
+          <NavigationDrawerItem label="Deals" to="/objects/opportunities" Icon={IconTargetArrow} />
+        </NavigationDrawerSection>
+      </StyledScrollableItemsContainer>
+    );
+  }
   return (
     <StyledScrollableItemsContainer>
       <NavigationDrawerOpenedSection />

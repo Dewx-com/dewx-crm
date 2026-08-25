@@ -1,4 +1,5 @@
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
+import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { MainNavigationDrawerNavigationContent } from '@/navigation/components/MainNavigationDrawerNavigationContent';
 import { MainNavigationDrawerTabsRow } from '@/navigation/components/MainNavigationDrawerTabsRow';
 import { NavigationDrawerTabbedContent } from '@/navigation/components/NavigationDrawerTabbedContent';
@@ -17,6 +18,8 @@ export const MainNavigationDrawer = ({ className }: { className?: string }) => {
     navigationDrawerActiveTabState,
   );
   const hasAiPermission = useHasPermissionFlag(PermissionFlagType.AI);
+  // Prospect Engine: a client's seat is titled with the client's name — it is their CRM.
+  const { isClientSeat, clientName } = useClientSeat();
 
   const showAiChatContent =
     hasAiPermission &&
@@ -25,7 +28,11 @@ export const MainNavigationDrawer = ({ className }: { className?: string }) => {
   return (
     <NavigationDrawer
       className={className}
-      title={currentWorkspace?.displayName ?? ''}
+      title={
+        isClientSeat && clientName
+          ? clientName
+          : (currentWorkspace?.displayName ?? '')
+      }
     >
       <NavigationDrawerFixedContent>
         <MainNavigationDrawerTabsRow />
