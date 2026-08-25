@@ -128,14 +128,12 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
             dropdownComponents={
               <DropdownContent>
                 <DropdownMenuItemsContainer>
-                  {isMultiWorkspaceEnabled && (
-                    {!isClientSeat && (
-                      <MenuItem
-                        LeftIcon={IconPlus}
-                        text={t`Create Workspace`}
-                        onClick={createWorkspace}
-                      />
-                    )}
+                  {isMultiWorkspaceEnabled && !isClientSeat && (
+                    <MenuItem
+                      LeftIcon={IconPlus}
+                      text={t`Create Workspace`}
+                      onClick={createWorkspace}
+                    />
                   )}
                   <MenuItem
                     LeftIcon={IconLogout}
