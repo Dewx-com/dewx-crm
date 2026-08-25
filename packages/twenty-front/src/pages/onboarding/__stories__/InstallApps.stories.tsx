@@ -88,7 +88,7 @@ export type Story = StoryObj<typeof InstallApps>;
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await canvas.findByText('Install your first apps');
+    await canvas.findByText('Optional add-ons');
     await canvas.findByText('Call recorder');
     await canvas.findByText('Enrichment');
     await canvas.findByText('Last contact');
@@ -162,7 +162,7 @@ export const MarketplaceUnavailable: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await canvas.findByText('No apps are available to install right now');
+    await canvas.findByText('Nothing is available to add right now.');
     expect(canvas.queryByText('Install')).toBeNull();
     await canvas.findByText('Skip');
   },

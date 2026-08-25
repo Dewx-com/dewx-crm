@@ -27,6 +27,6 @@ export type Story = StoryObj<typeof NotFound>;
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByText('Off the beaten path');
+    await canvas.findByText('That page is not here');
   },
 };

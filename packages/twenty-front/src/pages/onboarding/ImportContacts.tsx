@@ -68,11 +68,11 @@ export const ImportContacts = ({
     <StyledOnboardingStep>
       <StyledOnboardingStepHeading>
         <OnboardingStepAnimatedItem index={0}>
-          <StyledOnboardingStepTitle>{t`Import your contacts`}</StyledOnboardingStepTitle>
+          <StyledOnboardingStepTitle>{t`Connect your mailbox`}</StyledOnboardingStepTitle>
         </OnboardingStepAnimatedItem>
         <OnboardingStepAnimatedItem index={1}>
           <StyledSubtitle>
-            {t`Connect your email and calendar to see your entire network instantly. Takes only 30 seconds.`}
+            {t`We match your mail and calendar against the people already in here, so replies and meetings show up on the right record. Only the timestamp and the participants are shared with your team.`}
           </StyledSubtitle>
         </OnboardingStepAnimatedItem>
         {isDefined(creditsReward) && (

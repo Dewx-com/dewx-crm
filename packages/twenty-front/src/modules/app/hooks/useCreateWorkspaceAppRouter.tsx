@@ -111,6 +111,24 @@ const StandalonePageLayoutPage = lazy(() =>
   })),
 );
 
+const TeamInboxPage = lazy(() =>
+  import('~/pages/team-inbox/TeamInboxPage').then((module) => ({
+    default: module.TeamInboxPage,
+  })),
+);
+
+const ClientWorkspacePage = lazy(() =>
+  import('~/pages/client-workspace/ClientWorkspacePage').then((module) => ({
+    default: module.ClientWorkspacePage,
+  })),
+);
+
+const TodayPage = lazy(() =>
+  import('~/pages/today/TodayPage').then((module) => ({
+    default: module.TodayPage,
+  })),
+);
+
 const AiChatPage = lazy(() =>
   import('~/pages/ai-chat/AiChatPage').then((module) => ({
     default: module.AiChatPage,
@@ -179,6 +197,30 @@ const createWorkspaceAppRouter = (
                 element={
                   <LazyRoute>
                     <StandalonePageLayoutPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path={AppPath.TeamInbox}
+                element={
+                  <LazyRoute>
+                    <TeamInboxPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path={AppPath.ClientWorkspace}
+                element={
+                  <LazyRoute>
+                    <ClientWorkspacePage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path={AppPath.Today}
+                element={
+                  <LazyRoute>
+                    <TodayPage />
                   </LazyRoute>
                 }
               />

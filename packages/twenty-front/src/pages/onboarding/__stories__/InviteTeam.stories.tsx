@@ -55,7 +55,7 @@ const getRemoveButtons = (canvasElement: HTMLElement) =>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await canvas.findByText('Invite your team');
+    await canvas.findByText('Add the rest of the team');
   },
 };
 
@@ -63,7 +63,7 @@ export const RemovesAllInputsButTheLast: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
 
-    await canvas.findByText('Invite your team');
+    await canvas.findByText('Add the rest of the team');
     await waitFor(async () =>
       expect(await findEmailInputs(canvas)).toHaveLength(3),
     );

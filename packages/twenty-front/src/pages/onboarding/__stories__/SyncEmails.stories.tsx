@@ -59,7 +59,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await canvas.findByText('Import your contacts');
+    await canvas.findByText('Connect your mailbox');
     await canvas.findByText('Earn +2');
   },
 };
@@ -70,7 +70,7 @@ export const InvitedUser: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await canvas.findByText('Import your contacts');
+    await canvas.findByText('Connect your mailbox');
     expect(canvas.queryByText('Earn +2')).not.toBeInTheDocument();
   },
 };

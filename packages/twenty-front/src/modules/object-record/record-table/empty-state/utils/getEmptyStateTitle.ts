@@ -13,5 +13,5 @@ export const getEmptyStateTitle = (
     return t`No workflow runs yet`;
   }
 
-  return t`Add your first ${objectLabel}`;
+  return t`No ${objectLabel} records yet`;
 };

@@ -24,6 +24,8 @@ describe('getEmptyStateSubTitle', () => {
 
   it('should return the correct sub title for other object', () => {
     const subTitle = getEmptyStateSubTitle('object', 'Object');
-    expect(subTitle).toBe('Use our API or add your first Object manually');
+    expect(subTitle).toBe(
+      'Add the first Object by hand, or import a list.',
+    );
   });
 });

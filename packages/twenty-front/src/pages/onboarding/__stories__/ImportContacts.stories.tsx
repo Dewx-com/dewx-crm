@@ -38,6 +38,6 @@ type Story = StoryObj<typeof ImportContacts>;
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByText('Import your contacts');
+    await canvas.findByText('Connect your mailbox');
   },
 };

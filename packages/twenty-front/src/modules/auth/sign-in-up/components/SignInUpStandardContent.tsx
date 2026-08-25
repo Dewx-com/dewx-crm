@@ -1,6 +1,7 @@
 import { Logo } from '@/auth/components/Logo';
 import { Title } from '@/auth/components/Title';
 import { FooterNote } from '@/auth/sign-in-up/components/FooterNote';
+import { SignInUpPurposeNote } from '@/auth/sign-in-up/components/SignInUpPurposeNote';
 import { WorkspaceSelectionFooter } from '@/auth/sign-in-up/components/WorkspaceSelectionFooter';
 import { SignInUpStep } from '@/auth/states/signInUpStepState';
 import { styled } from '@linaria/react';
@@ -54,6 +55,7 @@ export const SignInUpStandardContent = ({
       <StyledTitleContainer>
         <Title animate>{title}</Title>
       </StyledTitleContainer>
+      <SignInUpPurposeNote />
       <StyledFormContainer>{signInUpForm}</StyledFormContainer>
       {signInUpStep === SignInUpStep.WorkspaceSelection && (
         <WorkspaceSelectionFooter />

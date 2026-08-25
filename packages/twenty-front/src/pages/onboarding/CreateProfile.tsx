@@ -195,11 +195,11 @@ export const CreateProfile = () => {
     <StyledOnboardingStepPage>
       <StyledOnboardingStepHeading>
         <OnboardingStepAnimatedItem index={0}>
-          <StyledOnboardingStepTitle>{t`Create profile`}</StyledOnboardingStepTitle>
+          <StyledOnboardingStepTitle>{t`Set up your profile`}</StyledOnboardingStepTitle>
         </OnboardingStepAnimatedItem>
         <OnboardingStepAnimatedItem index={1}>
           <StyledOnboardingStepSubtitle>
-            {t`How you'll appear to teammates and agents.`}
+            {t`The name and picture shown next to anything you do in this workspace.`}
           </StyledOnboardingStepSubtitle>
         </OnboardingStepAnimatedItem>
       </StyledOnboardingStepHeading>
@@ -230,7 +230,7 @@ export const CreateProfile = () => {
                       setIsEditingMode(false);
                     }}
                     onChange={onChange}
-                    placeholder={t`Tim`}
+                    placeholder={t`Jane`}
                     error={error?.message}
                     fullWidth
                   />
@@ -254,7 +254,7 @@ export const CreateProfile = () => {
                       setIsEditingMode(false);
                     }}
                     onChange={onChange}
-                    placeholder={t`Apple`}
+                    placeholder={t`Cooper`}
                     error={error?.message}
                     fullWidth
                   />
@@ -275,7 +275,7 @@ export const CreateProfile = () => {
                   setIsEditingMode(false);
                 }}
                 onChange={onChange}
-                placeholder={t`Head of Partnerships`}
+                placeholder={t`Head of Sales`}
                 fullWidth
               />
             )}

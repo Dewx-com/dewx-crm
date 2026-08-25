@@ -97,11 +97,11 @@ export const SignInUp = () => {
   const title = useMemo(() => {
     if (isDefined(workspaceInviteHash)) {
       const workspaceName = workspaceFromInviteHash?.displayName ?? '';
-      return t`Join ${workspaceName} team`;
+      return t`Join ${workspaceName}`;
     }
 
     if (signInUpStep === SignInUpStep.WorkspaceSelection) {
-      return t`Choose a Workspace`;
+      return t`Choose a workspace`;
     }
 
     if (signInUpStep === SignInUpStep.WorkspaceCreation) {
@@ -109,24 +109,24 @@ export const SignInUp = () => {
     }
 
     if (signInUpStep === SignInUpStep.TwoFactorAuthenticationProvision) {
-      return t`Setup your 2FA`;
+      return t`Set up two-factor authentication`;
     }
 
     if (signInUpStep === SignInUpStep.TwoFactorAuthenticationVerification) {
-      return t`Verify code from the app`;
+      return t`Enter the code from your app`;
     }
 
     if (isGlobalScope) {
-      return t`Welcome to Twenty`;
+      return t`Sign in to Prospect Engine`;
     }
 
     const workspaceName = workspacePublicData?.displayName;
 
     if (!workspaceName) {
-      return t`Welcome to your workspace`;
+      return t`Sign in to your workspace`;
     }
 
-    return t`Welcome, ${workspaceName}.`;
+    return t`Sign in to ${workspaceName}`;
   }, [
     workspaceInviteHash,
     signInUpStep,

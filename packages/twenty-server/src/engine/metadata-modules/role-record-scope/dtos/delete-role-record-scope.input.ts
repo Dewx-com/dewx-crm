@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
 
-import { IsNotEmpty, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 
@@ -15,4 +15,10 @@ export class DeleteRoleRecordScopeInput {
   @IsNotEmpty()
   @Field(() => UUIDScalarType)
   objectMetadataId: string;
+
+  /** One condition, by its field. Omitted, every condition on that object is dropped. */
+  @IsUUID()
+  @IsOptional()
+  @Field(() => UUIDScalarType, { nullable: true })
+  fieldMetadataId?: string;
 }

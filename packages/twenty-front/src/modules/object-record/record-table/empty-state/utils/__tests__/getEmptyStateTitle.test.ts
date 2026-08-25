@@ -20,6 +20,6 @@ describe('getEmptyStateTitle', () => {
 
   it('should return the correct title for other object', () => {
     const title = getEmptyStateTitle('object', 'Object');
-    expect(title).toBe('Add your first Object');
+    expect(title).toBe('No Object records yet');
   });
 });

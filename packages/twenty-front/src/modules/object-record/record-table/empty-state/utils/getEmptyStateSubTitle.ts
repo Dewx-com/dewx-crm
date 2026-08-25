@@ -13,5 +13,5 @@ export const getEmptyStateSubTitle = (
     return t`Run a workflow and return here to view its executions`;
   }
 
-  return t`Use our API or add your first ${objectLabel} manually`;
+  return t`Add the first ${objectLabel} by hand, or import a list.`;
 };

@@ -44,6 +44,6 @@ export type Story = StoryObj<typeof CreateProfile>;
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await canvas.findByText('Create profile');
+    await canvas.findByText('Set up your profile');
   },
 };

@@ -2,6 +2,11 @@ import { NavigationDrawerOpenedSection } from '@/navigation-menu-item/display/se
 import { NavigationDrawerWorkspaceSectionSkeletonLoader } from '@/object-metadata/components/NavigationDrawerWorkspaceSectionSkeletonLoader';
 
 import { styled } from '@linaria/react';
+import { IconInbox, IconPresentation, IconSun } from 'twenty-ui/icon';
+import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
+import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
+import { NavigationDrawerSection } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSection';
+import { NavigationDrawerSectionTitle } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSectionTitle';
 import { lazy, Suspense } from 'react';
 
 import { themeCssVariables } from 'twenty-ui/theme-constants';
@@ -22,6 +27,22 @@ const WorkspaceSectionDispatcher = lazy(() =>
   ),
 );
 
+// Prospect Engine: the heading over our own two surfaces. It lives in one string so that a
+// differently branded build of this same source changes the menu by changing this line.
+const PE_SECTION_TITLE = 'Prospect Engine';
+
+// Their section headings collapse the section when clicked, so the shared style paints a hover
+// tint and a pointer cursor. Ours is a plain label with nothing to collapse, and a pointer over
+// it would promise an interaction that does not exist. `section-title-container` is the class
+// their own component puts on the heading and already uses as a selector, so this reaches for a
+// published hook rather than an internal.
+const StyledStaticSectionTitle = styled.div`
+  .section-title-container:hover {
+    background-color: transparent;
+    cursor: default;
+  }
+`;
+
 const StyledScrollableItemsContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -32,6 +53,29 @@ export const MainNavigationDrawerScrollableItems = () => {
   return (
     <StyledScrollableItemsContainer>
       <NavigationDrawerOpenedSection />
+      {/* Prospect Engine: our own surfaces, under one heading of ours and above their object
+          list, which carries a heading of its own reading Workspace. */}
+      <NavigationDrawerSection>
+        <NavigationDrawerAnimatedCollapseWrapper>
+          <StyledStaticSectionTitle>
+            <NavigationDrawerSectionTitle label={PE_SECTION_TITLE} />
+          </StyledStaticSectionTitle>
+        </NavigationDrawerAnimatedCollapseWrapper>
+        {/* The masked team inbox. Its own item rather than a record table, because a
+            conversation is read as a conversation. */}
+        <NavigationDrawerItem label="Inbox" to="/inbox" Icon={IconInbox} />
+        {/* The daily operating screen: who is waiting, what has stopped moving, which client
+            has gone quiet. One item for every reader — a client's role scopes it to their own
+            replies and deals without the page knowing anything about it. */}
+        <NavigationDrawerItem label="Today" to="/today" Icon={IconSun} />
+        {/* Prospect Engine: the client workspace. One item for every reader — a client's role
+            scopes it to their own workspace, staff pick one from the selector on the page. */}
+        <NavigationDrawerItem
+          label="Client workspace"
+          to="/client"
+          Icon={IconPresentation}
+        />
+      </NavigationDrawerSection>
       <Suspense fallback={<NavigationDrawerWorkspaceSectionSkeletonLoader />}>
         <FavoritesSectionDispatcher />
         <WorkspaceSectionDispatcher />

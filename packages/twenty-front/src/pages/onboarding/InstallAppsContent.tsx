@@ -125,15 +125,15 @@ export const InstallAppsContent = ({
       <StyledOnboardingStepHeading>
         <OnboardingStepAnimatedItem index={0}>
           <StyledTitleRow>
-            <StyledOnboardingStepTitle>{t`Install your first apps`}</StyledOnboardingStepTitle>
+            <StyledOnboardingStepTitle>{t`Optional add-ons`}</StyledOnboardingStepTitle>
             <StyledBetaTag>{t`Beta`}</StyledBetaTag>
           </StyledTitleRow>
         </OnboardingStepAnimatedItem>
         <OnboardingStepAnimatedItem index={1}>
           <StyledOnboardingStepSubtitle>
             {hasApps
-              ? t`Get the most out of your CRM by installing some apps`
-              : t`No apps are available to install right now`}
+              ? t`These are optional. Nothing here is needed to run outreach or read a report.`
+              : t`Nothing is available to add right now.`}
           </StyledOnboardingStepSubtitle>
         </OnboardingStepAnimatedItem>
         {isDefined(creditsRewardPerApp) && hasApps && (

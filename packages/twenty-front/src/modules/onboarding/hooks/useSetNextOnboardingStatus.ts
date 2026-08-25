@@ -4,6 +4,7 @@ import {
   type CurrentUser,
   currentUserState,
 } from '@/auth/states/currentUserState';
+import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
 import {
   type CurrentWorkspace,
   currentWorkspaceState,
@@ -23,13 +24,20 @@ import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomState
 
 import { useStore } from 'jotai';
 import { useCallback } from 'react';
-import { OnboardingStatus } from '~/generated-metadata/graphql';
+import {
+  OnboardingStatus,
+  PermissionFlagType,
+} from '~/generated-metadata/graphql';
 
 type GetNextOnboardingStatusArgs = {
   currentUser: CurrentUser | null;
   currentWorkspace: CurrentWorkspace | null;
   isBillingEnabled: boolean;
   isBookCallRequired: boolean;
+  // Whether this reader is somebody who invites people and installs apps. A client is neither, and
+  // asking them to do either is asking them to do a job that is not theirs.
+  canInvitePeople: boolean;
+  canInstallApps: boolean;
 };
 
 const getNextOnboardingStatus = ({
@@ -37,6 +45,8 @@ const getNextOnboardingStatus = ({
   currentWorkspace,
   isBillingEnabled,
   isBookCallRequired,
+  canInvitePeople,
+  canInstallApps,
 }: GetNextOnboardingStatusArgs) => {
   const isPlanRequired = getIsPlanRequired({
     isBillingEnabled,
@@ -57,7 +67,7 @@ const getNextOnboardingStatus = ({
   }
 
   if (currentUser?.onboardingStatus === OnboardingStatus.SYNC_EMAIL) {
-    if (currentWorkspace?.workspaceMembersCount === 1) {
+    if (canInstallApps && currentWorkspace?.workspaceMembersCount === 1) {
       return OnboardingStatus.APPS_INSTALLATION;
     }
     return OnboardingStatus.PROFILE_CREATION;
@@ -68,7 +78,7 @@ const getNextOnboardingStatus = ({
   }
 
   if (currentUser?.onboardingStatus === OnboardingStatus.PROFILE_CREATION) {
-    if (currentWorkspace?.workspaceMembersCount === 1) {
+    if (canInvitePeople && currentWorkspace?.workspaceMembersCount === 1) {
       return OnboardingStatus.INVITE_TEAM;
     }
     return statusAfterInviteTeam;
@@ -95,6 +105,28 @@ export const useSetNextOnboardingStatus = () => {
     isOnboardingAiChatEnabledState,
   );
 
+  // These are the same two flags the workspace uses to gate Settings -> Members and Settings ->
+  // Apps, so a reader who is routed past a step here would have found nothing to do on it anyway.
+  //
+  // An absent permission list counts as permission granted. It is absent only before the workspace
+  // has loaded, and a guard that fired on missing data would skip the invite step for the workspace
+  // creator, who is the one person it exists for. Cutting a step needs a positive no.
+  //
+  // The cut lives here rather than as an auto-skip effect on the invite page, which is how upstream
+  // skips the sync-email and install-apps steps, because the only way off the invite step is the
+  // sendInvitations mutation and a client is refused it (PERMISSION_DENIED, measured on the live
+  // instance 2026-08-22). An auto-skip would throw on mount and strand them there. Choosing the next
+  // step cannot strand anybody.
+  const permissionFlags = useAtomStateValue(
+    currentUserWorkspaceState,
+  )?.permissionFlags;
+  const canInvitePeople =
+    !isDefined(permissionFlags) ||
+    permissionFlags.includes(PermissionFlagType.WORKSPACE_MEMBERS);
+  const canInstallApps =
+    !isDefined(permissionFlags) ||
+    permissionFlags.includes(PermissionFlagType.APPLICATIONS);
+
   return useCallback(
     ({
       stepHistoryEffect,
@@ -104,6 +136,8 @@ export const useSetNextOnboardingStatus = () => {
       const nextOnboardingStatus = getNextOnboardingStatus({
         currentUser,
         currentWorkspace,
+        canInvitePeople,
+        canInstallApps,
         isBillingEnabled,
         isBookCallRequired:
           store.get(isBookCallOnboardingStepEnabledState.atom) &&
@@ -142,6 +176,8 @@ export const useSetNextOnboardingStatus = () => {
     [
       currentUser,
       currentWorkspace,
+      canInvitePeople,
+      canInstallApps,
       isBillingEnabled,
       isOnboardingAiChatEnabled,
       store,

@@ -64,11 +64,11 @@ export const InviteTeam = () => {
     <StyledOnboardingStepPage>
       <StyledOnboardingStepHeading>
         <OnboardingStepAnimatedItem index={0}>
-          <StyledOnboardingStepTitle>{t`Invite your team`}</StyledOnboardingStepTitle>
+          <StyledOnboardingStepTitle>{t`Add the rest of the team`}</StyledOnboardingStepTitle>
         </OnboardingStepAnimatedItem>
         <OnboardingStepAnimatedItem index={1}>
           <StyledOnboardingStepSubtitle>
-            {t`Get the most out of your workspace by inviting your team.`}
+            {t`Anyone you add here works the accounts you can already see. Clients are set up separately, with access to their own work only.`}
           </StyledOnboardingStepSubtitle>
         </OnboardingStepAnimatedItem>
         {isDefined(creditsRewardPerUser) && (

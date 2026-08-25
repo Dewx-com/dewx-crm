@@ -22,7 +22,7 @@ export const RecordTableEmptyStateNoRecordFoundForFilter = () => {
 
   const title = t`No ${objectLabelSingular} found`;
 
-  const subTitle = t`No records matching the filter criteria were found.`;
+  const subTitle = t`Nothing matches the filters on this view. Clear them to see everything you have access to.`;
 
   return (
     <RecordTableEmptyStateDisplay

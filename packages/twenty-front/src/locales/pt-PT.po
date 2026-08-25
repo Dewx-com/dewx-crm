@@ -21911,3 +21911,131 @@ msgstr "O seu espaço de trabalho será desativado"
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Zed"
 msgstr "Zed"
+
+#. js-lingui-id: DE1A87
+msgid "Join {workspaceName}"
+msgstr "Join {workspaceName}"
+
+#. js-lingui-id: gEdxA4
+msgid "Choose a workspace"
+msgstr "Choose a workspace"
+
+#. js-lingui-id: T65b7l
+msgid "Set up two-factor authentication"
+msgstr "Set up two-factor authentication"
+
+#. js-lingui-id: c+bMbv
+msgid "Enter the code from your app"
+msgstr "Enter the code from your app"
+
+#. js-lingui-id: JrNID3
+msgid "Sign in to Prospect Engine"
+msgstr "Sign in to Prospect Engine"
+
+#. js-lingui-id: N1q1TY
+msgid "Sign in to your workspace"
+msgstr "Sign in to your workspace"
+
+#. js-lingui-id: IEBlcT
+msgid "Sign in to {workspaceName}"
+msgstr "Sign in to {workspaceName}"
+
+#. js-lingui-id: Qm5Dkt
+msgid "By signing in you accept our"
+msgstr "By signing in you accept our"
+
+#. js-lingui-id: Bljn+2
+msgid "Set up your profile"
+msgstr "Set up your profile"
+
+#. js-lingui-id: YuXPBh
+msgid "The name and picture shown next to anything you do in this workspace."
+msgstr "The name and picture shown next to anything you do in this workspace."
+
+#. js-lingui-id: MXlaRl
+msgid "Jane"
+msgstr "Jane"
+
+#. js-lingui-id: 0ht2iq
+msgid "Cooper"
+msgstr "Cooper"
+
+#. js-lingui-id: oapRHI
+msgid "Head of Sales"
+msgstr "Head of Sales"
+
+#. js-lingui-id: eTJ1jL
+msgid "Connect your mailbox"
+msgstr "Connect your mailbox"
+
+#. js-lingui-id: 29nmcn
+msgid "We match your mail and calendar against the people already in here, so replies and meetings show up on the right record. Only the timestamp and the participants are shared with your team."
+msgstr "We match your mail and calendar against the people already in here, so replies and meetings show up on the right record. Only the timestamp and the participants are shared with your team."
+
+#. js-lingui-id: CA+H3K
+msgid "Add the rest of the team"
+msgstr "Add the rest of the team"
+
+#. js-lingui-id: ZPY/zQ
+msgid "Anyone you add here works the accounts you can already see. Clients are set up separately, with access to their own work only."
+msgstr "Anyone you add here works the accounts you can already see. Clients are set up separately, with access to their own work only."
+
+#. js-lingui-id: Ka7Ts7
+msgid "Optional add-ons"
+msgstr "Optional add-ons"
+
+#. js-lingui-id: r/vsqY
+msgid "These are optional. Nothing here is needed to run outreach or read a report."
+msgstr "These are optional. Nothing here is needed to run outreach or read a report."
+
+#. js-lingui-id: yC0QvI
+msgid "Nothing is available to add right now."
+msgstr "Nothing is available to add right now."
+
+#. js-lingui-id: Hqk6iU
+msgid "No {objectLabel} records yet"
+msgstr "No {objectLabel} records yet"
+
+#. js-lingui-id: zTaM6m
+msgid "Add the first {objectLabel} by hand, or import a list."
+msgstr "Add the first {objectLabel} by hand, or import a list."
+
+#. js-lingui-id: fht4Gu
+msgid "Nothing matches the filters on this view. Clear them to see everything you have access to."
+msgstr "Nothing matches the filters on this view. Clear them to see everything you have access to."
+
+#. js-lingui-id: HsCdy8
+msgid "Nothing here yet"
+msgstr "Nothing here yet"
+
+#. js-lingui-id: al/zts
+msgid "This list is read-only for you and there is nothing in it. If you expected rows here, ask whoever set up your access."
+msgstr "This list is read-only for you and there is nothing in it. If you expected rows here, ask whoever set up your access."
+
+#. js-lingui-id: 3oR6DQ
+msgid "View not available"
+msgstr "View not available"
+
+#. js-lingui-id: +KHzeN
+msgid "Not part of your access"
+msgstr "Not part of your access"
+
+#. js-lingui-id: 1LlaBv
+msgid "Your role does not include this. Ask whoever set up your access if you need it."
+msgstr "Your role does not include this. Ask whoever set up your access if you need it."
+
+#. js-lingui-id: K7UCEY
+msgid "Page not found | Prospect Engine"
+msgstr "Page not found | Prospect Engine"
+
+#. js-lingui-id: RisEGu
+msgid "That page is not here"
+msgstr "That page is not here"
+
+#. js-lingui-id: neSqxB
+msgid "Either the link is wrong or what it pointed at has been removed."
+msgstr "Either the link is wrong or what it pointed at has been removed."
+
+#. js-lingui-id: pJeTmq
+msgid "Back to your workspace"
+msgstr "Back to your workspace"

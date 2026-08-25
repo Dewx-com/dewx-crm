@@ -44,6 +44,13 @@ COPY ./packages/twenty-shared /app/packages/twenty-shared
 COPY ./packages/twenty-client-sdk /app/packages/twenty-client-sdk
 COPY ./packages/twenty-server /app/packages/twenty-server
 
+# Prospect Engine: lingui compiles its catalogs in worker threads and the `threads` library allows
+# each worker 10 seconds to report in. This machine also runs the live websites and the CI runners,
+# so under load the worker is not scheduled in time and the whole build dies here. Measured
+# 2026-08-22: the runner held 274% CPU against this build's 61%, on 8 cores. The library reads this
+# variable; a worker that genuinely never starts still fails, it just no longer fails because a
+# neighbour was busy.
+ENV THREADS_WORKER_INIT_TIMEOUT=120000
 RUN npx nx run twenty-server:lingui:extract && \
     npx nx run twenty-server:lingui:compile && \
     npx nx run twenty-emails:lingui:extract && \

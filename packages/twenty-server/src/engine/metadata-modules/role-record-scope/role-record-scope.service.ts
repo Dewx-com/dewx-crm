@@ -55,11 +55,17 @@ export class RoleRecordScopeService implements OnModuleInit {
   }): Promise<RoleRecordScopeEntity> {
     await this.assertRoleInWorkspace(input.workspaceId, input.roleId);
 
+    // Keyed by FIELD, not just by object, so one object can carry more than one condition and they
+    // are ANDed in the query (the util already loops over the list). That is what lets a client role
+    // say "client = TALENTLAB" AND "status = PUBLISHED" on the same object — the publication gate.
+    // Keyed by object alone, the second condition silently replaced the first and a client read every
+    // draft in the workspace: found by the adversarial pass on 2026-08-22, before anyone was invited.
     const existing = await this.roleRecordScopeRepository.findOne({
       where: {
         workspaceId: input.workspaceId,
         roleId: input.roleId,
         objectMetadataId: input.objectMetadataId,
+        fieldMetadataId: input.fieldMetadataId,
       },
     });
 
@@ -84,6 +90,9 @@ export class RoleRecordScopeService implements OnModuleInit {
     workspaceId: string;
     roleId: string;
     objectMetadataId: string;
+    // Optional: drop ONE condition. Omitted, every condition on that object goes — which is what a
+    // caller means by "this object is no longer scoped", and is the safe direction to be wrong in.
+    fieldMetadataId?: string;
   }): Promise<boolean> {
     await this.assertRoleInWorkspace(input.workspaceId, input.roleId);
 
@@ -91,6 +100,7 @@ export class RoleRecordScopeService implements OnModuleInit {
       workspaceId: input.workspaceId,
       roleId: input.roleId,
       objectMetadataId: input.objectMetadataId,
+      ...(input.fieldMetadataId ? { fieldMetadataId: input.fieldMetadataId } : {}),
     });
 
     await this.workspaceCacheService.invalidateAndRecompute(input.workspaceId, [
