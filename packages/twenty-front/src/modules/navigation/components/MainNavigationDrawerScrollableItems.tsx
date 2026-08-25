@@ -6,9 +6,9 @@ import {
   IconInbox,
   IconLayoutDashboard,
   IconMap,
-  IconPackage,
+  IconBox,
   IconPresentation,
-  IconReportAnalytics,
+  IconFileText,
   IconSun,
   IconTargetArrow,
   IconUsers,
@@ -72,8 +72,8 @@ export const MainNavigationDrawerScrollableItems = () => {
         <NavigationDrawerSection>
           <NavigationDrawerItem label="Overview" to="/client" Icon={IconLayoutDashboard} />
           <NavigationDrawerItem label="Plan" to="/objects/clientPlans" Icon={IconMap} />
-          <NavigationDrawerItem label="Reports" to="/objects/clientReports" Icon={IconReportAnalytics} />
-          <NavigationDrawerItem label="Deliverables" to="/objects/clientDeliverables" Icon={IconPackage} />
+          <NavigationDrawerItem label="Reports" to="/objects/clientReports" Icon={IconFileText} />
+          <NavigationDrawerItem label="Deliverables" to="/objects/clientDeliverables" Icon={IconBox} />
           <NavigationDrawerItem label="Prospects" to="/objects/people" Icon={IconUsers} />
           <NavigationDrawerItem label="Deals" to="/objects/opportunities" Icon={IconTargetArrow} />
         </NavigationDrawerSection>
