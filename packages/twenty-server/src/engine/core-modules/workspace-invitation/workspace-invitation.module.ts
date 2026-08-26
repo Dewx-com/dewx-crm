@@ -12,12 +12,14 @@ import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-in
 import { WorkspaceInvitationResolver } from 'src/engine/core-modules/workspace-invitation/workspace-invitation.resolver';
 import { PermissionsModule } from 'src/engine/metadata-modules/permissions/permissions.module';
 import { RoleValidationModule } from 'src/engine/metadata-modules/role-validation/role-validation.module';
+import { UserRoleModule } from 'src/engine/metadata-modules/user-role/user-role.module';
 
 @Module({
   imports: [
     WorkspaceDomainsModule,
     TypeOrmModule.forFeature([AppTokenEntity, UserWorkspaceEntity]),
     RoleValidationModule,
+    UserRoleModule,
     FileModule,
     OnboardingModule,
     PermissionsModule,

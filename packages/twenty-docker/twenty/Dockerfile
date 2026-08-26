@@ -4,6 +4,9 @@
 
 FROM node:24.18.0-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS front-deps
 
+# BuildKit cross-platform builds must not start Nx's background update-check daemon.
+ENV NX_DAEMON=false
+
 WORKDIR /app
 
 COPY ./package.json ./yarn.lock ./.yarnrc.yml ./tsconfig.base.json ./nx.json /app/
@@ -21,6 +24,9 @@ RUN yarn workspaces focus twenty twenty-front twenty-front-component-renderer tw
 
 
 FROM node:24.18.0-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS server-deps
+
+# Keep both dependency/build graphs deterministic under amd64 emulation.
+ENV NX_DAEMON=false
 
 WORKDIR /app
 
@@ -105,7 +111,8 @@ RUN apk add --no-cache \
     jq
 
 COPY ./packages/twenty-docker/twenty/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Secure source checkouts can use umask 077; set a readable runtime mode explicitly.
+RUN chmod 0755 /app/entrypoint.sh
 WORKDIR /app/packages/twenty-server
 
 ARG APP_VERSION
@@ -124,9 +131,9 @@ COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/dist /a
 COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/patches /app/packages/twenty-server/patches
 # Shell entrypoints referenced by package.json scripts (upgrade:background*)
 COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/scripts /app/packages/twenty-server/scripts
-# COPY preserves the committed mode, but the scripts are also invoked directly
-# and not only through yarn, so do not let a dropped exec bit reach the pod
-RUN chmod +x /app/packages/twenty-server/scripts/upgrade-background.sh
+# COPY preserves the checkout mode, so make direct execution deterministic even
+# when the source checkout was created under a restrictive umask.
+RUN chmod 0755 /app/packages/twenty-server/scripts/upgrade-background.sh
 
 # Workspace packages (dist + package.json; node_modules symlinks resolve to these)
 COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-shared/package.json /app/packages/twenty-shared/

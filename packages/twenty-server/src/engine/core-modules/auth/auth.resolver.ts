@@ -87,6 +87,7 @@ import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { AuthProviderEnum } from 'src/engine/core-modules/workspace/types/workspace.type';
 import { WorkspaceGraphqlApiExceptionFilter } from 'src/engine/core-modules/workspace/filters/workspace-graphql-api-exception.filter';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-invitation/services/workspace-invitation.service';
 import { AuthProvider } from 'src/engine/decorators/auth/auth-provider.decorator';
 import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -162,6 +163,7 @@ export class AuthResolver {
     private readonly fileCorePictureService: FileCorePictureService,
     private readonly userSessionService: UserSessionService,
     private readonly userSessionCookieService: UserSessionCookieService,
+    private readonly workspaceInvitationService: WorkspaceInvitationService,
   ) {}
 
   @UseGuards(CaptchaGuard, PublicEndpointGuard, NoPermissionGuard)
@@ -327,7 +329,7 @@ export class AuthResolver {
     );
 
     const workspaceUrls =
-      this.workspaceDomainsService.getWorkspaceUrls(workspace);
+      this.workspaceDomainsService.getWorkspaceUrlsForOrigin(workspace, origin);
 
     return { loginToken, workspaceUrls };
   }
@@ -522,6 +524,13 @@ export class AuthResolver {
           })
         : undefined;
 
+    const isValidatedTeamWorkspaceLaneInvitation = currentWorkspace
+      ? await this.workspaceInvitationService.isTeamWorkspaceLaneInvitation({
+          workspaceId: currentWorkspace.id,
+          roleId: invitation?.context?.roleId,
+        })
+      : false;
+
     const existingUser = await this.userService.findUserByEmail(
       signUpInput.email,
     );
@@ -551,6 +560,14 @@ export class AuthResolver {
       },
     });
 
+    const isTeamWorkspaceLaneMember =
+      await this.workspaceInvitationService.isTeamWorkspaceLaneMember({
+        workspaceId: workspace.id,
+        userId: user.id,
+      });
+    const useTeamWorkspaceDomainAlias =
+      isTeamWorkspaceLaneMember || isValidatedTeamWorkspaceLaneInvitation;
+
     await this.emailVerificationService.sendVerificationEmail({
       userId: user.id,
       email: user.email,
@@ -558,6 +575,7 @@ export class AuthResolver {
       locale: signUpInput.locale ?? SOURCE_LOCALE,
       verifyEmailRedirectPath: signUpInput.verifyEmailRedirectPath,
       verificationTrigger: EmailVerificationTrigger.SIGN_UP,
+      useTeamWorkspaceDomainAlias,
     });
 
     const loginToken = await this.loginTokenService.generateLoginToken(
@@ -570,7 +588,11 @@ export class AuthResolver {
       loginToken,
       workspace: {
         id: workspace.id,
-        workspaceUrls: this.workspaceDomainsService.getWorkspaceUrls(workspace),
+        workspaceUrls: useTeamWorkspaceDomainAlias
+          ? this.workspaceDomainsService.getWorkspaceUrlsForTeamWorkspaceDomainAlias(
+              workspace,
+            )
+          : this.workspaceDomainsService.getWorkspaceUrls(workspace),
       },
     };
   }

@@ -1,4 +1,7 @@
-import { FieldMetadataType, type ObjectsPermissions } from 'twenty-shared/types';
+import {
+  FieldMetadataType,
+  type ObjectsPermissions,
+} from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { type ObjectLiteral } from 'typeorm';
 import { type QueryExpressionMap } from 'typeorm/query-builder/QueryExpressionMap';

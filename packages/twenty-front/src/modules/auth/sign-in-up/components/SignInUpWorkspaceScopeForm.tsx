@@ -7,19 +7,27 @@ import { useHandleResetPassword } from '@/auth/sign-in-up/hooks/useHandleResetPa
 import { useSignInUp } from '@/auth/sign-in-up/hooks/useSignInUp';
 import { useSignInUpForm } from '@/auth/sign-in-up/hooks/useSignInUpForm';
 import { useWorkspaceBypass } from '@/auth/sign-in-up/hooks/useWorkspaceBypass';
+import { TeamWorkspaceLanePicker } from '@/auth/sign-in-up/team-workspace/components/TeamWorkspaceLanePicker';
+import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
 import { SignInUpStep } from '@/auth/states/signInUpStepState';
+import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
+import { isTeamWorkspaceDomainAlias } from '@/team-workspace/role/types/TeamWorkspaceLane';
+import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { workspaceAuthBypassProvidersState } from '@/workspace/states/workspaceAuthBypassProvidersState';
 import { workspaceAuthProvidersState } from '@/workspace/states/workspaceAuthProvidersState';
 import { Trans } from '@lingui/react/macro';
 import { FormProvider } from 'react-hook-form';
 import { HorizontalSeparator } from 'twenty-ui/layout';
 import { ClickToActionLink } from 'twenty-ui/navigation';
-import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 
 export const SignInUpWorkspaceScopeForm = () => {
   const workspaceAuthProviders = useAtomStateValue(workspaceAuthProvidersState);
   const workspaceAuthBypassProviders = useAtomStateValue(
     workspaceAuthBypassProvidersState,
+  );
+  const workspacePublicData = useAtomStateValue(workspacePublicDataState);
+  const selectedTeamWorkspaceLane = useAtomStateValue(
+    selectedTeamWorkspaceLaneState,
   );
   const { shouldOfferBypass, shouldUseBypass } = useWorkspaceBypass();
 
@@ -33,6 +41,18 @@ export const SignInUpWorkspaceScopeForm = () => {
     return null;
   }
 
+  const isTeamWorkspace = isTeamWorkspaceDomainAlias(
+    workspacePublicData?.isTeamWorkspaceDomainAlias,
+  );
+
+  if (isTeamWorkspace && !selectedTeamWorkspaceLane) {
+    return (
+      <StyledOnboardingContentContainer>
+        <TeamWorkspaceLanePicker />
+      </StyledOnboardingContentContainer>
+    );
+  }
+
   const providers =
     shouldOfferBypass && shouldUseBypass
       ? {
@@ -44,17 +64,20 @@ export const SignInUpWorkspaceScopeForm = () => {
   return (
     <>
       <StyledOnboardingContentContainer>
-        {providers.google && <SignInUpWithGoogle action="join-workspace" />}
+        {isTeamWorkspace && <TeamWorkspaceLanePicker />}
 
-        {providers.microsoft && (
+        {!isTeamWorkspace && providers.google && (
+          <SignInUpWithGoogle action="join-workspace" />
+        )}
+
+        {!isTeamWorkspace && providers.microsoft && (
           <SignInUpWithMicrosoft action="join-workspace" />
         )}
 
-        {providers.sso.length > 0 && <SignInUpWithSSO />}
+        {!isTeamWorkspace && providers.sso.length > 0 && <SignInUpWithSSO />}
 
-        {(providers.google ||
-          providers.microsoft ||
-          providers.sso.length > 0) &&
+        {!isTeamWorkspace &&
+        (providers.google || providers.microsoft || providers.sso.length > 0) &&
         providers.password ? (
           <HorizontalSeparator />
         ) : null}

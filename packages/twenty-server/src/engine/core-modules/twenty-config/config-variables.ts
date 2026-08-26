@@ -1093,6 +1093,17 @@ export class ConfigVariables {
   DEFAULT_SUBDOMAIN = 'app';
 
   @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.SERVER_CONFIG,
+    description:
+      'Environment-owned mapping of exact team-workspace frontend hostnames to immutable workspace UUIDs',
+    type: ConfigVariableType.JSON,
+    isEnvOnly: true,
+    isHiddenInAdminPanel: true,
+  })
+  @IsOptional()
+  TEAM_WORKSPACE_DOMAIN_ALIASES: Record<string, string> = {};
+
+  @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.ADVANCED_SETTINGS,
     description: 'Page ID for Cal.com booking integration',
     isHiddenInAdminPanel: true,

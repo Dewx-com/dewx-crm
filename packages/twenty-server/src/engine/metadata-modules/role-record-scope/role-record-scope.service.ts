@@ -15,8 +15,10 @@ export class RoleRecordScopeService implements OnModuleInit {
   private readonly logger = new Logger(RoleRecordScopeService.name);
 
   constructor(
+    // eslint-disable-next-line twenty/prefer-workspace-scoped-repository -- this bootstrap service needs raw query/create/save; every record operation below pins workspaceId
     @InjectRepository(RoleRecordScopeEntity)
     private readonly roleRecordScopeRepository: Repository<RoleRecordScopeEntity>,
+    // eslint-disable-next-line twenty/prefer-workspace-scoped-repository -- every role lookup below pins both id and workspaceId before a scope write
     @InjectRepository(RoleEntity)
     private readonly roleRepository: Repository<RoleEntity>,
     private readonly workspaceCacheService: WorkspaceCacheService,
@@ -100,7 +102,9 @@ export class RoleRecordScopeService implements OnModuleInit {
       workspaceId: input.workspaceId,
       roleId: input.roleId,
       objectMetadataId: input.objectMetadataId,
-      ...(input.fieldMetadataId ? { fieldMetadataId: input.fieldMetadataId } : {}),
+      ...(input.fieldMetadataId
+        ? { fieldMetadataId: input.fieldMetadataId }
+        : {}),
     });
 
     await this.workspaceCacheService.invalidateAndRecompute(input.workspaceId, [

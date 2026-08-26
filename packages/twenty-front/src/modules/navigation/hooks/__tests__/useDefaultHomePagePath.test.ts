@@ -29,6 +29,10 @@ jest.mock('@/ui/utilities/responsive/hooks/useIsMobile', () => ({
   useIsMobile: () => mockIsMobile,
 }));
 
+jest.mock('@/client-seat/hooks/useClientSeat', () => ({
+  useClientSeat: () => ({ isClientSeat: false }),
+}));
+
 const Wrapper = ({ children }: { children: ReactNode }) =>
   createElement(JotaiProvider, { store: jotaiStore }, children);
 

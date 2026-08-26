@@ -23,8 +23,8 @@ import { type ObjectPermissions } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { useQuery } from '@apollo/client/react';
 import {
-  type WorkspaceMember,
   GetCurrentUserDocument,
+  type WorkspaceMemberQueryFragmentFragment,
 } from '~/generated-metadata/graphql';
 import { dateLocaleState } from '~/localization/states/dateLocaleState';
 import { dynamicActivate } from '~/utils/i18n/dynamicActivate';
@@ -131,7 +131,7 @@ export const UserMetadataProviderInitialEffect = () => {
     } = userQueryData.currentUser;
 
     const affectDefaultValuesOnEmptyWorkspaceMemberFields = (
-      workspaceMember: WorkspaceMember,
+      workspaceMember: WorkspaceMemberQueryFragmentFragment,
     ) => {
       return {
         ...workspaceMember,

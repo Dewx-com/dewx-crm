@@ -58,6 +58,7 @@ export class McpCoreController {
   ) {
     const authContext = {
       workspace,
+      user,
       userId: user?.id,
       userWorkspaceId,
       apiKey,

@@ -27,6 +27,8 @@ import { EmailService } from 'src/engine/core-modules/email/email.service';
 import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { UserEntity } from 'src/engine/core-modules/user/user.entity';
+import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-invitation/services/workspace-invitation.service';
 
 @Injectable()
 export class EmailVerificationService {
@@ -41,6 +43,7 @@ export class EmailVerificationService {
     private readonly twentyConfigService: TwentyConfigService,
     private readonly emailVerificationTokenService: EmailVerificationTokenService,
     private readonly i18nService: I18nService,
+    private readonly workspaceInvitationService: WorkspaceInvitationService,
   ) {}
 
   async sendVerificationEmail({
@@ -50,13 +53,17 @@ export class EmailVerificationService {
     locale,
     verifyEmailRedirectPath,
     verificationTrigger = EmailVerificationTrigger.SIGN_UP,
+    useTeamWorkspaceDomainAlias = false,
   }: {
     userId: string;
     email: string;
-    workspace: WorkspaceDomainConfig | undefined;
+    workspace:
+      | (WorkspaceDomainConfig & Partial<Pick<WorkspaceEntity, 'id'>>)
+      | undefined;
     locale: keyof typeof APP_LOCALES;
     verifyEmailRedirectPath?: string;
     verificationTrigger?: EmailVerificationTrigger;
+    useTeamWorkspaceDomainAlias?: boolean;
   }) {
     if (!this.twentyConfigService.get('IS_EMAIL_VERIFICATION_REQUIRED')) {
       return { success: false };
@@ -75,14 +82,23 @@ export class EmailVerificationService {
           : {}),
       },
     };
-    const verificationLink = workspace
-      ? this.workspaceDomainsService.buildWorkspaceURL({
-          workspace,
-          ...linkPathnameAndSearchParams,
-        })
-      : this.domainsServerConfigService.buildBaseUrl(
-          linkPathnameAndSearchParams,
-        );
+    const verificationLink =
+      workspace && useTeamWorkspaceDomainAlias && isDefined(workspace.id)
+        ? this.workspaceDomainsService.buildTeamWorkspaceDomainAliasURL({
+            workspace: {
+              ...workspace,
+              id: workspace.id,
+            },
+            ...linkPathnameAndSearchParams,
+          })
+        : workspace
+          ? this.workspaceDomainsService.buildWorkspaceURL({
+              workspace,
+              ...linkPathnameAndSearchParams,
+            })
+          : this.domainsServerConfigService.buildBaseUrl(
+              linkPathnameAndSearchParams,
+            );
 
     const emailData = {
       link: verificationLink.toString(),
@@ -121,8 +137,11 @@ export class EmailVerificationService {
 
   async resendEmailVerificationToken(
     email: string,
-    workspace: WorkspaceDomainConfig | undefined,
+    workspace:
+      | (WorkspaceDomainConfig & Partial<Pick<WorkspaceEntity, 'id'>>)
+      | undefined,
     locale: keyof typeof APP_LOCALES,
+    origin: string,
   ) {
     if (!this.twentyConfigService.get('IS_EMAIL_VERIFICATION_REQUIRED')) {
       throw new EmailVerificationException(
@@ -171,12 +190,31 @@ export class EmailVerificationService {
       await this.appTokenRepository.delete(existingToken.id);
     }
 
+    let useTeamWorkspaceDomainAlias = false;
+
+    if (isDefined(workspace?.id)) {
+      try {
+        useTeamWorkspaceDomainAlias =
+          this.workspaceDomainsService.isTeamWorkspaceDomainAliasForWorkspace({
+            workspaceId: workspace.id,
+            origin,
+          }) &&
+          (await this.workspaceInvitationService.isTeamWorkspaceLaneMember({
+            workspaceId: workspace.id,
+            userId: user.id,
+          }));
+      } catch {
+        useTeamWorkspaceDomainAlias = false;
+      }
+    }
+
     await this.sendVerificationEmail({
       userId: user.id,
       email,
       workspace,
       locale,
       verificationTrigger: EmailVerificationTrigger.SIGN_UP,
+      useTeamWorkspaceDomainAlias,
     });
 
     return { success: true };

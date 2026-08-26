@@ -201,7 +201,10 @@ export class WorkspaceSoftDeleteQueryBuilder<
 
   // Prospect Engine record scopes — our own, AGPL (twenty-orm/utils/apply-record-scope.util.ts)
   private applyRecordScopes(): void {
-    if (this.shouldBypassPermissionChecks || this.expressionMap.mainAlias?.subQuery) {
+    if (
+      this.shouldBypassPermissionChecks ||
+      this.expressionMap.mainAlias?.subQuery
+    ) {
       return;
     }
 

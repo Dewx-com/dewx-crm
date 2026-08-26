@@ -11,8 +11,15 @@ const CLIENT_FIELD_ID = 'f1e2d3c4-0000-4000-8000-000000000010';
 
 // The real FlatEntityMaps shape: id → universalIdentifier → entity (see flat-entity-maps.type.ts)
 const maps = (entities: Record<string, object>) => ({
-  universalIdentifierById: Object.fromEntries(Object.keys(entities).map((id) => [id, `uid-${id}`])),
-  byUniversalIdentifier: Object.fromEntries(Object.entries(entities).map(([id, e]) => [`uid-${id}`, { ...e, universalIdentifier: `uid-${id}` }])),
+  universalIdentifierById: Object.fromEntries(
+    Object.keys(entities).map((id) => [id, `uid-${id}`]),
+  ),
+  byUniversalIdentifier: Object.fromEntries(
+    Object.entries(entities).map(([id, e]) => [
+      `uid-${id}`,
+      { ...e, universalIdentifier: `uid-${id}` },
+    ]),
+  ),
   universalIdentifiersByApplicationId: {},
 });
 
@@ -44,7 +51,9 @@ const scoped = {
     restrictedFields: {},
     rowLevelPermissionPredicates: [],
     rowLevelPermissionPredicateGroups: [],
-    recordScopes: [{ fieldMetadataId: CLIENT_FIELD_ID, value: 'MCS_MICROMINDER' }],
+    recordScopes: [
+      { fieldMetadataId: CLIENT_FIELD_ID, value: 'MCS_MICROMINDER' },
+    ],
   },
 } as any;
 
@@ -77,7 +86,9 @@ describe('applyRecordScopeToMainAlias', () => {
     applyRecordScopeToMainAlias({
       queryBuilder: qb as any,
       objectMetadata: personObjectMetadata,
-      objectsPermissions: { [PERSON_ID]: { ...scoped[PERSON_ID], recordScopes: [] } } as any,
+      objectsPermissions: {
+        [PERSON_ID]: { ...scoped[PERSON_ID], recordScopes: [] },
+      } as any,
       internalContext,
     });
 
@@ -86,7 +97,12 @@ describe('applyRecordScopeToMainAlias', () => {
 
   it('applies once per builder and alias even if validation runs twice', () => {
     const qb = makeSelectBuilder();
-    const args = { queryBuilder: qb as any, objectMetadata: personObjectMetadata, objectsPermissions: scoped, internalContext };
+    const args = {
+      queryBuilder: qb as any,
+      objectMetadata: personObjectMetadata,
+      objectsPermissions: scoped,
+      internalContext,
+    };
 
     applyRecordScopeToMainAlias(args);
     applyRecordScopeToMainAlias(args);
@@ -97,7 +113,10 @@ describe('applyRecordScopeToMainAlias', () => {
   it('denies when the scope points at a field of another object (fail closed)', () => {
     const qb = makeSelectBuilder();
     const wrongField = {
-      [COMPANY_ID]: { ...scoped[PERSON_ID], recordScopes: [{ fieldMetadataId: CLIENT_FIELD_ID, value: 'X' }] },
+      [COMPANY_ID]: {
+        ...scoped[PERSON_ID],
+        recordScopes: [{ fieldMetadataId: CLIENT_FIELD_ID, value: 'X' }],
+      },
     } as any;
 
     expect(() =>
@@ -114,23 +133,46 @@ describe('applyRecordScopeToMainAlias', () => {
 
 describe('applyRecordScopeToJoinedRelations', () => {
   it('adds the scope to the join condition of a scoped relation', () => {
-    const join = { alias: { name: 'pointOfContact' }, metadata: { target: 'person' }, condition: '"opportunity"."pointOfContactId" = "pointOfContact"."id"' };
+    const join = {
+      alias: { name: 'pointOfContact' },
+      metadata: { target: 'person' },
+      condition: '"opportunity"."pointOfContactId" = "pointOfContact"."id"',
+    };
     const qb = makeSelectBuilder([join]);
 
-    applyRecordScopeToJoinedRelations({ queryBuilder: qb as any, objectsPermissions: scoped, internalContext });
+    applyRecordScopeToJoinedRelations({
+      queryBuilder: qb as any,
+      objectsPermissions: scoped,
+      internalContext,
+    });
 
     expect(join.condition).toBe(
       '("opportunity"."pointOfContactId" = "pointOfContact"."id") AND "pointOfContact"."client" = :peRecordScope_pointOfContact_0',
     );
-    expect(qb.setParameter).toHaveBeenCalledWith('peRecordScope_pointOfContact_0', 'MCS_MICROMINDER');
+    expect(qb.setParameter).toHaveBeenCalledWith(
+      'peRecordScope_pointOfContact_0',
+      'MCS_MICROMINDER',
+    );
   });
 
   it('leaves unscoped relations and sub-queries alone', () => {
-    const plain = { alias: { name: 'company' }, metadata: { target: 'company' }, condition: 'x = y' };
-    const sub = { alias: { name: 'sq', subQuery: 'select 1' }, metadata: { target: 'person' }, condition: 'a = b' };
+    const plain = {
+      alias: { name: 'company' },
+      metadata: { target: 'company' },
+      condition: 'x = y',
+    };
+    const sub = {
+      alias: { name: 'sq', subQuery: 'select 1' },
+      metadata: { target: 'person' },
+      condition: 'a = b',
+    };
     const qb = makeSelectBuilder([plain, sub]);
 
-    applyRecordScopeToJoinedRelations({ queryBuilder: qb as any, objectsPermissions: scoped, internalContext });
+    applyRecordScopeToJoinedRelations({
+      queryBuilder: qb as any,
+      objectsPermissions: scoped,
+      internalContext,
+    });
 
     expect(plain.condition).toBe('x = y');
     expect(sub.condition).toBe('a = b');

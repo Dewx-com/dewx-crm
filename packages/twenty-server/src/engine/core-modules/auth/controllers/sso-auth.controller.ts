@@ -44,6 +44,7 @@ import {
 import { UserService } from 'src/engine/core-modules/user/services/user.service';
 import { AuthProviderEnum } from 'src/engine/core-modules/workspace/types/workspace.type';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-invitation/services/workspace-invitation.service';
 import { NoPermissionGuard } from 'src/engine/guards/no-permission.guard';
 import { PublicEndpointGuard } from 'src/engine/guards/public-endpoint.guard';
 
@@ -57,6 +58,7 @@ export class SSOAuthController {
     private readonly workspaceDomainsService: WorkspaceDomainsService,
     private readonly userService: UserService,
     private readonly ssoService: SSOService,
+    private readonly workspaceInvitationService: WorkspaceInvitationService,
     @InjectRepository(WorkspaceSSOIdentityProviderEntity)
     private readonly workspaceSSOIdentityProviderRepository: Repository<WorkspaceSSOIdentityProviderEntity>,
   ) {}
@@ -190,16 +192,17 @@ export class SSOAuthController {
           ? ConnectedAccountProvider.SAML
           : ConnectedAccountProvider.OIDC;
 
-      const { loginToken } = await this.generateLoginToken(
-        req.user,
-        currentWorkspace,
-        { oidcTokenClaims, connectedAccountProvider },
-      );
+      const { loginToken, useTeamWorkspaceDomainAlias } =
+        await this.generateLoginToken(req.user, currentWorkspace, {
+          oidcTokenClaims,
+          connectedAccountProvider,
+        });
 
       return res.redirect(
         this.authService.computeRedirectURI({
           loginToken: loginToken.token,
           workspace: currentWorkspace,
+          useTeamWorkspaceDomainAlias,
         }),
       );
     } catch (error) {
@@ -231,6 +234,12 @@ export class SSOAuthController {
         })
       : undefined;
 
+    const isValidatedTeamWorkspaceLaneInvitation =
+      await this.workspaceInvitationService.isTeamWorkspaceLaneInvitation({
+        workspaceId: currentWorkspace.id,
+        roleId: invitation?.context?.roleId,
+      });
+
     const existingUser = await this.userService.findUserByEmail(payload.email);
 
     const { userData } = this.authService.formatUserDataPayload(
@@ -254,6 +263,14 @@ export class SSOAuthController {
       },
     });
 
+    const isTeamWorkspaceLaneMember =
+      await this.workspaceInvitationService.isTeamWorkspaceLaneMember({
+        workspaceId: workspace.id,
+        userId: user.id,
+      });
+    const useTeamWorkspaceDomainAlias =
+      isTeamWorkspaceLaneMember || isValidatedTeamWorkspaceLaneInvitation;
+
     if (ssoContext) {
       await this.authService.createSSOConnectedAccountIfFeatureFlagIsOn({
         workspaceId: workspace.id,
@@ -267,6 +284,7 @@ export class SSOAuthController {
 
     return {
       workspace,
+      useTeamWorkspaceDomainAlias,
       loginToken: await this.loginTokenService.generateLoginToken(
         user.email,
         workspace.id,

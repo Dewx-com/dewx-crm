@@ -55,6 +55,7 @@ export class WorkspaceRolesPermissionsCacheService extends WorkspaceCacheProvide
     private readonly rowLevelPermissionPredicateRepository: WorkspaceScopedRepository<RowLevelPermissionPredicateEntity>,
     @InjectWorkspaceScopedRepository(RowLevelPermissionPredicateGroupEntity)
     private readonly rowLevelPermissionPredicateGroupRepository: WorkspaceScopedRepository<RowLevelPermissionPredicateGroupEntity>,
+    // eslint-disable-next-line twenty/prefer-workspace-scoped-repository -- cache computation explicitly pins the workspaceId supplied by the cache boundary
     @InjectRepository(RoleRecordScopeEntity)
     private readonly roleRecordScopeRepository: Repository<RoleRecordScopeEntity>,
   ) {

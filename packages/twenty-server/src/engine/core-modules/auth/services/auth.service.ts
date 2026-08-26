@@ -770,13 +770,15 @@ export class AuthService {
     workspace,
     billingCheckoutSessionState,
     returnToPath,
+    useTeamWorkspaceDomainAlias = false,
   }: {
     loginToken: string;
-    workspace: WorkspaceDomainConfig;
+    workspace: WorkspaceDomainConfig & Pick<WorkspaceEntity, 'id'>;
     billingCheckoutSessionState?: string;
     returnToPath?: string;
+    useTeamWorkspaceDomainAlias?: boolean;
   }) {
-    const url = this.workspaceDomainsService.buildWorkspaceURL({
+    const redirectUrlParams = {
       workspace,
       pathname: AppPath.Verify,
       searchParams: {
@@ -786,7 +788,12 @@ export class AuthService {
           ? { returnToPath }
           : {}),
       },
-    });
+    };
+    const url = useTeamWorkspaceDomainAlias
+      ? this.workspaceDomainsService.buildTeamWorkspaceDomainAliasURL(
+          redirectUrlParams,
+        )
+      : this.workspaceDomainsService.buildWorkspaceURL(redirectUrlParams);
 
     return url.toString();
   }
@@ -1026,6 +1033,13 @@ export class AuthService {
             })
           : undefined;
 
+      const isValidatedTeamWorkspaceLaneInvitation = currentWorkspace
+        ? await this.workspaceInvitationService.isTeamWorkspaceLaneInvitation({
+            workspaceId: currentWorkspace.id,
+            roleId: invitation?.context?.roleId,
+          })
+        : false;
+
       const { userData } = this.formatUserDataPayload(
         {
           firstName,
@@ -1055,6 +1069,14 @@ export class AuthService {
         billingCheckoutSessionState,
       });
 
+      const isTeamWorkspaceLaneMember =
+        await this.workspaceInvitationService.isTeamWorkspaceLaneMember({
+          workspaceId: workspace.id,
+          userId: user.id,
+        });
+      const useTeamWorkspaceDomainAlias =
+        isTeamWorkspaceLaneMember || isValidatedTeamWorkspaceLaneInvitation;
+
       await this.createSSOConnectedAccountIfFeatureFlagIsOn({
         workspaceId: workspace.id,
         userId: user.id,
@@ -1073,6 +1095,7 @@ export class AuthService {
         workspace,
         billingCheckoutSessionState,
         returnToPath,
+        useTeamWorkspaceDomainAlias,
       });
     } catch (error) {
       return this.guardRedirectService.getRedirectErrorUrlAndCaptureExceptions({

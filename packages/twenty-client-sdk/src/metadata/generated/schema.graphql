@@ -456,6 +456,11 @@ enum RowLevelPermissionPredicateOperand {
   VECTOR_SEARCH
 }
 
+type RecordScope {
+  fieldMetadataId: UUID!
+  value: String!
+}
+
 type ObjectPermission {
   objectMetadataId: UUID!
   canReadObjectRecords: Boolean
@@ -465,6 +470,7 @@ type ObjectPermission {
   restrictedFields: JSON
   rowLevelPermissionPredicates: [RowLevelPermissionPredicate!]
   rowLevelPermissionPredicateGroups: [RowLevelPermissionPredicateGroup!]
+  recordScopes: [RecordScope!]
 }
 
 type RolePermissionFlag {
@@ -1829,6 +1835,7 @@ type PublicWorkspaceData {
   logo: String
   displayName: String
   workspaceUrls: WorkspaceUrls!
+  isTeamWorkspaceDomainAlias: Boolean!
 }
 
 type PublicWorkspaceDataSummary {
@@ -2374,6 +2381,14 @@ type DomainValidRecords {
   domain: String!
   records: [DomainRecord!]!
   isCustomDomainEnabled: Boolean
+}
+
+type RoleRecordScope {
+  id: UUID!
+  roleId: UUID!
+  objectMetadataId: UUID!
+  fieldMetadataId: UUID!
+  value: String!
 }
 
 type UpsertRowLevelPermissionPredicatesResult {
@@ -3322,6 +3337,7 @@ type Query {
   getViewGroups(viewId: String): [ViewGroup!]!
   getViewGroup(id: String!): ViewGroup
   getRoles: [Role!]!
+  roleRecordScopes(roleId: UUID!): [RoleRecordScope!]!
   previewMessageCampaignAudience(input: PreviewMessageCampaignAudienceInput!): CampaignAudiencePreviewDTO!
   messageSuppressions(input: FindMessageSuppressionsInput!): MessageSuppressionList!
   unsubscribeTopics: [UnsubscribeTopic!]!
@@ -3621,6 +3637,8 @@ type Mutation {
   upsertRowLevelPermissionPredicates(input: UpsertRowLevelPermissionPredicatesInput!): UpsertRowLevelPermissionPredicatesResult!
   assignRoleToAgent(agentId: UUID!, roleId: UUID!): Boolean!
   removeRoleFromAgent(agentId: UUID!): Boolean!
+  upsertRoleRecordScope(input: UpsertRoleRecordScopeInput!): RoleRecordScope!
+  deleteRoleRecordScope(input: DeleteRoleRecordScopeInput!): Boolean!
   sendEmailViaEmailingDomain(input: SendEmailViaDomainInput!): SendEmailViaDomainOutput!
   sendMessageCampaign(input: SendMessageCampaignInput!): SendMessageCampaignOutputDTO!
   sendMessageCampaignTest(input: SendMessageCampaignTestInput!): SendEmailViaDomainOutput!
@@ -4682,6 +4700,19 @@ input RowLevelPermissionPredicateGroupInput {
   parentRowLevelPermissionPredicateGroupId: UUID
   logicalOperator: RowLevelPermissionPredicateGroupLogicalOperator!
   positionInRowLevelPermissionPredicateGroup: Float
+}
+
+input UpsertRoleRecordScopeInput {
+  roleId: UUID!
+  objectMetadataId: UUID!
+  fieldMetadataId: UUID!
+  value: String!
+}
+
+input DeleteRoleRecordScopeInput {
+  roleId: UUID!
+  objectMetadataId: UUID!
+  fieldMetadataId: UUID
 }
 
 input SendEmailViaDomainInput {

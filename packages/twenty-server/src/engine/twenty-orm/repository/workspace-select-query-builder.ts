@@ -30,7 +30,10 @@ import { WorkspaceInsertQueryBuilder } from 'src/engine/twenty-orm/repository/wo
 import { WorkspaceSoftDeleteQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-soft-delete-query-builder';
 import { WorkspaceUpdateQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-update-query-builder';
 import { applyRowLevelPermissionPredicates } from 'src/engine/twenty-orm/utils/apply-row-level-permission-predicates.util';
-import { applyRecordScopeToJoinedRelations, applyRecordScopeToMainAlias } from 'src/engine/twenty-orm/utils/apply-record-scope.util';
+import {
+  applyRecordScopeToJoinedRelations,
+  applyRecordScopeToMainAlias,
+} from 'src/engine/twenty-orm/utils/apply-record-scope.util';
 import { formatResult } from 'src/engine/twenty-orm/utils/format-result.util';
 import { getObjectMetadataFromEntityTarget } from 'src/engine/twenty-orm/utils/get-object-metadata-from-entity-target.util';
 import { renderRowLevelPermissionFilterToSql } from 'src/engine/twenty-orm/utils/render-row-level-permission-filter-to-sql.util';
@@ -394,7 +397,10 @@ export class WorkspaceSelectQueryBuilder<
 
   // Prospect Engine record scopes — our own, AGPL (twenty-orm/utils/apply-record-scope.util.ts)
   private applyRecordScopes(): void {
-    if (this.shouldBypassPermissionChecks || this.expressionMap.mainAlias?.subQuery) {
+    if (
+      this.shouldBypassPermissionChecks ||
+      this.expressionMap.mainAlias?.subQuery
+    ) {
       return;
     }
 

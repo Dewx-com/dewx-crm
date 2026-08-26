@@ -1,13 +1,22 @@
 import { useMemo } from 'react';
 
 import { clientScopeFromPermissions } from '@/client-seat/utils/clientScopeFromPermissions';
-import { nameOfScope, slugOfScope } from '@/client-workspace/hooks/useClientWorkspace';
+import {
+  nameOfScope,
+  slugOfScope,
+} from '@/client-workspace/hooks/useClientWorkspace';
 import { objectMetadataItemsSelector } from '@/object-metadata/states/objectMetadataItemsSelector';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 
-type ClientRecordLite = { id: string; name?: string | null; slug?: string | null; client?: string | null };
+type ClientRecordLite = {
+  __typename: string;
+  id: string;
+  name?: string | null;
+  slug?: string | null;
+  client?: string | null;
+};
 
 /**
  * Prospect Engine: is this seat a client's, and which client?
@@ -51,7 +60,11 @@ export const useClientSeat = () => {
   return {
     isClientSeat,
     clientValue,
-    clientName: (record?.name ?? '').trim() || (clientValue ? nameOfScope(clientValue) : ''),
-    clientSlug: (record?.slug ?? '').trim() || (clientValue ? slugOfScope(clientValue) : ''),
+    clientName:
+      (record?.name ?? '').trim() ||
+      (clientValue ? nameOfScope(clientValue) : ''),
+    clientSlug:
+      (record?.slug ?? '').trim() ||
+      (clientValue ? slugOfScope(clientValue) : ''),
   };
 };

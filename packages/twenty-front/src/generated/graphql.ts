@@ -34,6 +34,15 @@ export enum CallRecordingStatus {
   SCHEDULED = 'SCHEDULED'
 }
 
+export type CompleteTaskWithEvidenceInput = {
+  evidence: Scalars['String']['input'];
+  expectedStatus: Scalars['String']['input'];
+  expectedVersion: Scalars['String']['input'];
+  idempotencyKey: Scalars['String']['input'];
+  source: Scalars['String']['input'];
+  taskId: Scalars['UUID']['input'];
+};
+
 export type ComputeStepOutputSchemaInput = {
   /** Step JSON format */
   step: Scalars['JSON']['input'];
@@ -53,6 +62,17 @@ export type CreateDraftFromWorkflowVersionInput = {
   workflowId: Scalars['UUID']['input'];
   /** Workflow version ID */
   workflowVersionIdToCopy: Scalars['UUID']['input'];
+};
+
+export type CreateTeamWorkspaceProtocolTaskInput = {
+  content: Scalars['String']['input'];
+  evidence: Scalars['String']['input'];
+  idempotencyKey: Scalars['String']['input'];
+  kind: TeamWorkspaceProtocolTaskKind;
+  lane: TeamWorkspaceCommandLane;
+  meetingOutcome?: InputMaybe<TeamWorkspaceMeetingOutcome>;
+  source: Scalars['String']['input'];
+  targetId: Scalars['UUID']['input'];
 };
 
 export type CreateWorkflowVersionEdgeInput = {
@@ -208,8 +228,10 @@ export enum MessageChannelVisibility {
 export type Mutation = {
   __typename?: 'Mutation';
   activateWorkflowVersion: Scalars['Boolean']['output'];
+  completeTaskWithEvidence: TeamWorkspaceCommandReceiptDto;
   computeStepOutputSchema: Scalars['JSON']['output'];
   createDraftFromWorkflowVersion: WorkflowVersionDto;
+  createProtocolTask: TeamWorkspaceCommandReceiptDto;
   createWorkflowVersionEdge: WorkflowVersionStepChanges;
   createWorkflowVersionStep: WorkflowVersionStepChanges;
   deactivateWorkflowVersion: Scalars['Boolean']['output'];
@@ -225,15 +247,23 @@ export type Mutation = {
   stopWorkflowRun: WorkflowRun;
   submitFormStep: Scalars['Boolean']['output'];
   testHttpRequest: TestHttpRequest;
+  transitionTaskStatus: TeamWorkspaceCommandReceiptDto;
+  updateOpportunityStage: TeamWorkspaceCommandReceiptDto;
   updateWorkflowRunStep: WorkflowAction;
   updateWorkflowVersionPositions: Scalars['Boolean']['output'];
   updateWorkflowVersionStep: WorkflowAction;
   updateWorkflowVersionTrigger: WorkflowVersionTrigger;
+  winOpportunityWithHandoff: TeamWorkspaceCommandReceiptDto;
 };
 
 
 export type MutationActivateWorkflowVersionArgs = {
   workflowVersionId: Scalars['UUID']['input'];
+};
+
+
+export type MutationCompleteTaskWithEvidenceArgs = {
+  input: CompleteTaskWithEvidenceInput;
 };
 
 
@@ -244,6 +274,11 @@ export type MutationComputeStepOutputSchemaArgs = {
 
 export type MutationCreateDraftFromWorkflowVersionArgs = {
   input: CreateDraftFromWorkflowVersionInput;
+};
+
+
+export type MutationCreateProtocolTaskArgs = {
+  input: CreateTeamWorkspaceProtocolTaskInput;
 };
 
 
@@ -317,6 +352,16 @@ export type MutationTestHttpRequestArgs = {
 };
 
 
+export type MutationTransitionTaskStatusArgs = {
+  input: TransitionTeamWorkspaceTaskInput;
+};
+
+
+export type MutationUpdateOpportunityStageArgs = {
+  input: UpdateTeamWorkspaceOpportunityStageInput;
+};
+
+
 export type MutationUpdateWorkflowRunStepArgs = {
   input: UpdateWorkflowRunStepInput;
 };
@@ -334,6 +379,11 @@ export type MutationUpdateWorkflowVersionStepArgs = {
 
 export type MutationUpdateWorkflowVersionTriggerArgs = {
   input: UpdateWorkflowVersionTriggerInput;
+};
+
+
+export type MutationWinOpportunityWithHandoffArgs = {
+  input: WinOpportunityWithHandoffInput;
 };
 
 export type ObjectRecordFilterInput = {
@@ -366,6 +416,7 @@ export type Query = {
   getTimelineThreadsFromPersonId: TimelineThreadsWithTotal;
   isMaintenanceModeBannerDismissed: Scalars['Boolean']['output'];
   search: SearchResultConnection;
+  teamWorkspaceSnapshot: TeamWorkspaceSnapshot;
   workflowStepConnectedAccountHandle?: Maybe<ConnectedAccountHandleDto>;
   workflowVersionContent: WorkflowVersionContent;
 };
@@ -439,6 +490,11 @@ export type QuerySearchArgs = {
 };
 
 
+export type QueryTeamWorkspaceSnapshotArgs = {
+  lane: TeamWorkspaceLane;
+};
+
+
 export type QueryWorkflowStepConnectedAccountHandleArgs = {
   connectedAccountId: Scalars['UUID']['input'];
 };
@@ -499,6 +555,148 @@ export type SubmitFormStepInput = {
   /** Workflow run ID */
   workflowRunId: Scalars['UUID']['input'];
 };
+
+export type TeamWorkspaceCallRecording = {
+  __typename?: 'TeamWorkspaceCallRecording';
+  calendarEventId?: Maybe<Scalars['UUID']['output']>;
+  createdAt?: Maybe<Scalars['String']['output']>;
+  endedAt?: Maybe<Scalars['String']['output']>;
+  evidenceReference?: Maybe<Scalars['String']['output']>;
+  id: Scalars['UUID']['output'];
+  startedAt?: Maybe<Scalars['String']['output']>;
+  status?: Maybe<Scalars['String']['output']>;
+  summaryMarkdown?: Maybe<Scalars['String']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
+  transcriptStatus: TeamWorkspaceTranscriptStatus;
+};
+
+export type TeamWorkspaceClient = {
+  __typename?: 'TeamWorkspaceClient';
+  clientScope?: Maybe<Scalars['String']['output']>;
+  id: Scalars['UUID']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  slug?: Maybe<Scalars['String']['output']>;
+  status?: Maybe<Scalars['String']['output']>;
+};
+
+export enum TeamWorkspaceCommandLane {
+  OPERATIONS = 'OPERATIONS',
+  SALES = 'SALES'
+}
+
+export type TeamWorkspaceCommandReceiptDto = {
+  __typename?: 'TeamWorkspaceCommandReceiptDto';
+  command: Scalars['String']['output'];
+  committedAt: Scalars['String']['output'];
+  payloadHash: Scalars['String']['output'];
+  receiptKey: Scalars['String']['output'];
+  replayed: Scalars['Boolean']['output'];
+  resultState: Scalars['String']['output'];
+  resultVersion: Scalars['String']['output'];
+  sideEffectRecordId: Scalars['UUID']['output'];
+  targetId: Scalars['UUID']['output'];
+};
+
+/** The requested Prospect Engine team workspace lane. */
+export enum TeamWorkspaceLane {
+  OPERATIONS = 'OPERATIONS',
+  SALES = 'SALES'
+}
+
+export type TeamWorkspaceMeeting = {
+  __typename?: 'TeamWorkspaceMeeting';
+  conferenceUrl?: Maybe<Scalars['String']['output']>;
+  description?: Maybe<Scalars['String']['output']>;
+  endsAt?: Maybe<Scalars['String']['output']>;
+  id: Scalars['UUID']['output'];
+  isCanceled?: Maybe<Scalars['Boolean']['output']>;
+  isFullDay?: Maybe<Scalars['Boolean']['output']>;
+  participants: Array<TeamWorkspaceMeetingParticipant>;
+  startsAt?: Maybe<Scalars['String']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
+};
+
+export enum TeamWorkspaceMeetingOutcome {
+  ATTENDED = 'ATTENDED',
+  CANCELLED = 'CANCELLED',
+  NO_SHOW = 'NO_SHOW',
+  RESCHEDULED = 'RESCHEDULED'
+}
+
+export type TeamWorkspaceMeetingParticipant = {
+  __typename?: 'TeamWorkspaceMeetingParticipant';
+  clientScope?: Maybe<Scalars['String']['output']>;
+  companyName?: Maybe<Scalars['String']['output']>;
+  displayName?: Maybe<Scalars['String']['output']>;
+  id: Scalars['UUID']['output'];
+  isOrganizer?: Maybe<Scalars['Boolean']['output']>;
+  personId?: Maybe<Scalars['UUID']['output']>;
+  personName?: Maybe<Scalars['String']['output']>;
+  responseStatus?: Maybe<Scalars['String']['output']>;
+  workspaceMemberId?: Maybe<Scalars['UUID']['output']>;
+  workspaceMemberName?: Maybe<Scalars['String']['output']>;
+};
+
+export type TeamWorkspaceOpportunity = {
+  __typename?: 'TeamWorkspaceOpportunity';
+  clientScope?: Maybe<Scalars['String']['output']>;
+  closeDate?: Maybe<Scalars['String']['output']>;
+  companyId?: Maybe<Scalars['UUID']['output']>;
+  companyName?: Maybe<Scalars['String']['output']>;
+  createdAt?: Maybe<Scalars['String']['output']>;
+  id: Scalars['UUID']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  ownerId?: Maybe<Scalars['UUID']['output']>;
+  ownerName?: Maybe<Scalars['String']['output']>;
+  pointOfContactId?: Maybe<Scalars['UUID']['output']>;
+  pointOfContactName?: Maybe<Scalars['String']['output']>;
+  stage?: Maybe<Scalars['String']['output']>;
+  updatedAt?: Maybe<Scalars['String']['output']>;
+};
+
+export enum TeamWorkspaceProtocolTaskKind {
+  BLOCKER = 'BLOCKER',
+  CLIENT_UPDATE = 'CLIENT_UPDATE',
+  COACHING_LESSON = 'COACHING_LESSON',
+  HANDOFF_RETURN = 'HANDOFF_RETURN',
+  MEETING_OUTCOME = 'MEETING_OUTCOME',
+  MEETING_PREP = 'MEETING_PREP'
+}
+
+export type TeamWorkspaceSnapshot = {
+  __typename?: 'TeamWorkspaceSnapshot';
+  callRecordings: Array<TeamWorkspaceCallRecording>;
+  clients: Array<TeamWorkspaceClient>;
+  generatedAt: Scalars['String']['output'];
+  handoffs: Array<TeamWorkspaceTask>;
+  lane: TeamWorkspaceLane;
+  meetings: Array<TeamWorkspaceMeeting>;
+  opportunities: Array<TeamWorkspaceOpportunity>;
+  tasks: Array<TeamWorkspaceTask>;
+};
+
+export type TeamWorkspaceTask = {
+  __typename?: 'TeamWorkspaceTask';
+  assigneeId?: Maybe<Scalars['UUID']['output']>;
+  assigneeName?: Maybe<Scalars['String']['output']>;
+  bodyMarkdown?: Maybe<Scalars['String']['output']>;
+  clientScope?: Maybe<Scalars['String']['output']>;
+  createdAt?: Maybe<Scalars['String']['output']>;
+  createdByName?: Maybe<Scalars['String']['output']>;
+  dueAt?: Maybe<Scalars['String']['output']>;
+  id: Scalars['UUID']['output'];
+  status?: Maybe<Scalars['String']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
+  updatedAt?: Maybe<Scalars['String']['output']>;
+  workType?: Maybe<Scalars['String']['output']>;
+};
+
+/** Availability of the bounded coaching evidence projection. */
+export enum TeamWorkspaceTranscriptStatus {
+  AVAILABLE = 'AVAILABLE',
+  MISSING = 'MISSING',
+  PROCESSING = 'PROCESSING'
+}
 
 export type TestHttpRequest = {
   __typename?: 'TestHttpRequest';
@@ -604,6 +802,14 @@ export type TimelineThreadsWithTotal = {
   totalNumberOfThreads: Scalars['Int']['output'];
 };
 
+export type TransitionTeamWorkspaceTaskInput = {
+  expectedStatus: Scalars['String']['input'];
+  expectedVersion: Scalars['String']['input'];
+  idempotencyKey: Scalars['String']['input'];
+  nextStatus: Scalars['String']['input'];
+  taskId: Scalars['UUID']['input'];
+};
+
 export type UuidFilter = {
   eq?: InputMaybe<Scalars['UUID']['input']>;
   gt?: InputMaybe<Scalars['UUID']['input']>;
@@ -613,6 +819,14 @@ export type UuidFilter = {
   lt?: InputMaybe<Scalars['UUID']['input']>;
   lte?: InputMaybe<Scalars['UUID']['input']>;
   neq?: InputMaybe<Scalars['UUID']['input']>;
+};
+
+export type UpdateTeamWorkspaceOpportunityStageInput = {
+  expectedStage: Scalars['String']['input'];
+  expectedVersion: Scalars['String']['input'];
+  idempotencyKey: Scalars['String']['input'];
+  nextStage: Scalars['String']['input'];
+  opportunityId: Scalars['UUID']['input'];
 };
 
 export type UpdateWorkflowRunStepInput = {
@@ -641,6 +855,22 @@ export type UpdateWorkflowVersionTriggerInput = {
   trigger: Scalars['JSON']['input'];
   /** Workflow version ID */
   workflowVersionId: Scalars['UUID']['input'];
+};
+
+export type WinOpportunityWithHandoffInput = {
+  agreedScope: Scalars['String']['input'];
+  client: Scalars['String']['input'];
+  company: Scalars['String']['input'];
+  contact: Scalars['String']['input'];
+  evidence: Scalars['String']['input'];
+  expectedStage: Scalars['String']['input'];
+  expectedVersion: Scalars['String']['input'];
+  idempotencyKey: Scalars['String']['input'];
+  nextCommitment: Scalars['String']['input'];
+  opportunityId: Scalars['UUID']['input'];
+  problem: Scalars['String']['input'];
+  promises: Scalars['String']['input'];
+  source: Scalars['String']['input'];
 };
 
 export type WorkflowAction = {

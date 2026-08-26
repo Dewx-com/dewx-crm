@@ -19,5 +19,9 @@ export const WORKSPACE_MEMBER_QUERY_FRAGMENT = gql`
     timeFormat
     calendarStartDay
     numberFormat
+    roles {
+      id
+      label
+    }
   }
 `;

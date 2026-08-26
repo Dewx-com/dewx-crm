@@ -1,4 +1,7 @@
 import { currentUserState } from '@/auth/states/currentUserState';
+import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
+import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
 import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { metadataStoreStatusFamilySelector } from '@/metadata-store/states/metadataStoreStatusFamilySelector';
@@ -14,6 +17,8 @@ import { useAtomFamilySelectorValue } from '@/ui/utilities/state/jotai/hooks/use
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { viewsSelector } from '@/views/states/selectors/viewsSelector';
+import { teamWorkspaceLanesFromRoles } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
+import { teamWorkspacePath } from '@/team-workspace/shared/utils/teamWorkspaceRoutes';
 import isEmpty from 'lodash.isempty';
 import { useCallback, useMemo } from 'react';
 import { AppPath, SettingsPath } from 'twenty-shared/types';
@@ -21,6 +26,11 @@ import { getAppPath, getSettingsPath, isDefined } from 'twenty-shared/utils';
 
 export const useDefaultHomePagePath = () => {
   const currentUser = useAtomStateValue(currentUserState);
+  const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
+  const workspacePublicData = useAtomStateValue(workspacePublicDataState);
+  const selectedTeamWorkspaceLane = useAtomStateValue(
+    selectedTeamWorkspaceLaneState,
+  );
   const isMobile = useIsMobile();
   // Prospect Engine: a client's seat opens on its own workspace page.
   const { isClientSeat } = useClientSeat();
@@ -109,6 +119,19 @@ export const useDefaultHomePagePath = () => {
       return '/client';
     }
 
+    const teamLanes =
+      workspacePublicData?.isTeamWorkspaceDomainAlias === true
+        ? teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles)
+        : [];
+    const defaultTeamLane =
+      selectedTeamWorkspaceLane && teamLanes.includes(selectedTeamWorkspaceLane)
+        ? selectedTeamWorkspaceLane
+        : teamLanes[0];
+
+    if (defaultTeamLane) {
+      return teamWorkspacePath({ lane: defaultTeamLane, section: 'today' });
+    }
+
     if (isEmpty(readableNonSystemObjectMetadataItems)) {
       return getSettingsPath(SettingsPath.ProfilePage);
     }
@@ -132,6 +155,9 @@ export const useDefaultHomePagePath = () => {
     currentUser,
     isMobile,
     isClientSeat,
+    currentWorkspaceMember?.roles,
+    workspacePublicData?.isTeamWorkspaceDomainAlias,
+    selectedTeamWorkspaceLane,
     readableNonSystemObjectMetadataItems,
     areObjectMetadataItemsLoaded,
     areNavigationMenuItemsLoaded,
