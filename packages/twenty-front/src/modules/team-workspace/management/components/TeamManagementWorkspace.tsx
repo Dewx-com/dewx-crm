@@ -1,5 +1,6 @@
 import { styled } from '@linaria/react';
 import { Link } from 'react-router-dom';
+import { Button } from 'twenty-ui/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 import {
@@ -149,21 +150,6 @@ const StyledFooter = styled.div`
   padding-top: ${themeCssVariables.spacing[4]};
 `;
 
-const StyledLink = styled(Link)`
-  background: ${themeCssVariables.color.blue};
-  border-radius: ${themeCssVariables.border.radius.sm};
-  color: ${themeCssVariables.font.color.inverted};
-  font-size: ${themeCssVariables.font.size.sm};
-  font-weight: ${themeCssVariables.font.weight.medium};
-  padding: ${themeCssVariables.spacing[2]} ${themeCssVariables.spacing[3]};
-  text-decoration: none;
-
-  &:focus-visible {
-    outline: 2px solid ${themeCssVariables.color.blue};
-    outline-offset: 2px;
-  }
-`;
-
 const StyledQuietLink = styled(Link)`
   color: ${themeCssVariables.font.color.secondary};
   font-size: ${themeCssVariables.font.size.sm};
@@ -173,6 +159,12 @@ const StyledQuietLink = styled(Link)`
     color: ${themeCssVariables.font.color.primary};
     text-decoration: underline;
   }
+`;
+
+const StyledCardActions = styled.div`
+  align-items: center;
+  display: flex;
+  gap: ${themeCssVariables.spacing[3]};
 `;
 
 const StyledQueue = styled(StyledSurface)`
@@ -205,6 +197,15 @@ const StyledTaskTitle = styled.div`
   color: ${themeCssVariables.font.color.primary};
   font-size: ${themeCssVariables.font.size.sm};
   font-weight: ${themeCssVariables.font.weight.medium};
+`;
+
+const StyledTaskDetail = styled.div`
+  color: ${themeCssVariables.font.color.secondary};
+  font-size: ${themeCssVariables.font.size.sm};
+  line-height: 1.5;
+  margin-top: ${themeCssVariables.spacing[1]};
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 `;
 
 const StyledTaskMeta = styled.div`
@@ -262,6 +263,7 @@ const TaskRow = ({ task }: { task: TeamManagementTask }) => (
   <StyledTask>
     <div>
       <StyledTaskTitle>{task.title}</StyledTaskTitle>
+      {task.detail && <StyledTaskDetail>{task.detail}</StyledTaskDetail>}
       <StyledTaskMeta>
         {task.clientName ?? 'Internal work'} · {formatDateTime(task.dueAt)}
         {task.isClientPromise ? ' · Client promise' : ''}
@@ -283,9 +285,11 @@ const TaskRow = ({ task }: { task: TeamManagementTask }) => (
 
 const EmployeeCard = ({
   employee,
+  onAssignWork,
   detailed = false,
 }: {
   employee: TeamManagementEmployee;
+  onAssignWork: (employee: TeamManagementEmployee) => void;
   detailed?: boolean;
 }) => (
   <StyledEmployeeSurface>
@@ -357,9 +361,17 @@ const EmployeeCard = ({
       {!detailed && (
         <StyledFooter>
           <span />
-          <StyledLink to={`/team/management/member/${employee.id}`}>
-            Review work
-          </StyledLink>
+          <StyledCardActions>
+            <StyledQuietLink to={`/team/management/member/${employee.id}`}>
+              Review work
+            </StyledQuietLink>
+            <Button
+              title="Assign work"
+              variant="primary"
+              accent="blue"
+              onClick={() => onAssignWork(employee)}
+            />
+          </StyledCardActions>
         </StyledFooter>
       )}
     </StyledSurfaceBody>
@@ -373,12 +385,40 @@ const EmployeeCard = ({
   </StyledEmployeeSurface>
 );
 
+const UnassignedQueue = ({
+  title,
+  tasks,
+}: {
+  title: string;
+  tasks: TeamManagementTask[];
+}) => {
+  if (tasks.length === 0) return null;
+
+  return (
+    <StyledQueue>
+      <StyledSurfaceHeader>
+        <StyledSurfaceTitle>{title}</StyledSurfaceTitle>
+        <StyledStatus data-attention="needs-attention">
+          {tasks.length}
+        </StyledStatus>
+      </StyledSurfaceHeader>
+      <StyledTaskList>
+        {tasks.map((task) => (
+          <TaskRow key={task.id} task={task} />
+        ))}
+      </StyledTaskList>
+    </StyledQueue>
+  );
+};
+
 export const TeamManagementWorkspace = ({
   model,
   selectedMemberId,
+  onAssignWork,
 }: {
   model: TeamManagementModel;
   selectedMemberId?: string;
+  onAssignWork: (employee: TeamManagementEmployee) => void;
 }) => {
   const selectedEmployee = selectedMemberId
     ? model.employees.find((employee) => employee.id === selectedMemberId)
@@ -401,12 +441,24 @@ export const TeamManagementWorkspace = ({
           <StyledQuietLink to="/team/management/overview">
             Back to team overview
           </StyledQuietLink>
-          <StyledQuietLink to={`/team/${selectedEmployee.lane}/today`}>
-            Open {selectedEmployee.lane} workspace
-          </StyledQuietLink>
+          <StyledCardActions>
+            <StyledQuietLink to={`/team/${selectedEmployee.lane}/today`}>
+              Open {selectedEmployee.lane} workspace
+            </StyledQuietLink>
+            <Button
+              title="Assign work"
+              variant="primary"
+              accent="blue"
+              onClick={() => onAssignWork(selectedEmployee)}
+            />
+          </StyledCardActions>
         </StyledFooter>
         <StyledDetailCard>
-          <EmployeeCard employee={selectedEmployee} detailed />
+          <EmployeeCard
+            employee={selectedEmployee}
+            onAssignWork={onAssignWork}
+            detailed
+          />
         </StyledDetailCard>
       </StyledSalesSection>
     );
@@ -429,25 +481,19 @@ export const TeamManagementWorkspace = ({
           <EmployeeCard
             key={`${employee.lane}-${employee.id}`}
             employee={employee}
+            onAssignWork={onAssignWork}
           />
         ))}
       </StyledGrid>
 
-      {model.unassignedOperations.length > 0 && (
-        <StyledQueue>
-          <StyledSurfaceHeader>
-            <StyledSurfaceTitle>Unassigned Operations work</StyledSurfaceTitle>
-            <StyledStatus data-attention="needs-attention">
-              {model.unassignedOperations.length}
-            </StyledStatus>
-          </StyledSurfaceHeader>
-          <StyledTaskList>
-            {model.unassignedOperations.map((task) => (
-              <TaskRow key={task.id} task={task} />
-            ))}
-          </StyledTaskList>
-        </StyledQueue>
-      )}
+      <UnassignedQueue
+        title="Unassigned Sales work"
+        tasks={model.unassignedSales}
+      />
+      <UnassignedQueue
+        title="Unassigned Operations work"
+        tasks={model.unassignedOperations}
+      />
     </StyledSalesSection>
   );
 };

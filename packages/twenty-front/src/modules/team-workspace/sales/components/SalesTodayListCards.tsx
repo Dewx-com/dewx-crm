@@ -1,16 +1,15 @@
 import { styled } from '@linaria/react';
+import { Button } from 'twenty-ui/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 import {
   type SalesFollowUp,
   type SalesMeeting,
-  type SalesRecordReference,
   type SalesWorkspaceCallbacks,
 } from '@/team-workspace/sales/types/sales-workspace.types';
 import { formatSalesDateTime } from '@/team-workspace/sales/utils/buildSalesWorkspaceModel';
 import {
   SalesEmptyState,
-  SalesRecordButton,
   SalesStatusPill,
   StyledSurface,
   StyledSurfaceBody,
@@ -62,63 +61,160 @@ const StyledItemMeta = styled.div`
   margin-top: ${themeCssVariables.spacing[1]};
 `;
 
-const openFollowUpRecord = (
-  followUp: SalesFollowUp,
-  onOpenRecord: (record: SalesRecordReference) => void,
-) => {
-  onOpenRecord(
-    followUp.opportunityId === undefined
-      ? { recordType: 'follow-up', recordId: followUp.id }
-      : { recordType: 'opportunity', recordId: followUp.opportunityId },
-  );
-};
+const StyledItemDetail = styled.div`
+  color: ${themeCssVariables.font.color.secondary};
+  font-size: ${themeCssVariables.font.size.sm};
+  line-height: 1.5;
+  margin-top: ${themeCssVariables.spacing[1]};
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+`;
 
-type SalesOverdueFollowUpsCardProps = Pick<
+const StyledWorkItem = styled.div`
+  border-bottom: 1px solid ${themeCssVariables.border.color.light};
+  padding: ${themeCssVariables.spacing[3]} 0;
+
+  &:first-child {
+    padding-top: 0;
+  }
+
+  &:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+`;
+
+const StyledWorkHead = styled.div`
+  align-items: flex-start;
+  display: flex;
+  gap: ${themeCssVariables.spacing[3]};
+  justify-content: space-between;
+`;
+
+const StyledWorkActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${themeCssVariables.spacing[2]};
+  margin-top: ${themeCssVariables.spacing[3]};
+`;
+
+type SalesAssignedWorkCardProps = Pick<
   SalesWorkspaceCallbacks,
-  'onOpenRecord'
+  'onTaskStatusChange'
 > & {
   followUps: SalesFollowUp[];
+  now: string;
 };
 
-export const SalesOverdueFollowUpsCard = ({
+export const SalesAssignedWorkCard = ({
   followUps,
-  onOpenRecord,
-}: SalesOverdueFollowUpsCardProps) => (
-  <StyledPanel>
-    <StyledSurfaceHeader>
-      <StyledSurfaceTitle>Overdue follow-ups</StyledSurfaceTitle>
-      <SalesStatusPill tone={followUps.length > 0 ? 'danger' : 'positive'}>
-        {followUps.length}
-      </SalesStatusPill>
-    </StyledSurfaceHeader>
-    {followUps.length > 0 ? (
-      <StyledSurfaceBody>
-        {followUps.map((followUp) => (
-          <StyledListItem key={followUp.id}>
-            <StyledItemContent>
-              <StyledItemTitle>{followUp.title}</StyledItemTitle>
-              <StyledItemMeta>
-                {followUp.companyName} · Due{' '}
-                {formatSalesDateTime(followUp.dueAt)}
-              </StyledItemMeta>
-            </StyledItemContent>
-            <SalesRecordButton
-              ariaLabel={`Open ${followUp.title}`}
-              onClick={() => openFollowUpRecord(followUp, onOpenRecord)}
-            >
-              Open
-            </SalesRecordButton>
-          </StyledListItem>
-        ))}
-      </StyledSurfaceBody>
-    ) : (
-      <SalesEmptyState
-        title="Nothing is late"
-        detail="Every follow-up due so far is cleared."
-      />
-    )}
-  </StyledPanel>
-);
+  now,
+  onTaskStatusChange,
+}: SalesAssignedWorkCardProps) => {
+  const nowTimestamp = Date.parse(now);
+  const overdueCount = followUps.filter(
+    (followUp) => Date.parse(followUp.dueAt) < nowTimestamp,
+  ).length;
+
+  return (
+    <StyledPanel>
+      <StyledSurfaceHeader>
+        <StyledSurfaceTitle>Assigned work</StyledSurfaceTitle>
+        <SalesStatusPill tone={overdueCount > 0 ? 'danger' : 'neutral'}>
+          {overdueCount > 0
+            ? `${followUps.length} open, ${overdueCount} overdue`
+            : `${followUps.length} open`}
+        </SalesStatusPill>
+      </StyledSurfaceHeader>
+      {followUps.length > 0 ? (
+        <StyledSurfaceBody>
+          {followUps.map((followUp) => {
+            const isOverdue = Date.parse(followUp.dueAt) < nowTimestamp;
+
+            return (
+              <StyledWorkItem key={followUp.id}>
+                <StyledWorkHead>
+                  <StyledItemContent>
+                    <StyledItemTitle>{followUp.title}</StyledItemTitle>
+                    {followUp.detail && (
+                      <StyledItemDetail>{followUp.detail}</StyledItemDetail>
+                    )}
+                    <StyledItemMeta>
+                      {followUp.companyName} · Due{' '}
+                      {formatSalesDateTime(followUp.dueAt)}
+                    </StyledItemMeta>
+                  </StyledItemContent>
+                  <SalesStatusPill
+                    tone={
+                      isOverdue
+                        ? 'danger'
+                        : followUp.status === 'in-progress'
+                          ? 'info'
+                          : 'neutral'
+                    }
+                  >
+                    {isOverdue
+                      ? 'Overdue'
+                      : followUp.status === 'in-progress'
+                        ? 'In progress'
+                        : 'To do'}
+                  </SalesStatusPill>
+                </StyledWorkHead>
+                <StyledWorkActions>
+                  {followUp.status === 'todo' ? (
+                    <Button
+                      title="Start work"
+                      size="small"
+                      variant="primary"
+                      accent="blue"
+                      disabled={!onTaskStatusChange}
+                      onClick={() =>
+                        onTaskStatusChange?.({
+                          taskId: followUp.id,
+                          status: 'in-progress',
+                        })
+                      }
+                    />
+                  ) : (
+                    <Button
+                      title="Move to do"
+                      size="small"
+                      variant="secondary"
+                      disabled={!onTaskStatusChange}
+                      onClick={() =>
+                        onTaskStatusChange?.({
+                          taskId: followUp.id,
+                          status: 'todo',
+                        })
+                      }
+                    />
+                  )}
+                  <Button
+                    title="Finish with evidence"
+                    size="small"
+                    variant="secondary"
+                    disabled={!onTaskStatusChange}
+                    onClick={() =>
+                      onTaskStatusChange?.({
+                        taskId: followUp.id,
+                        status: 'done',
+                      })
+                    }
+                  />
+                </StyledWorkActions>
+              </StyledWorkItem>
+            );
+          })}
+        </StyledSurfaceBody>
+      ) : (
+        <SalesEmptyState
+          title="No assigned work"
+          detail="New assignments will appear here."
+        />
+      )}
+    </StyledPanel>
+  );
+};
 
 type SalesUpcomingMeetingsCardProps = {
   meetings: SalesMeeting[];

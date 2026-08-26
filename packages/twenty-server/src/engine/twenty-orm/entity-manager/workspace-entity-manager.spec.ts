@@ -468,6 +468,21 @@ describe('WorkspaceEntityManager', () => {
       ).toHaveBeenLastCalledWith(transactionQueryRunner, {
         calledByWorkspaceEntityManager: true,
       });
+
+      const explicitQueryRunner = {} as QueryRunner;
+
+      transactionEntityManager.createQueryBuilder(
+        undefined,
+        undefined,
+        explicitQueryRunner,
+        mockPermissionOptions,
+      );
+
+      expect(
+        mockWorkspaceDataSource.createQueryBuilder,
+      ).toHaveBeenLastCalledWith(explicitQueryRunner, {
+        calledByWorkspaceEntityManager: true,
+      });
     });
 
     it('should call validatePermissions and validateOperationIsPermittedOrThrow for find', async () => {

@@ -89,6 +89,11 @@ describe('buildTeamManagementModel', () => {
         title: 'Confirm decision owner',
         status: 'DONE',
       }),
+      task({
+        id: 'unassigned-sales-work',
+        title: 'Prepare the discovery follow-up',
+        assigneeId: null,
+      }),
     ];
     operationsRecords.tasks = [
       task({
@@ -158,6 +163,9 @@ describe('buildTeamManagementModel', () => {
     });
     expect(model.unassignedOperations.map(({ id }) => id)).toEqual([
       'unassigned-work',
+    ]);
+    expect(model.unassignedSales.map(({ id }) => id)).toEqual([
+      'unassigned-sales-work',
     ]);
   });
 

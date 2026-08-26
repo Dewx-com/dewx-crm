@@ -1,5 +1,5 @@
 import { styled } from '@linaria/react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
@@ -10,11 +10,20 @@ import {
   TeamManagementWorkspace,
 } from '@/team-workspace/management';
 import {
+  TEAM_MANAGEMENT_ASSIGN_MODAL_ID,
+  TeamManagementAssignModal,
+  type TeamManagementClientOption,
+} from '@/team-workspace/management/components/TeamManagementAssignModal';
+import { type TeamManagementEmployee } from '@/team-workspace/management/utils/buildTeamManagementModel';
+import {
   canRolesEnterTeamManagement,
   teamWorkspaceLanesFromRoles,
 } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { useTeamManagementRecords } from '@/team-workspace/shared/hooks/useTeamManagementRecords';
+import { compactText } from '@/team-workspace/shared/utils/teamWorkspaceRecordModel';
 import { teamWorkspacePath } from '@/team-workspace/shared/utils/teamWorkspaceRoutes';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
+import { useModal } from '@/ui/layout/modal/hooks/useModal';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 
 const StyledPage = styled.div`
@@ -51,6 +60,10 @@ export const TeamManagementPage = () => {
   const records = useTeamManagementRecords(
     !isTeamWorkspaceDomain || !isManager,
   );
+  const { openModal } = useModal();
+  const { enqueueErrorSnackBar, enqueueSuccessSnackBar } = useSnackBar();
+  const [assignmentEmployee, setAssignmentEmployee] =
+    useState<TeamManagementEmployee | null>(null);
   const now = useMemo(() => new Date(), []);
   const model = useMemo(
     () =>
@@ -65,6 +78,39 @@ export const TeamManagementPage = () => {
         : null,
     [now, records.operationsRecords, records.salesRecords, records.snapshot],
   );
+  const clientOptions = useMemo<TeamManagementClientOption[]>(() => {
+    const byScope = new Map<string, string>();
+
+    for (const client of [
+      ...records.salesRecords.clients,
+      ...records.operationsRecords.clients,
+    ]) {
+      const scope = compactText(client.client);
+      if (!scope) continue;
+      byScope.set(scope, compactText(client.name) || scope);
+    }
+
+    return [...byScope.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [records.operationsRecords.clients, records.salesRecords.clients]);
+
+  const showAssignment = (employee: TeamManagementEmployee) => {
+    setAssignmentEmployee(employee);
+    openModal(TEAM_MANAGEMENT_ASSIGN_MODAL_ID);
+  };
+
+  const handleAssigned = async (message: string) => {
+    try {
+      await records.refetch();
+      enqueueSuccessSnackBar({ message });
+    } catch {
+      enqueueErrorSnackBar({
+        message:
+          'The work was assigned, but this page could not refresh. Reload before retrying.',
+      });
+    }
+  };
 
   if (!currentWorkspaceMember || !workspacePublicData) {
     return (
@@ -129,7 +175,17 @@ export const TeamManagementPage = () => {
       <TeamManagementWorkspace
         model={model}
         selectedMemberId={workspaceMemberId}
+        onAssignWork={showAssignment}
       />
+      {assignmentEmployee && (
+        <TeamManagementAssignModal
+          key={assignmentEmployee.id}
+          employee={assignmentEmployee}
+          clients={clientOptions}
+          onSaved={handleAssigned}
+          onClose={() => setAssignmentEmployee(null)}
+        />
+      )}
     </StyledPage>
   );
 };

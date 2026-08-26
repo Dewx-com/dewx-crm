@@ -50,6 +50,9 @@ export class TeamWorkspaceTaskDTO {
   bodyMarkdown!: string | null;
 
   @Field(() => String, { nullable: true })
+  assignmentDetail!: string | null;
+
+  @Field(() => String, { nullable: true })
   createdByName!: string | null;
 }
 

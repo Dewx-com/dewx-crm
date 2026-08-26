@@ -12,6 +12,7 @@ export type TeamTaskRecord = ObjectRecord & {
     blocknote?: string | null;
     markdown?: string | null;
   } | null;
+  assignmentDetail?: string | null;
   status: string | null;
   workType: string | null;
   client: string | null;

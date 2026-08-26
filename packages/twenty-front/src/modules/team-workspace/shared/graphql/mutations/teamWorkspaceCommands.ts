@@ -14,6 +14,16 @@ export type TeamWorkspaceCommandReceipt = {
 
 export type TeamWorkspaceCommandLane = 'SALES' | 'OPERATIONS';
 
+export type CreateAssignedWorkInput = {
+  lane: TeamWorkspaceCommandLane;
+  assigneeId: string;
+  title: string;
+  detail: string;
+  dueAt: string;
+  client?: string;
+  idempotencyKey: string;
+};
+
 export type TeamWorkspaceProtocolTaskKind =
   | 'MEETING_PREP'
   | 'MEETING_OUTCOME'
@@ -116,6 +126,17 @@ export const CREATE_PROTOCOL_TASK = gql`
     $input: CreateTeamWorkspaceProtocolTaskInput!
   ) {
     createProtocolTask(input: $input) {
+      ...TeamWorkspaceCommandReceiptFields
+    }
+  }
+`;
+
+export const CREATE_ASSIGNED_WORK = gql`
+  ${RECEIPT_FIELDS}
+  mutation CreateTeamWorkspaceAssignedWork(
+    $input: CreateTeamWorkspaceAssignedWorkInput!
+  ) {
+    createAssignedWork(input: $input) {
       ...TeamWorkspaceCommandReceiptFields
     }
   }

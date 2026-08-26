@@ -35,7 +35,7 @@ export type SalesOpportunityStage =
   | 'nurture'
   | 'dnc';
 
-export type SalesFollowUpStatus = 'open' | 'done';
+export type SalesFollowUpStatus = 'todo' | 'in-progress' | 'done';
 
 export type SalesTranscriptStatus = 'available' | 'processing' | 'missing';
 
@@ -66,10 +66,16 @@ export type SalesOpportunity = {
 export type SalesFollowUp = {
   id: string;
   title: string;
+  detail: string | null;
   companyName: string;
   dueAt: string;
   status: SalesFollowUpStatus;
   opportunityId?: string;
+};
+
+export type SalesTaskStatusChange = {
+  taskId: string;
+  status: SalesFollowUpStatus;
 };
 
 export type SalesCoachingEvidence = {
@@ -114,6 +120,7 @@ export type SalesWorkspaceCallbacks = {
   onCompleteMeeting: (meetingId: string) => void;
   onUpdateOpportunity: (opportunityId: string) => void;
   onOpenRecord: (record: SalesRecordReference) => void;
+  onTaskStatusChange?: (change: SalesTaskStatusChange) => void;
   onRecordCoachingLesson?: (reviewId: string) => void;
 };
 

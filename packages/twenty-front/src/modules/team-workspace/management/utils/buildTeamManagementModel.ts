@@ -30,6 +30,7 @@ export type TeamManagementLane = 'sales' | 'operations';
 export type TeamManagementTask = {
   id: string;
   title: string;
+  detail: string | null;
   status: string;
   dueAt: string | null;
   clientName: string | null;
@@ -77,6 +78,7 @@ export type TeamManagementEmployee = {
 export type TeamManagementModel = {
   generatedAt: string;
   employees: TeamManagementEmployee[];
+  unassignedSales: TeamManagementTask[];
   unassignedOperations: TeamManagementTask[];
 };
 
@@ -167,6 +169,7 @@ const managementTaskOf = ({
   return {
     id: task.id,
     title: compactText(task.title) || 'Untitled work',
+    detail: task.assignmentDetail?.trim() || null,
     status: compactText(task.status).toUpperCase() || 'UNKNOWN',
     dueAt: task.dueAt,
     clientName: taskClientName(task, records),
@@ -340,21 +343,36 @@ export const buildTeamManagementModel = ({
       coachingNote: coachingNoteFor({ member, records, now }),
     };
   });
-  const assignedOperationIds = new Set(
+  const assignedSalesIds = new Set(
+    members
+      .filter((member) => member.lane === 'SALES')
+      .map((member) => member.id),
+  );
+  const assignedOperationsIds = new Set(
     members
       .filter((member) => member.lane === 'OPERATIONS')
       .map((member) => member.id),
   );
+  const unassignedSales = salesRecords.tasks
+    .filter(
+      (task) =>
+        !isMetaTask(task) &&
+        !isDoneTask(task) &&
+        (!task.assignee || !assignedSalesIds.has(task.assignee.id)),
+    )
+    .map((task) =>
+      managementTaskOf({ task, records: salesRecords, now: nowTimestamp }),
+    );
   const unassignedOperations = operationsRecords.tasks
     .filter(
       (task) =>
         !isMetaTask(task) &&
         !isDoneTask(task) &&
-        (!task.assignee || !assignedOperationIds.has(task.assignee.id)),
+        (!task.assignee || !assignedOperationsIds.has(task.assignee.id)),
     )
     .map((task) =>
       managementTaskOf({ task, records: operationsRecords, now: nowTimestamp }),
     );
 
-  return { generatedAt, employees, unassignedOperations };
+  return { generatedAt, employees, unassignedSales, unassignedOperations };
 };

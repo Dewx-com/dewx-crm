@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 
-import { ILike, In, type FindOptionsWhere } from 'typeorm';
+import { ILike, In, IsNull, type FindOptionsWhere } from 'typeorm';
 
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspace-domains/services/workspace-domains.service';
@@ -66,6 +66,7 @@ type TeamTaskEntity = {
   bodyV2Markdown?: string | null;
   createdByWorkspaceMemberId?: string | null;
   createdByName?: string | null;
+  assignmentDetail?: string | null;
 };
 
 type TeamOpportunityEntity = {
@@ -193,6 +194,11 @@ const isMemberTask = (
     task.createdBy?.workspaceMemberId !== undefined &&
     workspaceMemberIds.has(task.createdBy.workspaceMemberId));
 
+const isUnassignedActiveSalesTask = (task: TeamTaskEntity): boolean =>
+  task.assigneeId === null &&
+  task.workType?.toUpperCase() === 'OUTREACH' &&
+  ['TODO', 'IN_PROGRESS'].includes(task.status?.toUpperCase() ?? '');
+
 const isOperationsLaneWideTask = (task: TeamTaskEntity): boolean =>
   task.workType?.toUpperCase() === 'SOFTWARE' ||
   titleStartsWith(task, TEAM_WORKSPACE_RECORD_PREFIX.blocker) ||
@@ -253,6 +259,20 @@ const isDetailTask = (
   ].some((prefix) => titleStartsWith(task, prefix));
 };
 
+const assignmentDetailFromMarkdown = (
+  markdown: string | null | undefined,
+): string | null => {
+  const match = markdown
+    ?.replace(/\r\n?/g, '\n')
+    .trim()
+    .match(
+      /^<!-- pe-team-command-receipt-v1:[A-Za-z0-9_-]+ -->\n+\*\*Assignment:\*\*\s*([\s\S]+)$/,
+    );
+  const detail = match?.[1].trim();
+
+  return detail ? detail : null;
+};
+
 const taskDto = (task: TeamTaskEntity): TeamWorkspaceTaskDTO => ({
   id: task.id,
   title: task.title ?? null,
@@ -265,6 +285,7 @@ const taskDto = (task: TeamTaskEntity): TeamWorkspaceTaskDTO => ({
   assigneeId: task.assigneeId ?? task.assignee?.id ?? null,
   assigneeName: fullName(task.assignee?.name),
   bodyMarkdown: task.bodyV2?.markdown ?? null,
+  assignmentDetail: task.assignmentDetail ?? null,
   createdByName: task.bodyV2 ? (task.createdBy?.name ?? null) : null,
 });
 
@@ -497,6 +518,7 @@ export class TeamWorkspaceService {
             workspaceId: workspace.id,
             laneMemberIds: salesMembers.map((member) => member.id),
             privilegedReadConfig,
+            includeUnassignedSalesWork: true,
           }),
           this.readSnapshot({
             lane: TeamWorkspaceLane.OPERATIONS,
@@ -632,11 +654,13 @@ export class TeamWorkspaceService {
     workspaceId,
     laneMemberIds,
     privilegedReadConfig,
+    includeUnassignedSalesWork = false,
   }: {
     lane: TeamWorkspaceLane;
     workspaceId: string;
     laneMemberIds: string[];
     privilegedReadConfig: RolePermissionConfig;
+    includeUnassignedSalesWork?: boolean;
   }): Promise<TeamWorkspaceSnapshotDTO> {
     const [taskIndex, meetingIndex] = await Promise.all([
       this.readTaskIndex({
@@ -644,6 +668,7 @@ export class TeamWorkspaceService {
         workspaceId,
         laneMemberIds,
         privilegedReadConfig,
+        includeUnassignedSalesWork,
       }),
       this.readMeetings({
         workspaceId,
@@ -652,8 +677,12 @@ export class TeamWorkspaceService {
       }),
     ]);
 
-    const baseTasks = taskIndex.filter((task) =>
-      canReadTask({ task, lane, laneMemberIds }),
+    const baseTasks = taskIndex.filter(
+      (task) =>
+        canReadTask({ task, lane, laneMemberIds }) ||
+        (lane === TeamWorkspaceLane.SALES &&
+          includeUnassignedSalesWork &&
+          isUnassignedActiveSalesTask(task)),
     );
     const baseTaskIds = new Set(baseTasks.map((task) => task.id));
     const tasks = taskIndex.filter((task) => {
@@ -684,10 +713,11 @@ export class TeamWorkspaceService {
     const detailTaskIds = tasks
       .filter((task) => isDetailTask(task, lane))
       .map((task) => task.id);
+    const detailTaskIdSet = new Set(detailTaskIds);
 
     const [taskDetails, opportunities, callRecordings] = await Promise.all([
       this.readTaskDetails({
-        ids: detailTaskIds,
+        ids: tasks.map((task) => task.id),
         workspaceId,
         privilegedReadConfig,
       }),
@@ -707,10 +737,17 @@ export class TeamWorkspaceService {
     const detailsById = new Map(
       taskDetails.map((task) => [task.id, task] as const),
     );
-    const tasksWithDetails = tasks.map((task) => ({
-      ...task,
-      ...detailsById.get(task.id),
-    }));
+    const tasksWithDetails = tasks.map((task) => {
+      const detail = detailsById.get(task.id);
+
+      return {
+        ...task,
+        ...(detailTaskIdSet.has(task.id) ? detail : {}),
+        assignmentDetail: assignmentDetailFromMarkdown(
+          detail?.bodyV2?.markdown,
+        ),
+      };
+    });
     const allowedMeetingIds = new Set(meetings.map((meeting) => meeting.id));
     const safeCallRecordings = callRecordings.filter(
       (recording) =>
@@ -743,13 +780,19 @@ export class TeamWorkspaceService {
     workspaceId,
     laneMemberIds,
     privilegedReadConfig,
+    includeUnassignedSalesWork,
   }: {
     lane: TeamWorkspaceLane;
     workspaceId: string;
     laneMemberIds: string[];
     privilegedReadConfig: RolePermissionConfig;
+    includeUnassignedSalesWork: boolean;
   }): Promise<TeamTaskEntity[]> {
-    if (lane === TeamWorkspaceLane.SALES && laneMemberIds.length === 0) {
+    if (
+      lane === TeamWorkspaceLane.SALES &&
+      laneMemberIds.length === 0 &&
+      !includeUnassignedSalesWork
+    ) {
       return [];
     }
 
@@ -773,6 +816,15 @@ export class TeamWorkspaceService {
                 `${TEAM_WORKSPACE_RECORD_PREFIX.completionEvidence}%`,
               ),
             },
+            ...(includeUnassignedSalesWork
+              ? [
+                  {
+                    assigneeId: IsNull(),
+                    status: In(['TODO', 'IN_PROGRESS']),
+                    workType: 'OUTREACH',
+                  },
+                ]
+              : []),
           ]
         : [
             { workType: 'SOFTWARE' },

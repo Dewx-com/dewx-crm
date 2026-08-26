@@ -14,6 +14,7 @@ export type TeamWorkspaceSnapshotTask = {
   assigneeId: string | null;
   assigneeName: string | null;
   bodyMarkdown: string | null;
+  assignmentDetail: string | null;
   createdByName: string | null;
 };
 
@@ -117,6 +118,7 @@ export const GET_TEAM_WORKSPACE_SNAPSHOT = gql`
         assigneeId
         assigneeName
         bodyMarkdown
+        assignmentDetail
         createdByName
       }
       handoffs {
@@ -131,6 +133,7 @@ export const GET_TEAM_WORKSPACE_SNAPSHOT = gql`
         assigneeId
         assigneeName
         bodyMarkdown
+        assignmentDetail
         createdByName
       }
       opportunities {

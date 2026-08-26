@@ -20,7 +20,10 @@ import {
   isTeamWorkspaceLane,
   type TeamWorkspaceLane,
 } from '@/team-workspace/role/types/TeamWorkspaceLane';
-import { SalesWorkspace } from '@/team-workspace/sales';
+import {
+  SalesWorkspace,
+  type SalesTaskStatusChange,
+} from '@/team-workspace/sales';
 import {
   TEAM_WORKSPACE_ACTION_MODAL_ID,
   TeamWorkspaceActionModal,
@@ -187,6 +190,30 @@ export const TeamWorkspacePage = () => {
         'All details available to this role are already shown in the secure team workspace.',
     });
 
+  const updateSalesTask = (change: SalesTaskStatusChange) => {
+    const task = recordsQuery.records.tasks.find(
+      (candidate) => candidate.id === change.taskId,
+    );
+    if (!task) {
+      enqueueErrorSnackBar({ message: 'This task is no longer available.' });
+      return;
+    }
+
+    if (change.status === 'done') {
+      showAction({ kind: 'task-finish', taskId: task.id });
+      return;
+    }
+
+    void runDirectUpdate(
+      () =>
+        mutations.updateTaskStatus({
+          task,
+          status: change.status === 'in-progress' ? 'IN_PROGRESS' : 'TODO',
+        }),
+      change.status === 'in-progress' ? 'Work started.' : 'Task moved to do.',
+    );
+  };
+
   const updateOperationsTask = (change: OperationsTaskStatusChange) => {
     const task = recordsQuery.records.tasks.find(
       (candidate) => candidate.id === change.taskId,
@@ -308,6 +335,7 @@ export const TeamWorkspacePage = () => {
             showAction({ kind: 'coaching-lesson', recordingId })
           }
           onOpenRecord={explainSafeProjection}
+          onTaskStatusChange={updateSalesTask}
         />
       ) : (
         <OperationsWorkspace

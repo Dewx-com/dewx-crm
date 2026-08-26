@@ -35,6 +35,7 @@ const TEAM_WORKSPACE_SNAPSHOT_FIELDS = gql`
       assigneeId
       assigneeName
       bodyMarkdown
+      assignmentDetail
       createdByName
     }
     handoffs {
@@ -49,6 +50,7 @@ const TEAM_WORKSPACE_SNAPSHOT_FIELDS = gql`
       assigneeId
       assigneeName
       bodyMarkdown
+      assignmentDetail
       createdByName
     }
     opportunities {
