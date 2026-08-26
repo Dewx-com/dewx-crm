@@ -4,7 +4,7 @@ import {
   type FieldMetadataType,
   type ObjectsPermissions,
 } from 'twenty-shared/types';
-import { EntityManager } from 'typeorm';
+import { EntityManager, type QueryRunner } from 'typeorm';
 import { EntityPersistExecutor } from 'typeorm/persistence/EntityPersistExecutor';
 import { PlainObjectToDatabaseEntityTransformer } from 'typeorm/query-builder/transformer/PlainObjectToDatabaseEntityTransformer';
 
@@ -87,6 +87,7 @@ jest.mock('../repository/workspace-select-query-builder', () => ({
 describe('WorkspaceEntityManager', () => {
   let entityManager: WorkspaceEntityManager;
   let mockDataSource: GlobalWorkspaceDataSource;
+  let mockWorkspaceDataSource: GlobalWorkspaceDataSource;
   let mockPermissionOptions: {
     shouldBypassPermissionChecks: boolean;
     objectRecordsPermissions?: ObjectsPermissions;
@@ -326,7 +327,7 @@ describe('WorkspaceEntityManager', () => {
 
     setWorkspaceContext(mockWorkspaceContext);
 
-    const mockWorkspaceDataSource = {
+    mockWorkspaceDataSource = {
       getMetadata: jest.fn().mockReturnValue({
         name: 'test-entity',
         columns: [],
@@ -366,7 +367,7 @@ describe('WorkspaceEntityManager', () => {
         release: jest.fn(),
         clearTable: jest.fn(),
       }),
-    };
+    } as unknown as GlobalWorkspaceDataSource;
 
     entityManager = new WorkspaceEntityManager(mockDataSource);
 
@@ -432,6 +433,43 @@ describe('WorkspaceEntityManager', () => {
   });
 
   describe('Query Method', () => {
+    it('keeps implicit query builders on the manager transaction query runner', () => {
+      const transactionQueryRunner = {} as QueryRunner;
+      const transactionEntityManager = new WorkspaceEntityManager(
+        mockWorkspaceDataSource,
+        transactionQueryRunner,
+      );
+
+      transactionEntityManager.createQueryBuilder(
+        'test-entity',
+        'test-entity',
+        undefined,
+        mockPermissionOptions,
+      );
+
+      expect(
+        mockWorkspaceDataSource.createQueryBuilder,
+      ).toHaveBeenLastCalledWith(
+        'test-entity',
+        'test-entity',
+        transactionQueryRunner,
+        { calledByWorkspaceEntityManager: true },
+      );
+
+      transactionEntityManager.createQueryBuilder(
+        undefined,
+        undefined,
+        undefined,
+        mockPermissionOptions,
+      );
+
+      expect(
+        mockWorkspaceDataSource.createQueryBuilder,
+      ).toHaveBeenLastCalledWith(transactionQueryRunner, {
+        calledByWorkspaceEntityManager: true,
+      });
+    });
+
     it('should call validatePermissions and validateOperationIsPermittedOrThrow for find', async () => {
       await withWorkspaceContext(mockWorkspaceContext, () =>
         entityManager.find('test-entity', {}, mockPermissionOptions),
