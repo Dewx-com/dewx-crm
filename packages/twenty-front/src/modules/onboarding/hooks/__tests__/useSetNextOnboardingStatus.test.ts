@@ -21,7 +21,10 @@ import {
   resetJotaiStore,
 } from '@/ui/utilities/state/jotai/jotaiStore';
 
-import { OnboardingStatus } from '~/generated-metadata/graphql';
+import {
+  OnboardingStatus,
+  PermissionFlagType,
+} from '~/generated-metadata/graphql';
 import {
   mockCurrentWorkspace,
   mockedUserData,
@@ -104,7 +107,13 @@ const renderHooks = (
           isBookCallOnboardingStepPending,
       },
     });
-    result.current.setCurrentUserWorkspace(mockedUserData.currentUserWorkspace);
+    result.current.setCurrentUserWorkspace({
+      ...mockedUserData.currentUserWorkspace,
+      permissionFlags: [
+        ...(mockedUserData.currentUserWorkspace.permissionFlags ?? []),
+        PermissionFlagType.APPLICATIONS,
+      ],
+    });
     result.current.setCurrentWorkspace({
       ...mockCurrentWorkspace,
       billingSubscriptions: withSubscription
