@@ -401,6 +401,7 @@ export class WorkspaceResolver {
             subdomainUrl: originHeader,
             customUrl: originHeader,
           },
+          isTeamWorkspaceDomainAlias: false,
           authProviders: systemEnabledProviders,
         };
       }
@@ -426,7 +427,15 @@ export class WorkspaceResolver {
         id: workspace.id,
         logo: workspaceLogoWithToken,
         displayName: workspace.displayName,
-        workspaceUrls: this.workspaceDomainsService.getWorkspaceUrls(workspace),
+        workspaceUrls: this.workspaceDomainsService.getWorkspaceUrlsForOrigin(
+          workspace,
+          origin,
+        ),
+        isTeamWorkspaceDomainAlias:
+          this.workspaceDomainsService.isTeamWorkspaceDomainAliasForWorkspace({
+            workspaceId: workspace.id,
+            origin,
+          }),
         authProviders: getAuthProvidersByWorkspace({
           workspace,
           systemEnabledProviders,

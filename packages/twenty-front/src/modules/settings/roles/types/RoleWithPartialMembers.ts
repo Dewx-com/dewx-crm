@@ -12,6 +12,7 @@ export type PartialWorkspaceMember = Omit<
   | 'calendarStartDay'
   | 'createdAt'
   | 'updatedAt'
+  | 'roles'
 >;
 
 export type RoleWithPartialMembers = Omit<Role, 'workspaceMembers'> & {

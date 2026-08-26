@@ -8,7 +8,7 @@ import { addMilliseconds } from 'date-fns';
 import ms from 'ms';
 import { SendInviteLinkEmail, renderEmail } from 'twenty-emails';
 import { AppPath, FileFolder } from 'twenty-shared/types';
-import { getAppPath, isDefined } from 'twenty-shared/utils';
+import { formatEmailAddress, getAppPath, isDefined } from 'twenty-shared/utils';
 import {
   In,
   IsNull,
@@ -33,6 +33,7 @@ import { FileUrlService } from 'src/engine/core-modules/file/file-url/file-url.s
 import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { OnboardingService } from 'src/engine/core-modules/onboarding/onboarding.service';
 import { ThrottlerService } from 'src/engine/core-modules/throttler/throttler.service';
+import { TEAM_WORKSPACE_ROLE_LABEL } from 'src/engine/core-modules/team-workspace/team-workspace.constants';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { type SendInvitationsDTO } from 'src/engine/core-modules/workspace-invitation/dtos/send-invitations.dto';
@@ -43,6 +44,7 @@ import {
 } from 'src/engine/core-modules/workspace-invitation/workspace-invitation.exception';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { RoleValidationService } from 'src/engine/metadata-modules/role-validation/services/role-validation.service';
+import { UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 import { CustomException } from 'src/utils/custom-exception';
 
@@ -61,7 +63,69 @@ export class WorkspaceInvitationService {
     private readonly i18nService: I18nService,
     private readonly throttlerService: ThrottlerService,
     private readonly fileUrlService: FileUrlService,
+    private readonly userRoleService: UserRoleService,
   ) {}
+
+  async isTeamWorkspaceLaneInvitation({
+    workspaceId,
+    roleId,
+  }: {
+    workspaceId: string;
+    roleId?: string | null;
+  }): Promise<boolean> {
+    if (!isDefined(roleId)) {
+      return false;
+    }
+
+    const role =
+      await this.roleValidationService.getRoleAssignableToUsersOrThrow(
+        roleId,
+        workspaceId,
+      );
+
+    return (
+      this.workspaceDomainsService.isTeamWorkspaceId(workspaceId) &&
+      (role.label === TEAM_WORKSPACE_ROLE_LABEL.sales ||
+        role.label === TEAM_WORKSPACE_ROLE_LABEL.operations)
+    );
+  }
+
+  async isTeamWorkspaceLaneMember({
+    workspaceId,
+    userId,
+  }: {
+    workspaceId: string;
+    userId: string;
+  }): Promise<boolean> {
+    if (!this.workspaceDomainsService.isTeamWorkspaceId(workspaceId)) {
+      return false;
+    }
+
+    try {
+      const userWorkspace = await this.userWorkspaceRepository.findOne({
+        where: { userId, workspaceId },
+      });
+
+      if (!isDefined(userWorkspace)) {
+        return false;
+      }
+
+      const rolesByUserWorkspace =
+        await this.userRoleService.getRolesByUserWorkspaces({
+          userWorkspaceIds: [userWorkspace.id],
+          workspaceId,
+        });
+      const roles = rolesByUserWorkspace.get(userWorkspace.id) ?? [];
+
+      return (
+        roles.length === 1 &&
+        (roles[0].label === TEAM_WORKSPACE_ROLE_LABEL.sales ||
+          roles[0].label === TEAM_WORKSPACE_ROLE_LABEL.operations)
+      );
+    } catch {
+      return false;
+    }
+  }
 
   async validatePersonalInvitation({
     workspacePersonalInviteToken,
@@ -289,12 +353,12 @@ export class WorkspaceInvitationService {
       };
     }
 
-    if (isDefined(roleId)) {
-      await this.roleValidationService.validateRoleAssignableToUsersOrThrow(
-        roleId,
-        workspace.id,
-      );
-    }
+    const isTeamWorkspaceLaneInvitation = isDefined(roleId)
+      ? await this.isTeamWorkspaceLaneInvitation({
+          roleId,
+          workspaceId: workspace.id,
+        })
+      : false;
 
     const isOnboardingInviteReward =
       this.twentyConfigService.get('IS_BILLING_ENABLED') &&
@@ -335,7 +399,7 @@ export class WorkspaceInvitationService {
 
     for (const invitation of invitationResults) {
       if (invitation.status === 'fulfilled') {
-        const link = this.workspaceDomainsService.buildWorkspaceURL({
+        const invitationUrlParams = {
           workspace,
           pathname: getAppPath(AppPath.Invite, {
             workspaceInviteHash: workspace?.inviteHash,
@@ -344,7 +408,12 @@ export class WorkspaceInvitationService {
             inviteToken: invitation.value.appToken.value,
             email: invitation.value.email,
           },
-        });
+        };
+        const link = isTeamWorkspaceLaneInvitation
+          ? this.workspaceDomainsService.buildTeamWorkspaceDomainAliasURL(
+              invitationUrlParams,
+            )
+          : this.workspaceDomainsService.buildWorkspaceURL(invitationUrlParams);
 
         if (!isDefined(sender.userEmail)) {
           throw new WorkspaceInvitationException(
@@ -382,14 +451,18 @@ export class WorkspaceInvitationService {
           plainText: true,
         });
 
-        const joinTeamMsg = msg`Join your team on Twenty`;
-        const i18n = this.i18nService.getI18nInstance(sender.locale);
-        const subject = i18n._(joinTeamMsg);
+        const workspaceName = workspace.displayName?.trim() || 'your team';
+        const senderName =
+          `${sender.name.firstName} ${sender.name.lastName}`.trim() ||
+          sender.userEmail;
 
         await this.emailService.send({
-          from: `${sender.name.firstName} ${sender.name.lastName} (via Twenty) <${this.twentyConfigService.get('EMAIL_FROM_ADDRESS')}>`,
+          from: formatEmailAddress({
+            address: this.twentyConfigService.get('EMAIL_FROM_ADDRESS'),
+            name: `${senderName} (via ${workspaceName})`,
+          }),
           to: invitation.value.email,
-          subject,
+          subject: `Join ${workspaceName}`,
           text,
           html,
         });

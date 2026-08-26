@@ -11,6 +11,7 @@ import { EmailModule } from 'src/engine/core-modules/email/email.module';
 import { TwentyConfigModule } from 'src/engine/core-modules/twenty-config/twenty-config.module';
 import { UserWorkspaceModule } from 'src/engine/core-modules/user-workspace/user-workspace.module';
 import { UserEntity } from 'src/engine/core-modules/user/user.entity';
+import { WorkspaceInvitationModule } from 'src/engine/core-modules/workspace-invitation/workspace-invitation.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UserEntity } from 'src/engine/core-modules/user/user.entity';
     TwentyConfigModule,
     UserWorkspaceModule,
     WorkspaceDomainsModule,
+    WorkspaceInvitationModule,
     DomainServerConfigModule,
   ],
   providers: [

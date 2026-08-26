@@ -3,6 +3,9 @@ import { NavigationDrawerWorkspaceSectionSkeletonLoader } from '@/object-metadat
 
 import { styled } from '@linaria/react';
 import {
+  IconCalendarEvent,
+  IconListCheck,
+  IconPhone,
   IconInbox,
   IconLayoutDashboard,
   IconMap,
@@ -13,12 +16,18 @@ import {
   IconTargetArrow,
   IconUsers,
 } from 'twenty-ui/icon';
+import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
 import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
+import { type TeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
+import { teamWorkspaceLanesFromRoles } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
+import { teamWorkspacePath } from '@/team-workspace/shared/utils/teamWorkspaceRoutes';
 import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
 import { NavigationDrawerSection } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSection';
 import { NavigationDrawerSectionTitle } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSectionTitle';
 import { lazy, Suspense } from 'react';
+import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
@@ -60,26 +69,136 @@ const StyledScrollableItemsContainer = styled.div`
   gap: ${themeCssVariables.spacing[3]};
 `;
 
+const TeamLaneNavigationSection = ({
+  lane,
+  title,
+}: {
+  lane: TeamWorkspaceLane;
+  title: string;
+}) => (
+  <NavigationDrawerSection>
+    <NavigationDrawerAnimatedCollapseWrapper>
+      <StyledStaticSectionTitle>
+        <NavigationDrawerSectionTitle label={title} />
+      </StyledStaticSectionTitle>
+    </NavigationDrawerAnimatedCollapseWrapper>
+    <NavigationDrawerItem
+      label="Today"
+      to={teamWorkspacePath({ lane, section: 'today' })}
+      Icon={IconSun}
+    />
+    {lane === 'sales' ? (
+      <>
+        <NavigationDrawerItem
+          label="Meetings"
+          to={teamWorkspacePath({ lane, section: 'meetings' })}
+          Icon={IconCalendarEvent}
+        />
+        <NavigationDrawerItem
+          label="Pipeline"
+          to={teamWorkspacePath({ lane, section: 'pipeline' })}
+          Icon={IconTargetArrow}
+        />
+        <NavigationDrawerItem
+          label="Call coaching"
+          to={teamWorkspacePath({ lane, section: 'call-coaching' })}
+          Icon={IconPhone}
+        />
+      </>
+    ) : (
+      <>
+        <NavigationDrawerItem
+          label="Clients"
+          to={teamWorkspacePath({ lane, section: 'clients' })}
+          Icon={IconUsers}
+        />
+        <NavigationDrawerItem
+          label="Work"
+          to={teamWorkspacePath({ lane, section: 'work' })}
+          Icon={IconListCheck}
+        />
+        <NavigationDrawerItem
+          label="Meetings"
+          to={teamWorkspacePath({ lane, section: 'meetings' })}
+          Icon={IconCalendarEvent}
+        />
+      </>
+    )}
+  </NavigationDrawerSection>
+);
+
 export const MainNavigationDrawerScrollableItems = () => {
   // Prospect Engine: a client's seat sees ITS menu — Overview · Plan · Reports · Deliverables ·
   // Prospects · Deals — and nothing of ours (no Clients list, no Tasks, no Snapshots, no Inbox,
   // no Today). Roki, 2026-08-25: "why a client should see Clients? That's for us." Staff keep the
   // full drawer below, unchanged.
   const { isClientSeat } = useClientSeat();
+  const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
+  const workspacePublicData = useAtomStateValue(workspacePublicDataState);
+  const teamLanes =
+    workspacePublicData?.isTeamWorkspaceDomainAlias === true
+      ? teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles)
+      : [];
   if (isClientSeat) {
     return (
       <StyledScrollableItemsContainer>
         <NavigationDrawerSection>
-          <NavigationDrawerItem label="Overview" to="/client" Icon={IconLayoutDashboard} />
-          <NavigationDrawerItem label="Plan" to="/objects/clientPlans" Icon={IconMap} />
-          <NavigationDrawerItem label="Reports" to="/objects/clientReports" Icon={IconFileText} />
-          <NavigationDrawerItem label="Deliverables" to="/objects/clientDeliverables" Icon={IconBox} />
-          <NavigationDrawerItem label="Prospects" to="/objects/people" Icon={IconUsers} />
-          <NavigationDrawerItem label="Deals" to="/objects/opportunities" Icon={IconTargetArrow} />
+          <NavigationDrawerItem
+            label="Overview"
+            to="/client"
+            Icon={IconLayoutDashboard}
+          />
+          <NavigationDrawerItem
+            label="Plan"
+            to="/objects/clientPlans"
+            Icon={IconMap}
+          />
+          <NavigationDrawerItem
+            label="Reports"
+            to="/objects/clientReports"
+            Icon={IconFileText}
+          />
+          <NavigationDrawerItem
+            label="Deliverables"
+            to="/objects/clientDeliverables"
+            Icon={IconBox}
+          />
+          <NavigationDrawerItem
+            label="Prospects"
+            to="/objects/people"
+            Icon={IconUsers}
+          />
+          <NavigationDrawerItem
+            label="Deals"
+            to="/objects/opportunities"
+            Icon={IconTargetArrow}
+          />
         </NavigationDrawerSection>
       </StyledScrollableItemsContainer>
     );
   }
+
+  if (teamLanes.length > 0) {
+    return (
+      <StyledScrollableItemsContainer>
+        <NavigationDrawerOpenedSection />
+        {teamLanes.map((lane) => (
+          <TeamLaneNavigationSection
+            key={lane}
+            lane={lane}
+            title={
+              teamLanes.length === 1
+                ? PE_SECTION_TITLE
+                : lane === 'sales'
+                  ? 'Sales'
+                  : 'Operations'
+            }
+          />
+        ))}
+      </StyledScrollableItemsContainer>
+    );
+  }
+
   return (
     <StyledScrollableItemsContainer>
       <NavigationDrawerOpenedSection />

@@ -5,14 +5,16 @@ import { type ReactNode, createElement } from 'react';
 import { Provider as JotaiProvider } from 'jotai';
 
 import { useHandleResetPassword } from '@/auth/sign-in-up/hooks/useHandleResetPassword';
-import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
+import {
+  type WorkspacePublicData,
+  workspacePublicDataState,
+} from '@/auth/states/workspacePublicDataState';
 import { useReadCaptchaToken } from '@/captcha/hooks/useReadCaptchaToken';
 import { useCaptcha } from '@/client-config/hooks/useCaptcha';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { jotaiStore } from '@/ui/utilities/state/jotai/jotaiStore';
 import { SOURCE_LOCALE } from 'twenty-shared/translations';
 import { useMutation } from '@apollo/client/react';
-import { type PublicWorkspaceData } from '~/generated-metadata/graphql';
 import { dynamicActivate } from '~/utils/i18n/dynamicActivate';
 
 jest.mock('@/ui/feedback/snack-bar-manager/hooks/useSnackBar');
@@ -25,7 +27,8 @@ dynamicActivate(SOURCE_LOCALE);
 const renderHooks = () => {
   jotaiStore.set(workspacePublicDataState.atom, {
     id: 'workspace-id',
-  } as PublicWorkspaceData);
+    isTeamWorkspaceDomainAlias: false,
+  } as WorkspacePublicData);
 
   const { result } = renderHook(() => useHandleResetPassword(), {
     wrapper: ({ children }: { children: ReactNode }) =>

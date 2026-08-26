@@ -4,6 +4,7 @@ import { type ToolSet, zodSchema } from 'ai';
 import { isDefined } from 'twenty-shared/utils';
 import { type ActorMetadata, FieldActorSource } from 'twenty-shared/types';
 
+import { MCP_CLOSED_WORLD_WRITE_TOOL_ANNOTATIONS } from 'src/engine/api/mcp/constants/mcp-closed-world-write-tool-annotations.const';
 import { JSON_RPC_ERROR_CODE } from 'src/engine/api/mcp/constants/json-rpc-error-code.const';
 import { MCP_CLOSED_WORLD_READ_ONLY_TOOL_ANNOTATIONS } from 'src/engine/api/mcp/constants/mcp-closed-world-read-only-tool-annotations.const';
 import { MCP_EXCLUDED_TOOL_NAMES } from 'src/engine/api/mcp/constants/mcp-excluded-tool-names.const';
@@ -24,12 +25,33 @@ import {
   LIST_SKILLS_TOOL_NAME,
   listSkillsInputSchema,
 } from 'src/engine/api/mcp/tools/list-skills.tool';
+import {
+  createTeamWorkspaceCompleteTaskTool,
+  createTeamWorkspaceProtocolTaskTool,
+  createTeamWorkspaceSnapshotTool,
+  createTeamWorkspaceTransitionTaskStatusTool,
+  createTeamWorkspaceUpdateOpportunityStageTool,
+  createTeamWorkspaceWinOpportunityTool,
+  TEAM_WORKSPACE_COMPLETE_TASK_TOOL_NAME,
+  TEAM_WORKSPACE_CREATE_PROTOCOL_TASK_TOOL_NAME,
+  TEAM_WORKSPACE_SNAPSHOT_TOOL_NAME,
+  TEAM_WORKSPACE_TRANSITION_TASK_STATUS_TOOL_NAME,
+  TEAM_WORKSPACE_UPDATE_OPPORTUNITY_STAGE_TOOL_NAME,
+  TEAM_WORKSPACE_WIN_OPPORTUNITY_TOOL_NAME,
+} from 'src/engine/api/mcp/tools/team-workspace.tool';
 import { type McpToolAnnotations } from 'src/engine/api/mcp/types/mcp-tool-annotations.type';
 import { wrapJsonRpcResponse } from 'src/engine/api/mcp/utils/wrap-jsonrpc-response.util';
 import { ApiKeyRoleService } from 'src/engine/core-modules/api-key/services/api-key-role.service';
 import { type FlatApiKey } from 'src/engine/core-modules/api-key/types/flat-api-key.type';
-import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import {
+  type UserWorkspaceAuthContext,
+  type WorkspaceAuthContext,
+} from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { buildApiKeyAuthContext } from 'src/engine/core-modules/auth/utils/build-api-key-auth-context.util';
+import { WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspace-domains/services/workspace-domains.service';
+import { TeamWorkspaceLane } from 'src/engine/core-modules/team-workspace/enums/team-workspace-lane.enum';
+import { TEAM_WORKSPACE_ROLE_LABEL } from 'src/engine/core-modules/team-workspace/team-workspace.constants';
+import { TeamWorkspaceService } from 'src/engine/core-modules/team-workspace/team-workspace.service';
 import { COMMON_PRELOAD_TOOLS } from 'src/engine/core-modules/tool-provider/constants/common-preload-tools.const';
 import { ToolRegistryService } from 'src/engine/core-modules/tool-provider/services/tool-registry.service';
 import {
@@ -52,19 +74,46 @@ import {
   LOAD_SKILL_TOOL_NAME,
   loadSkillInputSchema,
 } from 'src/engine/core-modules/tool-provider/tools/load-skill.tool';
+import { type UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { type FlatWorkspace } from 'src/engine/core-modules/workspace/types/flat-workspace.type';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { SkillService } from 'src/engine/metadata-modules/skill/skill.service';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
+import { TeamWorkspaceCommandService } from 'src/modules/team-workspace/commands/team-workspace-command.service';
 
 type McpAnnotatedTool = ToolSet[string] & {
   annotations: McpToolAnnotations;
 };
 
+type TeamWorkspaceMcpAccess = {
+  allowedLanes: readonly TeamWorkspaceLane[];
+  canCompleteTask: boolean;
+  canCreateProtocolTask: boolean;
+  canTransitionTaskStatus: boolean;
+  canUpdateOpportunityStage: boolean;
+  canWinOpportunity: boolean;
+};
+
+type TeamWorkspaceMcpResolution =
+  | { disposition: 'granted'; access: TeamWorkspaceMcpAccess }
+  | { disposition: 'denied' }
+  | { disposition: 'ordinary' };
+
+const RESERVED_TEAM_WORKSPACE_ROLE_LABELS = new Set<string>(
+  Object.values(TEAM_WORKSPACE_ROLE_LABEL),
+);
+
 const MCP_PRELOADED_TOOL_ANNOTATIONS: Record<string, McpToolAnnotations> = {
   search_help_center: MCP_OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
 };
+
+const TEAM_WORKSPACE_MCP_INSTRUCTIONS = [
+  'You are connected to the Prospect Engine team workspace.',
+  'Use only the listed team_workspace_* tools. Role, lane, ownership, expected state, and record version are enforced by the server.',
+  'Raw call transcripts and confidential source payloads are unavailable. Use only the bounded coaching and evidence projections returned by team_workspace_snapshot.',
+  'Every write requires a stable idempotency key. After a transport timeout, retry the exact same payload and key.',
+].join('\n');
 
 const annotatePreloadedMcpTools = (toolSet: ToolSet): ToolSet =>
   Object.fromEntries(
@@ -96,11 +145,19 @@ export class McpProtocolService {
     private readonly mcpInstructionBuilderService: McpInstructionBuilderService,
     private readonly flatEntityMapsCacheService: WorkspaceManyOrAllFlatEntityMapsCacheService,
     private readonly workspaceCacheService: WorkspaceCacheService,
+    private readonly workspaceDomainsService: WorkspaceDomainsService,
+    private readonly teamWorkspaceService: TeamWorkspaceService,
+    private readonly teamWorkspaceCommandService: TeamWorkspaceCommandService,
   ) {}
 
-  async handleInitialize(requestId: string | number, workspaceId: string) {
-    const instructions =
-      await this.mcpInstructionBuilderService.buildInstructions(workspaceId);
+  async handleInitialize(
+    requestId: string | number,
+    workspaceId: string,
+    isClosedWorldTeamWorkspace = false,
+  ) {
+    const instructions = isClosedWorldTeamWorkspace
+      ? TEAM_WORKSPACE_MCP_INSTRUCTIONS
+      : await this.mcpInstructionBuilderService.buildInstructions(workspaceId);
 
     return wrapJsonRpcResponse(requestId, {
       result: {
@@ -191,6 +248,53 @@ export class McpProtocolService {
     return actorContext;
   }
 
+  private async buildMcpWorkspaceAuthContext({
+    workspace,
+    user,
+    userWorkspaceId,
+    apiKey,
+  }: {
+    workspace: FlatWorkspace;
+    user?: UserEntity;
+    userWorkspaceId?: string;
+    apiKey?: FlatApiKey;
+  }): Promise<WorkspaceAuthContext | undefined> {
+    if (isDefined(apiKey)) {
+      return buildApiKeyAuthContext({ workspace, apiKey });
+    }
+
+    if (!isDefined(user) && !isDefined(userWorkspaceId)) {
+      return undefined;
+    }
+
+    if (!isDefined(user) || !isDefined(userWorkspaceId)) {
+      return undefined;
+    }
+
+    const { flatWorkspaceMemberMaps } =
+      await this.workspaceCacheService.getOrRecompute(workspace.id, [
+        'flatWorkspaceMemberMaps',
+      ]);
+    const workspaceMemberId = flatWorkspaceMemberMaps.idByUserId[user.id];
+    const workspaceMember = isDefined(workspaceMemberId)
+      ? flatWorkspaceMemberMaps.byId[workspaceMemberId]
+      : undefined;
+
+    if (!isDefined(workspaceMemberId) || !isDefined(workspaceMember)) {
+      return undefined;
+    }
+
+    return {
+      type: 'user',
+      workspace,
+      userWorkspaceId,
+      user: user as unknown as UserWorkspaceAuthContext['user'],
+      workspaceMemberId,
+      workspaceMember:
+        workspaceMember as unknown as UserWorkspaceAuthContext['workspaceMember'],
+    };
+  }
+
   private async buildMcpToolSet(
     workspace: FlatWorkspace,
     roleId: string,
@@ -199,8 +303,30 @@ export class McpProtocolService {
       userId?: string;
       userWorkspaceId?: string;
       apiKey?: FlatApiKey;
+      shouldDenyGenericTools?: boolean;
     },
   ): Promise<ToolSet> {
+    if (options?.shouldDenyGenericTools === true) {
+      return {};
+    }
+
+    if (isDefined(options?.authContext)) {
+      const resolution = await this.resolveTeamWorkspaceMcpAccess(
+        options.authContext,
+      );
+
+      if (resolution.disposition === 'granted') {
+        return this.buildTeamWorkspaceToolSet(
+          options.authContext,
+          resolution.access,
+        );
+      }
+
+      if (resolution.disposition === 'denied') {
+        return {};
+      }
+    }
+
     const actorContext = await this.buildActorContext(
       workspace.id,
       options?.userId,
@@ -277,16 +403,194 @@ export class McpProtocolService {
     };
   }
 
+  private buildTeamWorkspaceToolSet(
+    authContext: WorkspaceAuthContext,
+    access: TeamWorkspaceMcpAccess,
+  ): ToolSet {
+    const tools: ToolSet = {
+      [TEAM_WORKSPACE_SNAPSHOT_TOOL_NAME]: {
+        ...createTeamWorkspaceSnapshotTool({
+          allowedLanes: access.allowedLanes,
+          authContext,
+          teamWorkspaceService: this.teamWorkspaceService,
+        }),
+        annotations: MCP_CLOSED_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+      } as McpAnnotatedTool,
+    };
+
+    if (access.canCompleteTask) {
+      tools[TEAM_WORKSPACE_COMPLETE_TASK_TOOL_NAME] = {
+        ...createTeamWorkspaceCompleteTaskTool({
+          authContext,
+          teamWorkspaceCommandService: this.teamWorkspaceCommandService,
+        }),
+        annotations: MCP_CLOSED_WORLD_WRITE_TOOL_ANNOTATIONS,
+      } as McpAnnotatedTool;
+    }
+
+    if (access.canWinOpportunity) {
+      tools[TEAM_WORKSPACE_WIN_OPPORTUNITY_TOOL_NAME] = {
+        ...createTeamWorkspaceWinOpportunityTool({
+          authContext,
+          teamWorkspaceCommandService: this.teamWorkspaceCommandService,
+        }),
+        annotations: MCP_CLOSED_WORLD_WRITE_TOOL_ANNOTATIONS,
+      } as McpAnnotatedTool;
+    }
+
+    if (access.canCreateProtocolTask) {
+      tools[TEAM_WORKSPACE_CREATE_PROTOCOL_TASK_TOOL_NAME] = {
+        ...createTeamWorkspaceProtocolTaskTool({
+          authContext,
+          teamWorkspaceCommandService: this.teamWorkspaceCommandService,
+        }),
+        annotations: MCP_CLOSED_WORLD_WRITE_TOOL_ANNOTATIONS,
+      } as McpAnnotatedTool;
+    }
+
+    if (access.canTransitionTaskStatus) {
+      tools[TEAM_WORKSPACE_TRANSITION_TASK_STATUS_TOOL_NAME] = {
+        ...createTeamWorkspaceTransitionTaskStatusTool({
+          authContext,
+          teamWorkspaceCommandService: this.teamWorkspaceCommandService,
+        }),
+        annotations: MCP_CLOSED_WORLD_WRITE_TOOL_ANNOTATIONS,
+      } as McpAnnotatedTool;
+    }
+
+    if (access.canUpdateOpportunityStage) {
+      tools[TEAM_WORKSPACE_UPDATE_OPPORTUNITY_STAGE_TOOL_NAME] = {
+        ...createTeamWorkspaceUpdateOpportunityStageTool({
+          authContext,
+          teamWorkspaceCommandService: this.teamWorkspaceCommandService,
+        }),
+        annotations: MCP_CLOSED_WORLD_WRITE_TOOL_ANNOTATIONS,
+      } as McpAnnotatedTool;
+    }
+
+    return tools;
+  }
+
+  private async resolveTeamWorkspaceMcpAccess(
+    authContext: WorkspaceAuthContext,
+  ): Promise<TeamWorkspaceMcpResolution> {
+    if (
+      !this.workspaceDomainsService.isTeamWorkspaceId(authContext.workspace.id)
+    ) {
+      return { disposition: 'ordinary' };
+    }
+
+    try {
+      if (authContext.type === 'apiKey') {
+        const role = await this.apiKeyRoleService.getRoleDtoByApiKeyId({
+          apiKeyId: authContext.apiKey.id,
+          workspaceId: authContext.workspace.id,
+        });
+
+        if (role.label === TEAM_WORKSPACE_ROLE_LABEL.automation && role.id) {
+          return {
+            disposition: 'granted',
+            access: {
+              allowedLanes: [
+                TeamWorkspaceLane.SALES,
+                TeamWorkspaceLane.OPERATIONS,
+              ],
+              canCompleteTask: true,
+              canCreateProtocolTask: true,
+              canTransitionTaskStatus: true,
+              canUpdateOpportunityStage: true,
+              canWinOpportunity: true,
+            },
+          };
+        }
+
+        return RESERVED_TEAM_WORKSPACE_ROLE_LABELS.has(role.label)
+          ? { disposition: 'denied' }
+          : { disposition: 'ordinary' };
+      }
+
+      if (authContext.type !== 'user') {
+        return { disposition: 'ordinary' };
+      }
+
+      const rolesByUserWorkspace =
+        await this.userRoleService.getRolesByUserWorkspaces({
+          userWorkspaceIds: [authContext.userWorkspaceId],
+          workspaceId: authContext.workspace.id,
+        });
+      const roles = rolesByUserWorkspace.get(authContext.userWorkspaceId) ?? [];
+      const hasReservedTeamRole = roles.some((role) =>
+        RESERVED_TEAM_WORKSPACE_ROLE_LABELS.has(role.label),
+      );
+
+      if (roles.length !== 1 || !roles[0].id) {
+        return roles.length === 0 || hasReservedTeamRole
+          ? { disposition: 'denied' }
+          : { disposition: 'ordinary' };
+      }
+
+      switch (roles[0].label) {
+        case TEAM_WORKSPACE_ROLE_LABEL.sales:
+          return {
+            disposition: 'granted',
+            access: {
+              allowedLanes: [TeamWorkspaceLane.SALES],
+              canCompleteTask: true,
+              canCreateProtocolTask: true,
+              canTransitionTaskStatus: true,
+              canUpdateOpportunityStage: true,
+              canWinOpportunity: true,
+            },
+          };
+        case TEAM_WORKSPACE_ROLE_LABEL.operations:
+          return {
+            disposition: 'granted',
+            access: {
+              allowedLanes: [TeamWorkspaceLane.OPERATIONS],
+              canCompleteTask: true,
+              canCreateProtocolTask: true,
+              canTransitionTaskStatus: true,
+              canUpdateOpportunityStage: false,
+              canWinOpportunity: false,
+            },
+          };
+        case TEAM_WORKSPACE_ROLE_LABEL.admin:
+          return {
+            disposition: 'granted',
+            access: {
+              allowedLanes: [
+                TeamWorkspaceLane.SALES,
+                TeamWorkspaceLane.OPERATIONS,
+              ],
+              canCompleteTask: true,
+              canCreateProtocolTask: true,
+              canTransitionTaskStatus: true,
+              canUpdateOpportunityStage: true,
+              canWinOpportunity: true,
+            },
+          };
+        case TEAM_WORKSPACE_ROLE_LABEL.automation:
+          return { disposition: 'denied' };
+        default:
+          return { disposition: 'ordinary' };
+      }
+    } catch {
+      return { disposition: 'denied' };
+    }
+  }
+
   // Returns null for JSON-RPC notifications (no id), which require no response body
   async handleMCPCoreQuery(
     { id, method, params }: JsonRpc,
     {
       workspace,
+      user,
       userId,
       userWorkspaceId,
       apiKey,
     }: {
       workspace: FlatWorkspace;
+      user?: UserEntity;
       userId?: string;
       userWorkspaceId?: string;
       apiKey: FlatApiKey | undefined;
@@ -300,7 +604,26 @@ export class McpProtocolService {
       }
 
       if (method === 'initialize') {
-        return this.handleInitialize(id, workspace.id);
+        const initializeAuthContext = await this.buildMcpWorkspaceAuthContext({
+          workspace,
+          user,
+          userWorkspaceId,
+          apiKey,
+        });
+        const teamWorkspaceResolution = isDefined(initializeAuthContext)
+          ? await this.resolveTeamWorkspaceMcpAccess(initializeAuthContext)
+          : { disposition: 'ordinary' as const };
+        const hasUnresolvedTeamUser =
+          !isDefined(initializeAuthContext) &&
+          this.workspaceDomainsService.isTeamWorkspaceId(workspace.id) &&
+          (isDefined(user) || isDefined(userWorkspaceId));
+
+        return this.handleInitialize(
+          id,
+          workspace.id,
+          hasUnresolvedTeamUser ||
+            teamWorkspaceResolution.disposition !== 'ordinary',
+        );
       }
 
       if (method === 'ping') {
@@ -334,15 +657,23 @@ export class McpProtocolService {
         apiKey,
       );
 
-      const authContext = isDefined(apiKey)
-        ? buildApiKeyAuthContext({ workspace, apiKey })
-        : undefined;
+      const authContext = await this.buildMcpWorkspaceAuthContext({
+        workspace,
+        user,
+        userWorkspaceId,
+        apiKey,
+      });
+      const hasUnresolvedTeamUser =
+        !isDefined(authContext) &&
+        this.workspaceDomainsService.isTeamWorkspaceId(workspace.id) &&
+        (isDefined(user) || isDefined(userWorkspaceId));
 
       const toolSet = await this.buildMcpToolSet(workspace, roleId, {
         authContext,
         userId,
         userWorkspaceId,
         apiKey,
+        shouldDenyGenericTools: hasUnresolvedTeamUser,
       });
 
       if (method === 'tools/call') {

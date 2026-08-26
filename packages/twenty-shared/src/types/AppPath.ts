@@ -22,6 +22,9 @@ export enum AppPath {
   // which client has gone quiet. No segment: it is the same page for everyone, and the
   // reader's record scope decides which rows it is counting.
   Today = '/today',
+  // Prospect Engine: authenticated staff workspaces. The lane is checked
+  // against the signed-in member's server role before any records are read.
+  TeamWorkspace = '/team/:lane/:section?',
   // Prospect Engine: one client's workspace — plan, reports, campaigns, actions. `slug` names
   // the client; the reader's record scope decides which workspaces exist for them at all, so
   // the segment is a convenience for staff and never a way in.

@@ -20,13 +20,18 @@ import { RoleRecordScopeService } from 'src/engine/metadata-modules/role-record-
 // Managing a scope is a ROLES setting, same gate as object permissions.
 @MetadataResolver(() => RoleRecordScopeDTO)
 @UsePipes(ResolverValidationPipe)
-@UseGuards(WorkspaceAuthGuard, SettingsPermissionGuard(PermissionFlagType.ROLES))
+@UseGuards(
+  WorkspaceAuthGuard,
+  SettingsPermissionGuard(PermissionFlagType.ROLES),
+)
 @UseFilters(
   PermissionsGraphqlApiExceptionFilter,
   PreventNestToAutoLogGraphqlErrorsFilter,
 )
 export class RoleRecordScopeResolver {
-  constructor(private readonly roleRecordScopeService: RoleRecordScopeService) {}
+  constructor(
+    private readonly roleRecordScopeService: RoleRecordScopeService,
+  ) {}
 
   @Query(() => [RoleRecordScopeDTO])
   async roleRecordScopes(

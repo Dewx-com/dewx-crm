@@ -24,6 +24,7 @@ import {
 } from '~/generated-metadata/graphql';
 
 import { currentUserState } from '@/auth/states/currentUserState';
+import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
 import { isCookieAuthActiveState } from '@/auth/states/isCookieAuthActiveState';
 import { isPendingServerSignOutState } from '@/auth/states/isPendingServerSignOutState';
 import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
@@ -56,6 +57,20 @@ import { useLastAuthenticatedWorkspaceDomain } from '@/domain-manager/hooks/useL
 import { useOrigin } from '@/domain-manager/hooks/useOrigin';
 import { useRedirect } from '@/domain-manager/hooks/useRedirect';
 import { useRedirectToWorkspaceDomain } from '@/domain-manager/hooks/useRedirectToWorkspaceDomain';
+import {
+  GET_CURRENT_TEAM_WORKSPACE_MEMBER_ROLES,
+  type CurrentTeamWorkspaceMemberRolesQuery,
+} from '@/team-workspace/role/graphql/queries/getCurrentTeamWorkspaceMemberRoles';
+import {
+  isTeamWorkspaceDomainAlias,
+  isTeamWorkspaceLane,
+  type TeamWorkspaceRoleSummary,
+} from '@/team-workspace/role/types/TeamWorkspaceLane';
+import {
+  canRolesEnterTeamWorkspaceLane,
+  TeamWorkspaceLaneAccessError,
+  teamWorkspaceLaneMismatchMessage,
+} from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { useLoadCurrentUser } from '@/users/hooks/useLoadCurrentUser';
 import { i18n } from '@lingui/core';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -117,10 +132,9 @@ export const useAuth = () => {
 
   const navigate = useNavigate();
 
-  const clearSession = useCallback(() => {
-    // The assign below is the only navigation: keep the redirect effect from
-    // racing it to the sign-in page once the session is cleared.
+  const clearSessionState = useCallback(() => {
     store.set(isAppEffectRedirectEnabledState.atom, false);
+    store.set(selectedTeamWorkspaceLaneState.atom, null);
     sessionStorage.clear();
     store.set(tokenPairState.atom, null);
     store.set(isCookieAuthActiveState.atom, false);
@@ -130,8 +144,36 @@ export const useAuth = () => {
     store.set(currentUserWorkspaceState.atom, null);
     clearSessionLocalStorageKeys();
     setLastAuthenticateWorkspaceDomain(null);
-    window.location.assign(AppPath.SignInUp);
   }, [store, setLastAuthenticateWorkspaceDomain]);
+
+  const clearSession = useCallback(() => {
+    // The assign below is the only navigation: keep the redirect effect from
+    // racing it to the sign-in page once the session is cleared.
+    clearSessionState();
+    window.location.assign(AppPath.SignInUp);
+  }, [clearSessionState]);
+
+  const rejectTeamWorkspaceLane = useCallback(
+    async (message: string): Promise<never> => {
+      store.set(isPendingServerSignOutState.atom, true);
+
+      try {
+        await signOutMutation({
+          variables: {
+            refreshToken: store.get(tokenPairState.atom)?.refreshToken?.token,
+          },
+        });
+      } catch {
+        // Local session removal must still happen if the server is unavailable.
+      } finally {
+        store.set(isPendingServerSignOutState.atom, false);
+        clearSessionState();
+      }
+
+      throw new TeamWorkspaceLaneAccessError(message);
+    },
+    [clearSessionState, signOutMutation, store],
+  );
 
   const handleSetAuthTokens = useCallback(
     (tokens: AuthTokenPair) => {
@@ -297,12 +339,83 @@ export const useAuth = () => {
       setIsAppEffectRedirectEnabled(false);
 
       try {
-        await loadCurrentUser();
+        const isTeamWorkspace = isTeamWorkspaceDomainAlias(
+          workspacePublicData?.isTeamWorkspaceDomainAlias,
+        );
+
+        if (!isTeamWorkspace) {
+          store.set(selectedTeamWorkspaceLaneState.atom, null);
+        }
+        const storedLane = store.get(selectedTeamWorkspaceLaneState.atom);
+        const selectedLane = isTeamWorkspaceLane(storedLane)
+          ? storedLane
+          : null;
+        let verifiedRoles: TeamWorkspaceRoleSummary[] | null = null;
+
+        if (isTeamWorkspace && !selectedLane) {
+          await rejectTeamWorkspaceLane(
+            'Choose Sales or Operations before signing in.',
+          );
+        }
+
+        if (isTeamWorkspace && selectedLane) {
+          try {
+            const rolesResult =
+              await apolloClient.query<CurrentTeamWorkspaceMemberRolesQuery>({
+                query: GET_CURRENT_TEAM_WORKSPACE_MEMBER_ROLES,
+                fetchPolicy: 'network-only',
+              });
+
+            verifiedRoles =
+              rolesResult.data?.currentUser?.workspaceMember?.roles ?? null;
+          } catch {
+            await rejectTeamWorkspaceLane(
+              "We couldn't verify this account's workspace role. Please try again.",
+            );
+          }
+
+          if (!verifiedRoles) {
+            await rejectTeamWorkspaceLane(
+              "We couldn't verify this account's workspace role. Please try again.",
+            );
+          }
+
+          if (
+            !canRolesEnterTeamWorkspaceLane({
+              roles: verifiedRoles,
+              lane: selectedLane,
+            })
+          ) {
+            await rejectTeamWorkspaceLane(
+              teamWorkspaceLaneMismatchMessage({
+                roles: verifiedRoles,
+                selectedLane,
+              }),
+            );
+          }
+        }
+
+        const { workspaceMember } = await loadCurrentUser();
+
+        if (workspaceMember && verifiedRoles) {
+          store.set(currentWorkspaceMemberState.atom, {
+            ...workspaceMember,
+            roles: verifiedRoles,
+          });
+        }
       } finally {
         setIsAppEffectRedirectEnabled(true);
       }
     },
-    [loadCurrentUser, handleSetAuthTokens, setIsAppEffectRedirectEnabled],
+    [
+      apolloClient,
+      handleSetAuthTokens,
+      loadCurrentUser,
+      rejectTeamWorkspaceLane,
+      setIsAppEffectRedirectEnabled,
+      store,
+      workspacePublicData?.isTeamWorkspaceDomainAlias,
+    ],
   );
 
   const handleGetAuthTokensFromLoginToken = useCallback(

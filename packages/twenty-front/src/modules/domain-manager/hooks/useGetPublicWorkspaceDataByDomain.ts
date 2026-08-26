@@ -1,4 +1,8 @@
-import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
+import { GET_PUBLIC_WORKSPACE_DATA_BY_DOMAIN } from '@/auth/graphql/queries/getPublicWorkspaceDataByDomain';
+import {
+  type WorkspacePublicData,
+  workspacePublicDataState,
+} from '@/auth/states/workspacePublicDataState';
 import { clientConfigApiStatusState } from '@/client-config/states/clientConfigApiStatusState';
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
 import { useIsCurrentLocationOnDefaultDomain } from '@/domain-manager/hooks/useIsCurrentLocationOnDefaultDomain';
@@ -12,7 +16,14 @@ import { useEffect } from 'react';
 import { isDefined } from 'twenty-shared/utils';
 import { CombinedGraphQLErrors } from '@apollo/client/errors';
 import { useQuery } from '@apollo/client/react';
-import { GetPublicWorkspaceDataByDomainDocument } from '~/generated-metadata/graphql';
+
+type GetPublicWorkspaceDataByDomainData = {
+  getPublicWorkspaceDataByDomain: WorkspacePublicData;
+};
+
+type GetPublicWorkspaceDataByDomainVariables = {
+  origin: string;
+};
 
 export const useGetPublicWorkspaceDataByDomain = () => {
   const { isDefaultDomain } = useIsCurrentLocationOnDefaultDomain();
@@ -31,18 +42,18 @@ export const useGetPublicWorkspaceDataByDomain = () => {
   const setWorkspacePublicData = useSetAtomState(workspacePublicDataState);
   const clientConfigApiStatus = useAtomStateValue(clientConfigApiStatusState);
 
-  const { loading, data, error } = useQuery(
-    GetPublicWorkspaceDataByDomainDocument,
-    {
-      variables: {
-        origin,
-      },
-      skip:
-        !clientConfigApiStatus.isSaved ||
-        (isMultiWorkspaceEnabled && isDefaultDomain) ||
-        isDefined(workspacePublicData),
+  const { loading, data, error } = useQuery<
+    GetPublicWorkspaceDataByDomainData,
+    GetPublicWorkspaceDataByDomainVariables
+  >(GET_PUBLIC_WORKSPACE_DATA_BY_DOMAIN, {
+    variables: {
+      origin,
     },
-  );
+    skip:
+      !clientConfigApiStatus.isSaved ||
+      (isMultiWorkspaceEnabled && isDefaultDomain) ||
+      isDefined(workspacePublicData),
+  });
 
   // TODO: Refactor these useEffects to avoid unnecessary re-renders (see PR #18584 review)
   useEffect(() => {

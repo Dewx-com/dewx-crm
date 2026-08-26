@@ -119,6 +119,7 @@ describe('McpCoreController', () => {
         mockRequest,
         {
           workspace: mockWorkspace,
+          user: mockUser,
           userId: mockUser.id,
           userWorkspaceId: mockUserWorkspaceId,
           apiKey: mockApiKey,
@@ -165,6 +166,7 @@ describe('McpCoreController', () => {
         mockRequest,
         {
           workspace: mockWorkspace,
+          user: mockUser,
           userId: mockUser.id,
           userWorkspaceId: mockUserWorkspaceId,
           apiKey: mockApiKey,
@@ -210,6 +212,7 @@ describe('McpCoreController', () => {
         mockRequest,
         {
           workspace: mockWorkspace,
+          user: mockUser,
           userId: mockUser.id,
           userWorkspaceId: mockUserWorkspaceId,
           apiKey: mockApiKey,
@@ -273,6 +276,7 @@ describe('McpCoreController', () => {
         mockRequest,
         {
           workspace: mockWorkspace,
+          user: undefined,
           userId: undefined,
           userWorkspaceId: undefined,
           apiKey: mockApiKey,
@@ -335,6 +339,7 @@ describe('McpCoreController', () => {
         mockRequest,
         {
           workspace: mockWorkspace,
+          user: mockUser,
           userId: mockUser.id,
           userWorkspaceId: mockUserWorkspaceId,
           apiKey: mockApiKey,

@@ -7,6 +7,7 @@ import {
 } from 'src/engine/metadata-modules/permissions/permissions.exception';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
+import { type FlatRole } from 'src/engine/metadata-modules/flat-role/types/flat-role.type';
 
 @Injectable()
 export class RoleValidationService {
@@ -18,6 +19,13 @@ export class RoleValidationService {
     roleId: string,
     workspaceId: string,
   ): Promise<void> {
+    await this.getRoleAssignableToUsersOrThrow(roleId, workspaceId);
+  }
+
+  async getRoleAssignableToUsersOrThrow(
+    roleId: string,
+    workspaceId: string,
+  ): Promise<FlatRole> {
     const { flatRoleMaps } =
       await this.flatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
         {
@@ -43,5 +51,7 @@ export class RoleValidationService {
         PermissionsExceptionCode.ROLE_CANNOT_BE_ASSIGNED_TO_USERS,
       );
     }
+
+    return role;
   }
 }

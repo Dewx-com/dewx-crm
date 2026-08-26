@@ -13,6 +13,7 @@ import { SSOExchangeTokenService } from 'src/engine/core-modules/auth/token/serv
 import { WorkspaceAgnosticTokenService } from 'src/engine/core-modules/auth/token/services/workspace-agnostic-token.service';
 import { CaptchaGuard } from 'src/engine/core-modules/captcha/captcha.guard';
 import { EmailPasswordResetLinkInput } from 'src/engine/core-modules/auth/dto/email-password-reset-link.input';
+import { SignUpInput } from 'src/engine/core-modules/auth/dto/sign-up.input';
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
 import {
   ThrottlerException,
@@ -33,6 +34,9 @@ import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user
 import { UserWorkspaceService } from 'src/engine/core-modules/user-workspace/user-workspace.service';
 import { UserService } from 'src/engine/core-modules/user/services/user.service';
 import { UserEntity } from 'src/engine/core-modules/user/user.entity';
+import { AuthProviderEnum } from 'src/engine/core-modules/workspace/types/workspace.type';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-invitation/services/workspace-invitation.service';
 import { PermissionsService } from 'src/engine/metadata-modules/permissions/permissions.service';
 
 import { AuthResolver } from './auth.resolver';
@@ -48,6 +52,12 @@ describe('AuthResolver', () => {
   let resolver: AuthResolver;
   let resetPasswordService: ResetPasswordService;
   let throttlerService: ThrottlerService;
+  let authService: AuthService;
+  let emailVerificationService: EmailVerificationService;
+  let loginTokenService: LoginTokenService;
+  let userService: UserService;
+  let workspaceDomainsService: WorkspaceDomainsService;
+  let workspaceInvitationService: WorkspaceInvitationService;
   const mock_CaptchaGuard: CanActivate = { canActivate: jest.fn(() => true) };
 
   beforeEach(async () => {
@@ -68,7 +78,13 @@ describe('AuthResolver', () => {
         },
         {
           provide: AuthService,
-          useValue: {},
+          useValue: {
+            checkAccessForSignIn: jest.fn(),
+            findInvitationForSignInUp: jest.fn(),
+            findWorkspaceForSignInUp: jest.fn(),
+            formatUserDataPayload: jest.fn(),
+            signInUp: jest.fn(),
+          },
         },
         {
           provide: RefreshTokenService,
@@ -76,7 +92,9 @@ describe('AuthResolver', () => {
         },
         {
           provide: UserService,
-          useValue: {},
+          useValue: {
+            findUserByEmail: jest.fn(),
+          },
         },
         {
           provide: WorkspaceDomainsService,
@@ -84,6 +102,15 @@ describe('AuthResolver', () => {
             buildWorkspaceURL: jest
               .fn()
               .mockResolvedValue(new URL('http://localhost:3001')),
+            getWorkspaceUrls: jest.fn(),
+            getWorkspaceUrlsForTeamWorkspaceDomainAlias: jest.fn(),
+          },
+        },
+        {
+          provide: WorkspaceInvitationService,
+          useValue: {
+            isTeamWorkspaceLaneInvitation: jest.fn(),
+            isTeamWorkspaceLaneMember: jest.fn(),
           },
         },
         {
@@ -138,7 +165,9 @@ describe('AuthResolver', () => {
         },
         {
           provide: LoginTokenService,
-          useValue: {},
+          useValue: {
+            generateLoginToken: jest.fn(),
+          },
         },
         {
           provide: WorkspaceAgnosticTokenService,
@@ -154,7 +183,9 @@ describe('AuthResolver', () => {
         },
         {
           provide: EmailVerificationService,
-          useValue: {},
+          useValue: {
+            sendVerificationEmail: jest.fn(),
+          },
         },
         {
           provide: EmailVerificationTokenService,
@@ -202,10 +233,173 @@ describe('AuthResolver', () => {
     resetPasswordService =
       module.get<ResetPasswordService>(ResetPasswordService);
     throttlerService = module.get<ThrottlerService>(ThrottlerService);
+    authService = module.get<AuthService>(AuthService);
+    emailVerificationService = module.get<EmailVerificationService>(
+      EmailVerificationService,
+    );
+    loginTokenService = module.get<LoginTokenService>(LoginTokenService);
+    userService = module.get<UserService>(UserService);
+    workspaceDomainsService = module.get<WorkspaceDomainsService>(
+      WorkspaceDomainsService,
+    );
+    workspaceInvitationService = module.get<WorkspaceInvitationService>(
+      WorkspaceInvitationService,
+    );
   });
 
   it('should be defined', () => {
     expect(resolver).toBeDefined();
+  });
+
+  describe('signUpInWorkspace invitation routing', () => {
+    const workspace = {
+      id: '22222222-2222-4222-8222-222222222222',
+      subdomain: 'app',
+      customDomain: null,
+      isCustomDomainEnabled: false,
+    } as WorkspaceEntity;
+    const invitation = {
+      context: { roleId: 'invited-role-id' },
+    } as AppTokenEntity;
+    const signUpInput = {
+      email: 'sales.user@example.com',
+      password: 'not-a-real-password',
+      workspaceInviteHash: 'workspace-invite-hash',
+      workspacePersonalInviteToken: 'personal-invite-token',
+    } as SignUpInput;
+
+    beforeEach(() => {
+      (authService.findWorkspaceForSignInUp as jest.Mock).mockResolvedValue(
+        workspace,
+      );
+      (authService.findInvitationForSignInUp as jest.Mock).mockResolvedValue(
+        invitation,
+      );
+      (userService.findUserByEmail as jest.Mock).mockResolvedValue(undefined);
+      (authService.formatUserDataPayload as jest.Mock).mockReturnValue({
+        userData: {
+          type: 'newUser',
+          newUserPayload: { email: signUpInput.email },
+        },
+      });
+      (authService.checkAccessForSignIn as jest.Mock).mockResolvedValue(
+        undefined,
+      );
+      (authService.signInUp as jest.Mock).mockResolvedValue({
+        user: { id: 'user-id', email: signUpInput.email },
+        workspace,
+      });
+      (
+        emailVerificationService.sendVerificationEmail as jest.Mock
+      ).mockResolvedValue(undefined);
+      (loginTokenService.generateLoginToken as jest.Mock).mockResolvedValue({
+        token: 'login-token',
+        expiresAt: new Date('2026-08-27T00:00:00.000Z'),
+      });
+      (
+        workspaceInvitationService.isTeamWorkspaceLaneInvitation as jest.Mock
+      ).mockResolvedValue(false);
+      (
+        workspaceInvitationService.isTeamWorkspaceLaneMember as jest.Mock
+      ).mockResolvedValue(false);
+    });
+
+    it('returns the team alias from a validated pending Sales or Operations invitation', async () => {
+      (
+        workspaceInvitationService.isTeamWorkspaceLaneInvitation as jest.Mock
+      ).mockResolvedValue(true);
+      (
+        workspaceDomainsService.getWorkspaceUrlsForTeamWorkspaceDomainAlias as jest.Mock
+      ).mockReturnValue({
+        customUrl: 'https://team.prospectengine.com/',
+        subdomainUrl: 'https://app.prospectengine.com/',
+      });
+
+      const result = await resolver.signUpInWorkspace(
+        signUpInput,
+        AuthProviderEnum.Password,
+      );
+
+      expect(result.workspace.workspaceUrls).toEqual({
+        customUrl: 'https://team.prospectengine.com/',
+        subdomainUrl: 'https://app.prospectengine.com/',
+      });
+      expect(
+        workspaceInvitationService.isTeamWorkspaceLaneInvitation,
+      ).toHaveBeenCalledWith({
+        workspaceId: workspace.id,
+        roleId: 'invited-role-id',
+      });
+      expect(
+        workspaceInvitationService.isTeamWorkspaceLaneMember,
+      ).toHaveBeenCalledWith({
+        workspaceId: workspace.id,
+        userId: 'user-id',
+      });
+      expect(
+        emailVerificationService.sendVerificationEmail,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ useTeamWorkspaceDomainAlias: true }),
+      );
+      expect(workspaceDomainsService.getWorkspaceUrls).not.toHaveBeenCalled();
+    });
+
+    it('returns the team alias for an accepted Sales or Operations member after the invitation is gone', async () => {
+      (authService.findInvitationForSignInUp as jest.Mock).mockResolvedValue(
+        undefined,
+      );
+      (
+        workspaceInvitationService.isTeamWorkspaceLaneMember as jest.Mock
+      ).mockResolvedValue(true);
+      (
+        workspaceDomainsService.getWorkspaceUrlsForTeamWorkspaceDomainAlias as jest.Mock
+      ).mockReturnValue({
+        customUrl: 'https://team.prospectengine.com/',
+        subdomainUrl: 'https://app.prospectengine.com/',
+      });
+
+      const result = await resolver.signUpInWorkspace(
+        signUpInput,
+        AuthProviderEnum.Password,
+      );
+
+      expect(result.workspace.workspaceUrls.customUrl).toBe(
+        'https://team.prospectengine.com/',
+      );
+      expect(
+        emailVerificationService.sendVerificationEmail,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ useTeamWorkspaceDomainAlias: true }),
+      );
+    });
+
+    it('keeps non-lane invitations on the canonical app domain', async () => {
+      (
+        workspaceInvitationService.isTeamWorkspaceLaneInvitation as jest.Mock
+      ).mockResolvedValue(false);
+      (workspaceDomainsService.getWorkspaceUrls as jest.Mock).mockReturnValue({
+        customUrl: undefined,
+        subdomainUrl: 'https://app.prospectengine.com/',
+      });
+
+      const result = await resolver.signUpInWorkspace(
+        signUpInput,
+        AuthProviderEnum.Password,
+      );
+
+      expect(result.workspace.workspaceUrls).toEqual({
+        customUrl: undefined,
+        subdomainUrl: 'https://app.prospectengine.com/',
+      });
+      expect(
+        emailVerificationService.sendVerificationEmail,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ useTeamWorkspaceDomainAlias: false }),
+      );
+      expect(
+        workspaceDomainsService.getWorkspaceUrlsForTeamWorkspaceDomainAlias,
+      ).not.toHaveBeenCalled();
+    });
   });
 
   describe('emailPasswordResetLink', () => {

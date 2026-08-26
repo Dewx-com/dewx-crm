@@ -8,6 +8,10 @@ import { Repository } from 'typeorm';
 import { DomainServerConfigService } from 'src/engine/core-modules/domain/domain-server-config/services/domain-server-config.service';
 import { buildUrlWithPathnameAndSearchParams } from 'src/engine/core-modules/domain/domain-server-config/utils/build-url-with-pathname-and-search-params.util';
 import { WorkspaceDomainConfig } from 'src/engine/core-modules/domain/workspace-domains/types/workspace-domain-config.type';
+import {
+  normalizeWorkspaceDomainAliasHostname,
+  parseTeamWorkspaceDomainAliases,
+} from 'src/engine/core-modules/domain/workspace-domains/utils/parse-workspace-domain-aliases.util';
 import { PublicDomainEntity } from 'src/engine/core-modules/public-domain/public-domain.entity';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
@@ -16,6 +20,8 @@ import { SEED_APPLE_WORKSPACE_ID } from 'src/engine/workspace-manager/dev-seeder
 
 @Injectable()
 export class WorkspaceDomainsService {
+  private readonly workspaceDomainAliases: ReadonlyMap<string, string>;
+
   constructor(
     private readonly domainServerConfigService: DomainServerConfigService,
     private readonly twentyConfigService: TwentyConfigService,
@@ -25,7 +31,11 @@ export class WorkspaceDomainsService {
     // eslint-disable-next-line twenty/prefer-workspace-scoped-repository
     @InjectRepository(PublicDomainEntity)
     private readonly publicDomainRepository: Repository<PublicDomainEntity>,
-  ) {}
+  ) {
+    this.workspaceDomainAliases = parseTeamWorkspaceDomainAliases(
+      this.twentyConfigService.get('TEAM_WORKSPACE_DOMAIN_ALIASES'),
+    );
+  }
 
   buildWorkspaceURL({
     workspace,
@@ -48,6 +58,28 @@ export class WorkspaceDomainsService {
     });
 
     return url;
+  }
+
+  buildTeamWorkspaceDomainAliasURL({
+    workspace,
+    pathname,
+    searchParams,
+    hash,
+  }: {
+    workspace: WorkspaceDomainConfig & Pick<WorkspaceEntity, 'id'>;
+    pathname?: string;
+    searchParams?: Record<string, string | number | boolean>;
+    hash?: string;
+  }) {
+    const workspaceUrls =
+      this.getWorkspaceUrlsForTeamWorkspaceDomainAlias(workspace);
+
+    return buildUrlWithPathnameAndSearchParams({
+      baseUrl: new URL(workspaceUrls.customUrl ?? workspaceUrls.subdomainUrl),
+      pathname,
+      searchParams,
+      hash,
+    });
   }
 
   computeWorkspaceRedirectErrorUrl(
@@ -105,6 +137,25 @@ export class WorkspaceDomainsService {
     publicDomain: PublicDomainEntity | null;
     isIsolatedOrigin: boolean;
   }> {
+    const aliasWorkspaceId = this.getAliasWorkspaceIdFromOrigin(origin);
+
+    if (isDefined(aliasWorkspaceId)) {
+      const workspace =
+        (await this.workspaceRepository.findOne({
+          where: { id: aliasWorkspaceId },
+          relations: ['workspaceSSOIdentityProviders'],
+        })) ?? undefined;
+
+      // A configured alias is authoritative. If its immutable target no
+      // longer exists, fail closed instead of falling through to a mutable
+      // subdomain or custom-domain record with the same hostname.
+      return {
+        workspace,
+        publicDomain: null,
+        isIsolatedOrigin: false,
+      };
+    }
+
     const { subdomain, domain, isPublicDomainOrigin } =
       this.domainServerConfigService.getSubdomainAndDomainFromUrl(origin);
 
@@ -237,6 +288,26 @@ export class WorkspaceDomainsService {
     return url.toString();
   }
 
+  private getAliasWorkspaceIdFromOrigin(origin: string): string | undefined {
+    const hostname = normalizeWorkspaceDomainAliasHostname(
+      new URL(origin).hostname,
+    );
+
+    return this.workspaceDomainAliases.get(hostname);
+  }
+
+  private getTeamWorkspaceDomainAliasHostname(
+    workspaceId: string,
+  ): string | undefined {
+    const normalizedWorkspaceId = workspaceId.trim().toLowerCase();
+    const matchingAliases = [...this.workspaceDomainAliases.entries()].filter(
+      ([, aliasWorkspaceId]) => aliasWorkspaceId === normalizedWorkspaceId,
+    );
+
+    // An ambiguous configuration must not pick an arbitrary login origin.
+    return matchingAliases.length === 1 ? matchingAliases[0][0] : undefined;
+  }
+
   private getTwentyWorkspaceUrl(subdomain: string) {
     const url = this.domainServerConfigService.getFrontUrl();
 
@@ -281,6 +352,63 @@ export class WorkspaceDomainsService {
           : undefined,
       subdomainUrl: this.getTwentyWorkspaceUrl(subdomain),
     };
+  }
+
+  getWorkspaceUrlsForTeamWorkspaceDomainAlias(
+    workspace: WorkspaceDomainConfig & Pick<WorkspaceEntity, 'id'>,
+  ) {
+    const workspaceUrls = this.getWorkspaceUrls(workspace);
+    const aliasHostname = this.getTeamWorkspaceDomainAliasHostname(
+      workspace.id,
+    );
+
+    if (!isDefined(aliasHostname)) {
+      return workspaceUrls;
+    }
+
+    return {
+      ...workspaceUrls,
+      customUrl: this.getCustomWorkspaceUrl(aliasHostname),
+    };
+  }
+
+  getWorkspaceUrlsForOrigin(
+    workspace: WorkspaceDomainConfig & Pick<WorkspaceEntity, 'id'>,
+    origin: string,
+  ) {
+    const aliasWorkspaceId = this.getAliasWorkspaceIdFromOrigin(origin);
+    const workspaceUrls = this.getWorkspaceUrls(workspace);
+
+    if (aliasWorkspaceId !== workspace.id) {
+      return workspaceUrls;
+    }
+
+    const aliasHostname = normalizeWorkspaceDomainAliasHostname(
+      new URL(origin).hostname,
+    );
+
+    return {
+      ...workspaceUrls,
+      customUrl: this.getCustomWorkspaceUrl(aliasHostname),
+    };
+  }
+
+  isTeamWorkspaceDomainAliasForWorkspace({
+    workspaceId,
+    origin,
+  }: {
+    workspaceId: string;
+    origin: string;
+  }): boolean {
+    return this.getAliasWorkspaceIdFromOrigin(origin) === workspaceId;
+  }
+
+  isTeamWorkspaceId(workspaceId: string): boolean {
+    const normalizedWorkspaceId = workspaceId.trim().toLowerCase();
+
+    return [...this.workspaceDomainAliases.values()].some(
+      (aliasWorkspaceId) => aliasWorkspaceId === normalizedWorkspaceId,
+    );
   }
 
   async findByCustomDomain(customDomain: string) {

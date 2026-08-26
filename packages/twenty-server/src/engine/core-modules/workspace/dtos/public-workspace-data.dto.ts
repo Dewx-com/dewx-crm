@@ -75,6 +75,9 @@ export class PublicWorkspaceDataDTO {
 
   @Field(() => WorkspaceUrlsDTO)
   workspaceUrls: WorkspaceUrlsDTO;
+
+  @Field(() => Boolean)
+  isTeamWorkspaceDomainAlias: boolean;
 }
 
 @ObjectType('PublicWorkspaceDataSummary')

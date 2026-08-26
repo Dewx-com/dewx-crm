@@ -278,6 +278,12 @@ export interface RowLevelPermissionPredicate {
 
 export type RowLevelPermissionPredicateOperand = 'IS' | 'IS_NOT_NULL' | 'IS_NOT' | 'LESS_THAN_OR_EQUAL' | 'GREATER_THAN_OR_EQUAL' | 'IS_BEFORE' | 'IS_AFTER' | 'CONTAINS' | 'DOES_NOT_CONTAIN' | 'IS_EMPTY' | 'IS_NOT_EMPTY' | 'IS_RELATIVE' | 'IS_IN_PAST' | 'IS_IN_FUTURE' | 'IS_TODAY' | 'VECTOR_SEARCH'
 
+export interface RecordScope {
+    fieldMetadataId: Scalars['UUID']
+    value: Scalars['String']
+    __typename: 'RecordScope'
+}
+
 export interface ObjectPermission {
     objectMetadataId: Scalars['UUID']
     canReadObjectRecords?: Scalars['Boolean']
@@ -287,6 +293,7 @@ export interface ObjectPermission {
     restrictedFields?: Scalars['JSON']
     rowLevelPermissionPredicates?: RowLevelPermissionPredicate[]
     rowLevelPermissionPredicateGroups?: RowLevelPermissionPredicateGroup[]
+    recordScopes?: RecordScope[]
     __typename: 'ObjectPermission'
 }
 
@@ -1484,6 +1491,7 @@ export interface PublicWorkspaceData {
     logo?: Scalars['String']
     displayName?: Scalars['String']
     workspaceUrls: WorkspaceUrls
+    isTeamWorkspaceDomainAlias: Scalars['Boolean']
     __typename: 'PublicWorkspaceData'
 }
 
@@ -2020,6 +2028,15 @@ export interface DomainValidRecords {
     records: DomainRecord[]
     isCustomDomainEnabled?: Scalars['Boolean']
     __typename: 'DomainValidRecords'
+}
+
+export interface RoleRecordScope {
+    id: Scalars['UUID']
+    roleId: Scalars['UUID']
+    objectMetadataId: Scalars['UUID']
+    fieldMetadataId: Scalars['UUID']
+    value: Scalars['String']
+    __typename: 'RoleRecordScope'
 }
 
 export interface UpsertRowLevelPermissionPredicatesResult {
@@ -2924,6 +2941,7 @@ export interface Query {
     getViewGroups: ViewGroup[]
     getViewGroup?: ViewGroup
     getRoles: Role[]
+    roleRecordScopes: RoleRecordScope[]
     previewMessageCampaignAudience: CampaignAudiencePreviewDTO
     messageSuppressions: MessageSuppressionList
     unsubscribeTopics: UnsubscribeTopic[]
@@ -3123,6 +3141,8 @@ export interface Mutation {
     upsertRowLevelPermissionPredicates: UpsertRowLevelPermissionPredicatesResult
     assignRoleToAgent: Scalars['Boolean']
     removeRoleFromAgent: Scalars['Boolean']
+    upsertRoleRecordScope: RoleRecordScope
+    deleteRoleRecordScope: Scalars['Boolean']
     sendEmailViaEmailingDomain: SendEmailViaDomainOutput
     sendMessageCampaign: SendMessageCampaignOutputDTO
     sendMessageCampaignTest: SendEmailViaDomainOutput
@@ -3527,6 +3547,13 @@ export interface RowLevelPermissionPredicateGenqlSelection{
     __scalar?: boolean | number
 }
 
+export interface RecordScopeGenqlSelection{
+    fieldMetadataId?: boolean | number
+    value?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
 export interface ObjectPermissionGenqlSelection{
     objectMetadataId?: boolean | number
     canReadObjectRecords?: boolean | number
@@ -3536,6 +3563,7 @@ export interface ObjectPermissionGenqlSelection{
     restrictedFields?: boolean | number
     rowLevelPermissionPredicates?: RowLevelPermissionPredicateGenqlSelection
     rowLevelPermissionPredicateGroups?: RowLevelPermissionPredicateGroupGenqlSelection
+    recordScopes?: RecordScopeGenqlSelection
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -4769,6 +4797,7 @@ export interface PublicWorkspaceDataGenqlSelection{
     logo?: boolean | number
     displayName?: boolean | number
     workspaceUrls?: WorkspaceUrlsGenqlSelection
+    isTeamWorkspaceDomainAlias?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -5331,6 +5360,16 @@ export interface DomainValidRecordsGenqlSelection{
     domain?: boolean | number
     records?: DomainRecordGenqlSelection
     isCustomDomainEnabled?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface RoleRecordScopeGenqlSelection{
+    id?: boolean | number
+    roleId?: boolean | number
+    objectMetadataId?: boolean | number
+    fieldMetadataId?: boolean | number
+    value?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -6301,6 +6340,7 @@ export interface QueryGenqlSelection{
     getViewGroups?: (ViewGroupGenqlSelection & { __args?: {viewId?: (Scalars['String'] | null)} })
     getViewGroup?: (ViewGroupGenqlSelection & { __args: {id: Scalars['String']} })
     getRoles?: RoleGenqlSelection
+    roleRecordScopes?: (RoleRecordScopeGenqlSelection & { __args: {roleId: Scalars['UUID']} })
     previewMessageCampaignAudience?: (CampaignAudiencePreviewDTOGenqlSelection & { __args: {input: PreviewMessageCampaignAudienceInput} })
     messageSuppressions?: (MessageSuppressionListGenqlSelection & { __args: {input: FindMessageSuppressionsInput} })
     unsubscribeTopics?: UnsubscribeTopicGenqlSelection
@@ -6529,6 +6569,8 @@ export interface MutationGenqlSelection{
     upsertRowLevelPermissionPredicates?: (UpsertRowLevelPermissionPredicatesResultGenqlSelection & { __args: {input: UpsertRowLevelPermissionPredicatesInput} })
     assignRoleToAgent?: { __args: {agentId: Scalars['UUID'], roleId: Scalars['UUID']} }
     removeRoleFromAgent?: { __args: {agentId: Scalars['UUID']} }
+    upsertRoleRecordScope?: (RoleRecordScopeGenqlSelection & { __args: {input: UpsertRoleRecordScopeInput} })
+    deleteRoleRecordScope?: { __args: {input: DeleteRoleRecordScopeInput} }
     sendEmailViaEmailingDomain?: (SendEmailViaDomainOutputGenqlSelection & { __args: {input: SendEmailViaDomainInput} })
     sendMessageCampaign?: (SendMessageCampaignOutputDTOGenqlSelection & { __args: {input: SendMessageCampaignInput} })
     sendMessageCampaignTest?: (SendEmailViaDomainOutputGenqlSelection & { __args: {input: SendMessageCampaignTestInput} })
@@ -6947,6 +6989,10 @@ export interface RowLevelPermissionPredicateInput {id?: (Scalars['UUID'] | null)
 
 export interface RowLevelPermissionPredicateGroupInput {id?: (Scalars['UUID'] | null),objectMetadataId: Scalars['UUID'],parentRowLevelPermissionPredicateGroupId?: (Scalars['UUID'] | null),logicalOperator: RowLevelPermissionPredicateGroupLogicalOperator,positionInRowLevelPermissionPredicateGroup?: (Scalars['Float'] | null)}
 
+export interface UpsertRoleRecordScopeInput {roleId: Scalars['UUID'],objectMetadataId: Scalars['UUID'],fieldMetadataId: Scalars['UUID'],value: Scalars['String']}
+
+export interface DeleteRoleRecordScopeInput {roleId: Scalars['UUID'],objectMetadataId: Scalars['UUID'],fieldMetadataId?: (Scalars['UUID'] | null)}
+
 export interface SendEmailViaDomainInput {emailingDomainId: Scalars['String'],to: Scalars['String'][],cc?: (Scalars['String'][] | null),bcc?: (Scalars['String'][] | null),subject: Scalars['String'],text: Scalars['String'],html?: (Scalars['String'] | null),from: Scalars['String'],replyTo?: (Scalars['String'][] | null)}
 
 export interface SendMessageCampaignInput {campaignId: Scalars['String']}
@@ -7189,6 +7235,14 @@ export interface LogicFunctionLogsInput {applicationId?: (Scalars['UUID'] | null
     export const isRowLevelPermissionPredicate = (obj?: { __typename?: any } | null): obj is RowLevelPermissionPredicate => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isRowLevelPermissionPredicate"')
       return RowLevelPermissionPredicate_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const RecordScope_possibleTypes: string[] = ['RecordScope']
+    export const isRecordScope = (obj?: { __typename?: any } | null): obj is RecordScope => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isRecordScope"')
+      return RecordScope_possibleTypes.includes(obj.__typename)
     }
     
 
@@ -8429,6 +8483,14 @@ export interface LogicFunctionLogsInput {applicationId?: (Scalars['UUID'] | null
     export const isDomainValidRecords = (obj?: { __typename?: any } | null): obj is DomainValidRecords => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isDomainValidRecords"')
       return DomainValidRecords_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const RoleRecordScope_possibleTypes: string[] = ['RoleRecordScope']
+    export const isRoleRecordScope = (obj?: { __typename?: any } | null): obj is RoleRecordScope => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isRoleRecordScope"')
+      return RoleRecordScope_possibleTypes.includes(obj.__typename)
     }
     
 
