@@ -4,6 +4,9 @@
 
 FROM node:24.18.0-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS front-deps
 
+# BuildKit cross-platform builds must not start Nx's background update-check daemon.
+ENV NX_DAEMON=false
+
 WORKDIR /app
 
 COPY ./package.json ./yarn.lock ./.yarnrc.yml ./tsconfig.base.json ./nx.json /app/
@@ -21,6 +24,9 @@ RUN yarn workspaces focus twenty twenty-front twenty-front-component-renderer tw
 
 
 FROM node:24.18.0-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS server-deps
+
+# Keep both dependency/build graphs deterministic under amd64 emulation.
+ENV NX_DAEMON=false
 
 WORKDIR /app
 
