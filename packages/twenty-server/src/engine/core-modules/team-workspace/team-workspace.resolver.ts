@@ -11,6 +11,7 @@ import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.ent
 import { CustomPermissionGuard } from 'src/engine/guards/custom-permission.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { CompleteTaskWithEvidenceInput } from 'src/modules/team-workspace/commands/dtos/complete-task-with-evidence.input';
+import { CreateTeamWorkspaceAssignedWorkInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-assigned-work.input';
 import { CreateTeamWorkspaceProtocolTaskInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-protocol-task.input';
 import { TeamWorkspaceCommandReceiptDto } from 'src/modules/team-workspace/commands/dtos/team-workspace-command-receipt.dto';
 import { TransitionTeamWorkspaceTaskInput } from 'src/modules/team-workspace/commands/dtos/transition-team-workspace-task.input';
@@ -59,6 +60,16 @@ export class TeamWorkspaceResolver {
     @Args('input') input: CompleteTaskWithEvidenceInput,
   ): Promise<TeamWorkspaceCommandReceiptDto> {
     return this.teamWorkspaceCommandService.completeTaskWithEvidence(
+      getWorkspaceAuthContext(),
+      input,
+    );
+  }
+
+  @Mutation(() => TeamWorkspaceCommandReceiptDto)
+  async createAssignedWork(
+    @Args('input') input: CreateTeamWorkspaceAssignedWorkInput,
+  ): Promise<TeamWorkspaceCommandReceiptDto> {
+    return this.teamWorkspaceCommandService.createAssignedWork(
       getWorkspaceAuthContext(),
       input,
     );

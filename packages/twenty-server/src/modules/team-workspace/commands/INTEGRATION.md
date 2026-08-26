@@ -8,6 +8,11 @@ completeTaskWithEvidence(
   input: CompleteTaskWithEvidenceInput,
 ): Promise<TeamWorkspaceCommandReceiptDto>
 
+createAssignedWork(
+  authContext: WorkspaceAuthContext,
+  input: CreateTeamWorkspaceAssignedWorkInput,
+): Promise<TeamWorkspaceCommandReceiptDto>
+
 winOpportunityWithHandoff(
   authContext: WorkspaceAuthContext,
   input: WinOpportunityWithHandoffInput,
@@ -53,6 +58,11 @@ hold:
    records. Sales-owned work remains private to its assignee/author. Sales
    pipeline actions are lane-wide in v1. Expected state and version protect
    every transition.
+5. Creating assigned work is narrower still: only an exact human `Admin` or
+   exact `Team Automation` API key may call it. `Sales` and `Operations`
+   employee sessions are denied before a transaction opens. The assignee must
+   belong to exactly one workspace role, and that role must exactly match the
+   submitted lane.
 
 Only after those checks does the service request repositories with
 `shouldBypassPermissionChecks: true`. Generic GraphQL, REST, and MCP record CRUD
@@ -75,6 +85,20 @@ Any failure rolls back the sidecar, source transition, and receipt together. An
 exact retry returns the saved receipt with `replayed: true`. Reusing a key for a
 different actor, target, or canonical payload fails with
 `IDEMPOTENCY_CONFLICT`.
+
+## Assigned work command
+
+`CreateTeamWorkspaceAssignedWorkInput` accepts `lane`, `assigneeId`, `title`,
+`detail`, `dueAt`, optional `client`, and `idempotencyKey`. The server validates
+the exact assignee role and, when supplied, resolves `client` to exactly one
+existing Client record. It derives `TODO` plus `OUTREACH` for Sales or
+`SOFTWARE` for Operations; callers cannot choose status or work type.
+
+The task ID is deterministic from workspace, assignee, and idempotency key. The
+task row, assignee, client scope, audit actor, and durable receipt commit in one
+workspace transaction. An exact retry returns the original receipt without a
+second task. Changed data under the same key fails, and any receipt failure
+rolls the task insert back.
 
 Receipts currently use a reserved, workspace-scoped row in the existing
 `core.keyValuePair` table. The partial unique index on `(key, workspaceId)` is
@@ -160,11 +184,15 @@ not the only authorization layer.
 
 ## Native MCP exposure
 
-Expose five narrowly named tools, one per method above, and map their validated
-arguments directly to the matching DTO. Pass the MCP request's existing
-`WorkspaceAuthContext` to the service. Do not route these tools through generic
-`createOneRecord` or `updateOneRecord`, and do not let the tool choose a
+Expose six narrowly named write tools, one per method above, and map their
+validated arguments directly to the matching DTO. Pass the MCP request's
+existing `WorkspaceAuthContext` to the service. Do not route these tools through
+generic `createOneRecord` or `updateOneRecord`, and do not let the tool choose a
 workspace, actor, role, derived task field, or payload hash.
+
+`team_workspace_create_assigned_work` is listed only for an exact human
+`Admin` or exact `Team Automation` API key. Employee MCP sessions must not see
+it even though the command service independently rejects them.
 
 Every MCP call must supply a fresh stable idempotency key for the intended
 business action. A transport timeout is an unknown result: retry the exact same

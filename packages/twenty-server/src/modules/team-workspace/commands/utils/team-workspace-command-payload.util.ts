@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 import { type CompleteTaskWithEvidenceInput } from 'src/modules/team-workspace/commands/dtos/complete-task-with-evidence.input';
+import { type CreateTeamWorkspaceAssignedWorkInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-assigned-work.input';
 import { type CreateTeamWorkspaceProtocolTaskInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-protocol-task.input';
 import { type TransitionTeamWorkspaceTaskInput } from 'src/modules/team-workspace/commands/dtos/transition-team-workspace-task.input';
 import { type UpdateTeamWorkspaceOpportunityStageInput } from 'src/modules/team-workspace/commands/dtos/update-team-workspace-opportunity-stage.input';
@@ -77,6 +78,22 @@ export const createTeamWorkspaceProtocolTaskPayloadMaterial = (
   meetingOutcome: input.meetingOutcome ?? null,
 });
 
+export const createTeamWorkspaceAssignedWorkPayloadMaterial = (
+  input: Omit<CreateTeamWorkspaceAssignedWorkInput, 'idempotencyKey'>,
+): JsonValue => ({
+  command: 'createAssignedWork',
+  protocolVersion: 1,
+  lane: input.lane,
+  assigneeId: input.assigneeId,
+  title: normalizeTeamWorkspaceCommandText(input.title),
+  detail: normalizeTeamWorkspaceCommandText(input.detail),
+  dueAt: input.dueAt,
+  client:
+    input.client === null || input.client === undefined
+      ? null
+      : normalizeTeamWorkspaceCommandText(input.client),
+});
+
 export const transitionTeamWorkspaceTaskPayloadMaterial = (
   input: Omit<TransitionTeamWorkspaceTaskInput, 'idempotencyKey'>,
 ): JsonValue => ({
@@ -113,6 +130,10 @@ export const computeWinOpportunityWithHandoffPayloadHash = (
 export const computeCreateTeamWorkspaceProtocolTaskPayloadHash = (
   input: Omit<CreateTeamWorkspaceProtocolTaskInput, 'idempotencyKey'>,
 ): string => sha256(createTeamWorkspaceProtocolTaskPayloadMaterial(input));
+
+export const computeCreateTeamWorkspaceAssignedWorkPayloadHash = (
+  input: Omit<CreateTeamWorkspaceAssignedWorkInput, 'idempotencyKey'>,
+): string => sha256(createTeamWorkspaceAssignedWorkPayloadMaterial(input));
 
 export const computeTransitionTeamWorkspaceTaskPayloadHash = (
   input: Omit<TransitionTeamWorkspaceTaskInput, 'idempotencyKey'>,
