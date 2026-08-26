@@ -1,4 +1,5 @@
 import {
+  canRolesEnterTeamManagement,
   canRolesEnterTeamWorkspaceLane,
   teamWorkspaceLaneMismatchMessage,
   teamWorkspaceLanesFromRoles,
@@ -25,6 +26,16 @@ describe('teamWorkspaceRoleAccess', () => {
     expect(canRolesEnterTeamWorkspaceLane({ roles, lane: 'operations' })).toBe(
       true,
     );
+  });
+
+  it('allows only one exact Admin role into team management', () => {
+    expect(canRolesEnterTeamManagement([role('Admin')])).toBe(true);
+    expect(canRolesEnterTeamManagement([role('Sales')])).toBe(false);
+    expect(canRolesEnterTeamManagement([role('Operations')])).toBe(false);
+    expect(canRolesEnterTeamManagement([role('Admin'), role('Sales')])).toBe(
+      false,
+    );
+    expect(canRolesEnterTeamManagement(undefined)).toBe(false);
   });
 
   it('fails closed for missing, unknown, or differently cased labels', () => {

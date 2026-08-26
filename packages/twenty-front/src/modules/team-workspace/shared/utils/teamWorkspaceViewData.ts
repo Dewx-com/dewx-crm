@@ -282,6 +282,10 @@ const coachingLessonFor = (
   );
   if (!task) return null;
 
+  const recordedImprovement = protocolMarkdownField(task, 'Improvement');
+
+  if (recordedImprovement) return recordedImprovement;
+
   return protocolDetail(
     textAfterPrefix(task.title, TEAM_RECORD_PREFIX.coaching),
     recordingId,

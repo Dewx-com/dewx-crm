@@ -4,6 +4,7 @@ import { Args, Mutation, Query } from '@nestjs/graphql';
 import { CoreResolver } from 'src/engine/api/graphql/graphql-config/decorators/core-resolver.decorator';
 import { getWorkspaceAuthContext } from 'src/engine/core-modules/auth/storage/workspace-auth-context.storage';
 import { TeamWorkspaceSnapshotDTO } from 'src/engine/core-modules/team-workspace/dtos/team-workspace-snapshot.dto';
+import { TeamManagementSnapshotDTO } from 'src/engine/core-modules/team-workspace/dtos/team-management-snapshot.dto';
 import { TeamWorkspaceLane } from 'src/engine/core-modules/team-workspace/enums/team-workspace-lane.enum';
 import { TeamWorkspaceService } from 'src/engine/core-modules/team-workspace/team-workspace.service';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
@@ -44,6 +45,13 @@ export class TeamWorkspaceResolver {
       userWorkspaceId: authContext.userWorkspaceId,
       workspaceMemberId: authContext.workspaceMemberId,
     });
+  }
+
+  @Query(() => TeamManagementSnapshotDTO)
+  async teamManagementSnapshot(): Promise<TeamManagementSnapshotDTO> {
+    return this.teamWorkspaceService.getManagementSnapshotForAuthContext(
+      getWorkspaceAuthContext(),
+    );
   }
 
   @Mutation(() => TeamWorkspaceCommandReceiptDto)

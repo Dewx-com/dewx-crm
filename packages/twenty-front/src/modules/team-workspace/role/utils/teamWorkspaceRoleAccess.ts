@@ -43,6 +43,10 @@ export const canRolesEnterTeamWorkspaceLane = ({
   lane: TeamWorkspaceLane;
 }) => teamWorkspaceLanesFromRoles(roles).includes(lane);
 
+export const canRolesEnterTeamManagement = (
+  roles: readonly TeamWorkspaceRoleSummary[] | null | undefined,
+): boolean => roles?.length === 1 && roles[0].label === 'Admin';
+
 export const teamWorkspaceLaneMismatchMessage = ({
   roles,
   selectedLane,

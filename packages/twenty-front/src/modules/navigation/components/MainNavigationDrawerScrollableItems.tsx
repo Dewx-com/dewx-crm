@@ -20,7 +20,10 @@ import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMembe
 import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
 import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { type TeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
-import { teamWorkspaceLanesFromRoles } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
+import {
+  canRolesEnterTeamManagement,
+  teamWorkspaceLanesFromRoles,
+} from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { teamWorkspacePath } from '@/team-workspace/shared/utils/teamWorkspaceRoutes';
 import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
@@ -139,6 +142,9 @@ export const MainNavigationDrawerScrollableItems = () => {
     workspacePublicData?.isTeamWorkspaceDomainAlias === true
       ? teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles)
       : [];
+  const canManageTeam =
+    workspacePublicData?.isTeamWorkspaceDomainAlias === true &&
+    canRolesEnterTeamManagement(currentWorkspaceMember?.roles);
   if (isClientSeat) {
     return (
       <StyledScrollableItemsContainer>
@@ -182,6 +188,15 @@ export const MainNavigationDrawerScrollableItems = () => {
     return (
       <StyledScrollableItemsContainer>
         <NavigationDrawerOpenedSection />
+        {canManageTeam && (
+          <NavigationDrawerSection>
+            <NavigationDrawerItem
+              label="Team management"
+              to="/team/management/overview"
+              Icon={IconUsers}
+            />
+          </NavigationDrawerSection>
+        )}
         {teamLanes.map((lane) => (
           <TeamLaneNavigationSection
             key={lane}

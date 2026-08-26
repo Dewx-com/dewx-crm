@@ -56,6 +56,12 @@ const createHarness = () => {
   const teamWorkspaceService = {
     getSnapshot: jest.fn().mockResolvedValue(snapshot),
     getSnapshotForAuthContext: jest.fn().mockResolvedValue(snapshot),
+    getManagementSnapshotForAuthContext: jest.fn().mockResolvedValue({
+      generatedAt: snapshot.generatedAt,
+      members: [],
+      sales: snapshot,
+      operations: { ...snapshot, lane: TeamWorkspaceLane.OPERATIONS },
+    }),
   };
   const teamWorkspaceCommandService = {
     completeTaskWithEvidence: jest.fn().mockResolvedValue(commandReceipt),
@@ -103,6 +109,18 @@ describe('TeamWorkspaceResolver', () => {
         authContext: apiKeyAuthContext,
       },
     );
+  });
+
+  it('passes the authenticated user context to the owner management boundary', async () => {
+    const { resolver, teamWorkspaceService } = createHarness();
+
+    await withWorkspaceAuthContext(userAuthContext, () =>
+      resolver.teamManagementSnapshot(),
+    );
+
+    expect(
+      teamWorkspaceService.getManagementSnapshotForAuthContext,
+    ).toHaveBeenCalledWith(userAuthContext);
   });
 
   it('passes the authenticated actor and typed inputs to every atomic command', async () => {

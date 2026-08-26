@@ -1,5 +1,10 @@
 import { currentUserState } from '@/auth/states/currentUserState';
 import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
+import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import {
+  type WorkspacePublicData,
+  workspacePublicDataState,
+} from '@/auth/states/workspacePublicDataState';
 import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { useDefaultHomePagePath } from '@/navigation/hooks/useDefaultHomePagePath';
 import { type EnrichedObjectMetadataItem } from '@/object-metadata/types/EnrichedObjectMetadataItem';
@@ -17,7 +22,10 @@ import {
   ViewType,
   ViewVisibility,
 } from '~/generated-metadata/graphql';
-import { mockedUserData } from '~/testing/mock-data/users';
+import {
+  mockedUserData,
+  mockedWorkspaceMemberData,
+} from '~/testing/mock-data/users';
 import { getMockObjectMetadataItemOrThrow } from '~/testing/utils/getMockObjectMetadataItemOrThrow';
 import { getTestEnrichedObjectMetadataItemsMock } from '~/testing/utils/getTestEnrichedObjectMetadataItemsMock';
 import { setTestObjectMetadataItemsInMetadataStore } from '~/testing/utils/setTestObjectMetadataItemsInMetadataStore';
@@ -187,6 +195,8 @@ const renderHooks = ({
 describe('useDefaultHomePagePath', () => {
   afterEach(() => {
     mockIsMobile = false;
+    jotaiStore.set(currentWorkspaceMemberState.atom, null);
+    jotaiStore.set(workspacePublicDataState.atom, null);
   });
 
   it('should return proper path when no currentUser', async () => {
@@ -367,6 +377,32 @@ describe('useDefaultHomePagePath', () => {
 
     await waitFor(() => {
       expect(result.current.defaultHomePagePath).toEqual(AppPath.Index);
+    });
+  });
+
+  it('opens Team Management for an administrator on the team domain', async () => {
+    jotaiStore.set(workspacePublicDataState.atom, {
+      displayName: 'Prospect Engine',
+      isTeamWorkspaceDomainAlias: true,
+    } as WorkspacePublicData);
+    jotaiStore.set(currentWorkspaceMemberState.atom, {
+      id: mockedWorkspaceMemberData.id,
+      colorScheme: mockedWorkspaceMemberData.colorScheme,
+      locale: mockedWorkspaceMemberData.locale,
+      name: mockedWorkspaceMemberData.name,
+      userEmail: mockedWorkspaceMemberData.userEmail,
+      roles: [{ id: 'admin-role', label: 'Admin' }],
+    });
+
+    const { result } = renderHooks({
+      withCurrentUser: true,
+      withExistingView: false,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual(
+        '/team/management/overview',
+      );
     });
   });
 });

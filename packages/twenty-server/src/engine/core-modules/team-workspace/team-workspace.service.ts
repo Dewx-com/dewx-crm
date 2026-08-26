@@ -21,6 +21,10 @@ import {
   type TeamWorkspaceTaskDTO,
   TeamWorkspaceTranscriptStatus,
 } from 'src/engine/core-modules/team-workspace/dtos/team-workspace-snapshot.dto';
+import {
+  type TeamManagementMemberDTO,
+  type TeamManagementSnapshotDTO,
+} from 'src/engine/core-modules/team-workspace/dtos/team-management-snapshot.dto';
 import { TeamWorkspaceLane } from 'src/engine/core-modules/team-workspace/enums/team-workspace-lane.enum';
 import { UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
 import { RoleService } from 'src/engine/metadata-modules/role/role.service';
@@ -38,6 +42,8 @@ type NamedEntity = {
   nameFirstName?: string | null;
   nameLastName?: string | null;
 };
+
+type LaneWorkspaceMember = NamedEntity;
 
 type Actor = {
   workspaceMemberId?: string | null;
@@ -227,6 +233,7 @@ const isDetailTask = (
   lane: TeamWorkspaceLane,
 ): boolean => {
   const sharedDetailPrefixes = [
+    TEAM_WORKSPACE_RECORD_PREFIX.completionEvidence,
     TEAM_WORKSPACE_RECORD_PREFIX.meetingOutcome,
     TEAM_WORKSPACE_RECORD_PREFIX.meetingPrep,
   ];
@@ -236,7 +243,7 @@ const isDetailTask = (
   }
 
   if (lane === TeamWorkspaceLane.SALES) {
-    return false;
+    return titleStartsWith(task, TEAM_WORKSPACE_RECORD_PREFIX.coaching);
   }
 
   return [
@@ -416,6 +423,105 @@ export class TeamWorkspaceService {
     );
   }
 
+  async getManagementSnapshotForAuthContext(
+    authContext: WorkspaceAuthContext,
+  ): Promise<TeamManagementSnapshotDTO> {
+    if (authContext.type !== 'user') {
+      throw this.accessDenied();
+    }
+
+    return this.getManagementSnapshot({
+      workspace: authContext.workspace as unknown as WorkspaceEntity,
+      userWorkspaceId: authContext.userWorkspaceId,
+      workspaceMemberId: authContext.workspaceMemberId,
+    });
+  }
+
+  async getManagementSnapshot({
+    workspace,
+    userWorkspaceId,
+    workspaceMemberId,
+  }: {
+    workspace: WorkspaceEntity;
+    userWorkspaceId: string;
+    workspaceMemberId: string;
+  }): Promise<TeamManagementSnapshotDTO> {
+    if (
+      !this.workspaceDomainsService.isTeamWorkspaceId(workspace.id) ||
+      !userWorkspaceId ||
+      !workspaceMemberId
+    ) {
+      throw this.accessDenied();
+    }
+
+    const rolesByUserWorkspace =
+      await this.userRoleService.getRolesByUserWorkspaces({
+        userWorkspaceIds: [userWorkspaceId],
+        workspaceId: workspace.id,
+      });
+    const roles = rolesByUserWorkspace.get(userWorkspaceId) ?? [];
+
+    if (
+      roles.length !== 1 ||
+      roles[0].label !== TEAM_WORKSPACE_ROLE_LABEL.admin ||
+      !roles[0].id
+    ) {
+      throw this.accessDenied();
+    }
+
+    const [salesMembers, operationsMembers] = await Promise.all([
+      this.getLaneMembers({
+        lane: TeamWorkspaceLane.SALES,
+        workspaceId: workspace.id,
+      }),
+      this.getLaneMembers({
+        lane: TeamWorkspaceLane.OPERATIONS,
+        workspaceId: workspace.id,
+      }),
+    ]);
+    const salesMemberIds = new Set(salesMembers.map((member) => member.id));
+
+    if (operationsMembers.some((member) => salesMemberIds.has(member.id))) {
+      throw this.accessDenied();
+    }
+
+    const privilegedReadConfig: RolePermissionConfig = {
+      shouldBypassPermissionChecks: true,
+    };
+
+    return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const [sales, operations] = await Promise.all([
+          this.readSnapshot({
+            lane: TeamWorkspaceLane.SALES,
+            workspaceId: workspace.id,
+            laneMemberIds: salesMembers.map((member) => member.id),
+            privilegedReadConfig,
+          }),
+          this.readSnapshot({
+            lane: TeamWorkspaceLane.OPERATIONS,
+            workspaceId: workspace.id,
+            laneMemberIds: operationsMembers.map((member) => member.id),
+            privilegedReadConfig,
+          }),
+        ]);
+
+        return {
+          generatedAt: new Date().toISOString(),
+          members: [
+            ...this.managementMembers(salesMembers, TeamWorkspaceLane.SALES),
+            ...this.managementMembers(
+              operationsMembers,
+              TeamWorkspaceLane.OPERATIONS,
+            ),
+          ],
+          sales,
+          operations,
+        };
+      },
+    );
+  }
+
   async getSnapshotForAuthContext({
     lane,
     authContext,
@@ -466,6 +572,21 @@ export class TeamWorkspaceService {
     lane: TeamWorkspaceLane;
     workspaceId: string;
   }): Promise<string[]> {
+    return (
+      await this.getLaneMembers({
+        lane,
+        workspaceId,
+      })
+    ).map((member) => member.id);
+  }
+
+  private async getLaneMembers({
+    lane,
+    workspaceId,
+  }: {
+    lane: TeamWorkspaceLane;
+    workspaceId: string;
+  }): Promise<LaneWorkspaceMember[]> {
     const expectedRoleLabel =
       lane === TeamWorkspaceLane.SALES
         ? TEAM_WORKSPACE_ROLE_LABEL.sales
@@ -484,7 +605,26 @@ export class TeamWorkspaceService {
         workspaceId,
       );
 
-    return [...new Set(members.map((member) => member.id).filter(Boolean))];
+    const uniqueMembers = new Map<string, LaneWorkspaceMember>();
+
+    for (const member of members) {
+      if (member.id) {
+        uniqueMembers.set(member.id, member as LaneWorkspaceMember);
+      }
+    }
+
+    return [...uniqueMembers.values()];
+  }
+
+  private managementMembers(
+    members: LaneWorkspaceMember[],
+    lane: TeamWorkspaceLane,
+  ): TeamManagementMemberDTO[] {
+    return members.map((member) => ({
+      id: member.id,
+      name: fullName(member.name),
+      lane,
+    }));
   }
 
   private async readSnapshot({
@@ -526,11 +666,7 @@ export class TeamWorkspaceService {
         TEAM_WORKSPACE_RECORD_PREFIX.completionEvidence,
       );
 
-      return (
-        lane === TeamWorkspaceLane.OPERATIONS &&
-        evidenceTargetId !== null &&
-        baseTaskIds.has(evidenceTargetId)
-      );
+      return evidenceTargetId !== null && baseTaskIds.has(evidenceTargetId);
     });
     const meetings = meetingIndex.filter((meeting) =>
       meeting.calendarEventParticipants.some((participant) => {
@@ -625,10 +761,19 @@ export class TeamWorkspaceService {
       );
     const where: FindOptionsWhere<TeamTaskEntity>[] =
       lane === TeamWorkspaceLane.SALES
-        ? laneMemberIds.flatMap((workspaceMemberId) => [
-            { assigneeId: workspaceMemberId },
-            { createdBy: { workspaceMemberId } },
-          ])
+        ? [
+            ...laneMemberIds.flatMap<FindOptionsWhere<TeamTaskEntity>>(
+              (workspaceMemberId) => [
+                { assigneeId: workspaceMemberId },
+                { createdBy: { workspaceMemberId } },
+              ],
+            ),
+            {
+              title: ILike(
+                `${TEAM_WORKSPACE_RECORD_PREFIX.completionEvidence}%`,
+              ),
+            },
+          ]
         : [
             { workType: 'SOFTWARE' },
             { title: ILike(`${TEAM_WORKSPACE_RECORD_PREFIX.blocker}%`) },

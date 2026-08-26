@@ -17,7 +17,10 @@ import { useAtomFamilySelectorValue } from '@/ui/utilities/state/jotai/hooks/use
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { viewsSelector } from '@/views/states/selectors/viewsSelector';
-import { teamWorkspaceLanesFromRoles } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
+import {
+  canRolesEnterTeamManagement,
+  teamWorkspaceLanesFromRoles,
+} from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { teamWorkspacePath } from '@/team-workspace/shared/utils/teamWorkspaceRoutes';
 import isEmpty from 'lodash.isempty';
 import { useCallback, useMemo } from 'react';
@@ -117,6 +120,13 @@ export const useDefaultHomePagePath = () => {
     }
     if (isClientSeat) {
       return '/client';
+    }
+
+    if (
+      workspacePublicData?.isTeamWorkspaceDomainAlias === true &&
+      canRolesEnterTeamManagement(currentWorkspaceMember?.roles)
+    ) {
+      return '/team/management/overview';
     }
 
     const teamLanes =
