@@ -1,3 +1,5 @@
+import { FindOperator } from 'typeorm';
+
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { type WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspace-domains/services/workspace-domains.service';
 import { type UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
@@ -26,6 +28,8 @@ const MEETING_ID = '66666666-6666-4666-8666-666666666666';
 const RECORDING_ID = '77777777-7777-4777-8777-777777777777';
 const CLIENT_ID = '88888888-8888-4888-8888-888888888888';
 const VERSION = '2026-08-26T09:00:00.000Z';
+const SUB_MILLISECOND_VERSION = '2026-08-26T09:00:00.000789Z';
+const NEXT_MILLISECOND_VERSION = '2026-08-26T09:00:00.001000Z';
 const NEXT_VERSION = '2026-08-26T09:01:00.000Z';
 
 type FakeTask = {
@@ -207,15 +211,70 @@ const replaceState = (target: FakeState, source: FakeState): void => {
   target.receipts = source.receipts;
 };
 
+const timestampMicroseconds = (value: unknown): number => {
+  if (value instanceof Date) {
+    return value.getTime() * 1_000;
+  }
+
+  if (typeof value !== 'string') {
+    throw new TypeError('Expected a timestamp');
+  }
+
+  const match = value.match(
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.(\d{1,6})Z$/,
+  );
+
+  if (match === null) {
+    return new Date(value).getTime() * 1_000;
+  }
+
+  const fraction = match[2].padEnd(6, '0');
+  const milliseconds = new Date(
+    `${match[1]}.${fraction.slice(0, 3)}Z`,
+  ).getTime();
+
+  return milliseconds * 1_000 + Number(fraction.slice(3));
+};
+
+const matchesValue = (actual: unknown, expected: unknown): boolean => {
+  if (!(expected instanceof FindOperator)) {
+    return actual === expected;
+  }
+
+  if (expected.type !== 'raw') {
+    throw new Error(`Unexpected find operator: ${expected.type}`);
+  }
+
+  const parameters = expected.objectLiteralParameters;
+  const start = parameters?.teamWorkspaceRecordVersionStart;
+  const end = parameters?.teamWorkspaceRecordVersionEnd;
+
+  if (typeof start !== 'string' || typeof end !== 'string') {
+    throw new Error('Expected millisecond record-version range parameters');
+  }
+
+  const actualTimestamp = timestampMicroseconds(actual);
+
+  return (
+    actualTimestamp >= timestampMicroseconds(start) &&
+    actualTimestamp < timestampMicroseconds(end)
+  );
+};
+
 const matches = (
   record: Record<string, unknown>,
   criteria: Record<string, unknown>,
 ): boolean =>
-  Object.entries(criteria).every(([key, value]) => record[key] === value);
+  Object.entries(criteria).every(([key, value]) =>
+    matchesValue(record[key], value),
+  );
 
 const buildRepository = <Entity extends { id: string; updatedAt: string }>(
   records: Map<string, Entity>,
-  options: { forceUpdateConflict: boolean },
+  options: {
+    forceUpdateConflict: boolean;
+    updatedAtBeforeUpdate?: string;
+  },
 ) => ({
   findOne: jest.fn(
     async ({ where: { id } }: { where: { id: string } }) =>
@@ -252,6 +311,10 @@ const buildRepository = <Entity extends { id: string; updatedAt: string }>(
   update: jest.fn(
     async (criteria: Record<string, unknown>, update: Partial<Entity>) => {
       const record = records.get(String(criteria.id));
+
+      if (record !== undefined && options.updatedAtBeforeUpdate !== undefined) {
+        record.updatedAt = options.updatedAtBeforeUpdate;
+      }
 
       if (
         options.forceUpdateConflict ||
@@ -359,6 +422,7 @@ const buildHarness = ({
   apiKeyRoleLabel = 'Team Automation',
   workspaceEnabled = true,
   forceUpdateConflict = false,
+  updatedAtBeforeUpdate,
   initialTasks = [task()],
   initialOpportunities = [opportunity()],
   initialMeetings = [meeting()],
@@ -369,6 +433,7 @@ const buildHarness = ({
   apiKeyRoleLabel?: string;
   workspaceEnabled?: boolean;
   forceUpdateConflict?: boolean;
+  updatedAtBeforeUpdate?: string;
   initialTasks?: FakeTask[];
   initialOpportunities?: FakeOpportunity[];
   initialMeetings?: FakeMeeting[];
@@ -393,20 +458,23 @@ const buildHarness = ({
         const transactionState = cloneState(state);
         const taskRepository = buildRepository(transactionState.tasks, {
           forceUpdateConflict,
+          updatedAtBeforeUpdate,
         });
         const opportunityRepository = buildRepository(
           transactionState.opportunities,
-          { forceUpdateConflict },
+          { forceUpdateConflict, updatedAtBeforeUpdate },
         );
         const meetingRepository = buildRepository(transactionState.meetings, {
           forceUpdateConflict,
+          updatedAtBeforeUpdate,
         });
         const recordingRepository = buildRepository(
           transactionState.recordings,
-          { forceUpdateConflict },
+          { forceUpdateConflict, updatedAtBeforeUpdate },
         );
         const clientRepository = buildRepository(transactionState.clients, {
           forceUpdateConflict,
+          updatedAtBeforeUpdate,
         });
         const scope = {
           getRepository: jest.fn((objectName: string, config: unknown) => {
@@ -1004,6 +1072,122 @@ describe('TeamWorkspaceCommandService', () => {
 
     expect(harness.state.tasks.get(TASK_ID)?.status).toBe('IN_PROGRESS');
     expect(harness.state.receipts.size).toBe(0);
+  });
+
+  it('matches PostgreSQL sub-millisecond versions through every command CAS path', async () => {
+    const completion = buildHarness({
+      initialTasks: [task({ updatedAt: SUB_MILLISECOND_VERSION })],
+    });
+
+    await expect(
+      completion.service.completeTaskWithEvidence(
+        userAuthContext(),
+        completeInput(),
+      ),
+    ).resolves.toMatchObject({ resultState: 'DONE' });
+
+    const handoff = buildHarness({
+      initialOpportunities: [
+        opportunity({ updatedAt: SUB_MILLISECOND_VERSION }),
+      ],
+    });
+
+    await expect(
+      handoff.service.winOpportunityWithHandoff(userAuthContext(), winInput()),
+    ).resolves.toMatchObject({ resultState: 'CUSTOMER' });
+
+    const taskTransition = buildHarness({
+      initialTasks: [task({ updatedAt: SUB_MILLISECOND_VERSION })],
+    });
+
+    await expect(
+      taskTransition.service.transitionTaskStatus(
+        userAuthContext(),
+        transitionInput(),
+      ),
+    ).resolves.toMatchObject({ resultState: 'TODO' });
+
+    const opportunityTransition = buildHarness({
+      initialOpportunities: [
+        opportunity({ updatedAt: SUB_MILLISECOND_VERSION }),
+      ],
+    });
+
+    await expect(
+      opportunityTransition.service.updateOpportunityStage(
+        userAuthContext(),
+        stageInput(),
+      ),
+    ).resolves.toMatchObject({ resultState: 'NURTURE' });
+  });
+
+  it('excludes the next millisecond and atomically rejects every stale command CAS', async () => {
+    const completion = buildHarness({
+      initialTasks: [task({ updatedAt: SUB_MILLISECOND_VERSION })],
+      updatedAtBeforeUpdate: NEXT_MILLISECOND_VERSION,
+    });
+
+    await expectCommandError(
+      completion.service.completeTaskWithEvidence(
+        userAuthContext(),
+        completeInput(),
+      ),
+      TeamWorkspaceCommandExceptionCode.CONCURRENT_MODIFICATION,
+    );
+    expect(completion.state.tasks.size).toBe(1);
+    expect(completion.state.receipts.size).toBe(0);
+
+    const handoff = buildHarness({
+      initialOpportunities: [
+        opportunity({ updatedAt: SUB_MILLISECOND_VERSION }),
+      ],
+      updatedAtBeforeUpdate: NEXT_MILLISECOND_VERSION,
+    });
+
+    await expectCommandError(
+      handoff.service.winOpportunityWithHandoff(userAuthContext(), winInput()),
+      TeamWorkspaceCommandExceptionCode.CONCURRENT_MODIFICATION,
+    );
+    expect(handoff.state.opportunities.get(OPPORTUNITY_ID)?.stage).toBe(
+      'DECISION',
+    );
+    expect(handoff.state.tasks.size).toBe(1);
+    expect(handoff.state.tasks.has(OPPORTUNITY_ID)).toBe(false);
+    expect(handoff.state.receipts.size).toBe(0);
+
+    const taskTransition = buildHarness({
+      initialTasks: [task({ updatedAt: SUB_MILLISECOND_VERSION })],
+      updatedAtBeforeUpdate: NEXT_MILLISECOND_VERSION,
+    });
+
+    await expectCommandError(
+      taskTransition.service.transitionTaskStatus(
+        userAuthContext(),
+        transitionInput(),
+      ),
+      TeamWorkspaceCommandExceptionCode.CONCURRENT_MODIFICATION,
+    );
+    expect(taskTransition.state.tasks.get(TASK_ID)?.status).toBe('IN_PROGRESS');
+    expect(taskTransition.state.receipts.size).toBe(0);
+
+    const opportunityTransition = buildHarness({
+      initialOpportunities: [
+        opportunity({ updatedAt: SUB_MILLISECOND_VERSION }),
+      ],
+      updatedAtBeforeUpdate: NEXT_MILLISECOND_VERSION,
+    });
+
+    await expectCommandError(
+      opportunityTransition.service.updateOpportunityStage(
+        userAuthContext(),
+        stageInput(),
+      ),
+      TeamWorkspaceCommandExceptionCode.CONCURRENT_MODIFICATION,
+    );
+    expect(
+      opportunityTransition.state.opportunities.get(OPPORTUNITY_ID)?.stage,
+    ).toBe('DECISION');
+    expect(opportunityTransition.state.receipts.size).toBe(0);
   });
 
   it('updates the shared Sales pipeline lane-wide and exactly replays it', async () => {

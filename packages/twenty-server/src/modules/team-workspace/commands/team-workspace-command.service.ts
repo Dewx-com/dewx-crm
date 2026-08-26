@@ -31,6 +31,7 @@ import {
   TeamWorkspaceCommandException,
   TeamWorkspaceCommandExceptionCode,
 } from 'src/modules/team-workspace/commands/exceptions/team-workspace-command.exception';
+import { buildMillisecondRecordVersionCondition } from 'src/modules/team-workspace/commands/utils/build-millisecond-record-version-condition.util';
 import {
   areSha256HashesEqual,
   computeCompleteTaskWithEvidencePayloadHash,
@@ -195,12 +196,15 @@ const meetingOutcomeLabel = (outcome: TeamWorkspaceMeetingOutcome): string =>
   })[outcome];
 
 const recordVersion = (value: unknown): string => {
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
+  const date =
+    value instanceof Date
+      ? value
+      : typeof value === 'string'
+        ? new Date(value)
+        : null;
 
-  if (typeof value === 'string') {
-    return value;
+  if (date !== null && !Number.isNaN(date.getTime())) {
+    return date.toISOString();
   }
 
   return commandException(
@@ -532,7 +536,9 @@ export class TeamWorkspaceCommandService {
               {
                 id: input.taskId,
                 status: input.expectedStatus,
-                updatedAt: task.updatedAt,
+                updatedAt: buildMillisecondRecordVersionCondition(
+                  recordVersion(task.updatedAt),
+                ),
               },
               {
                 status: COMPLETED_STATUS,
@@ -761,7 +767,9 @@ export class TeamWorkspaceCommandService {
               {
                 id: input.opportunityId,
                 stage: normalizedInput.expectedStage,
-                updatedAt: opportunity.updatedAt,
+                updatedAt: buildMillisecondRecordVersionCondition(
+                  recordVersion(opportunity.updatedAt),
+                ),
               },
               {
                 stage: WON_STAGE,
@@ -1070,7 +1078,9 @@ export class TeamWorkspaceCommandService {
               {
                 id: input.taskId,
                 status: input.expectedStatus,
-                updatedAt: task.updatedAt,
+                updatedAt: buildMillisecondRecordVersionCondition(
+                  recordVersion(task.updatedAt),
+                ),
               },
               {
                 status: input.nextStatus,
@@ -1223,7 +1233,9 @@ export class TeamWorkspaceCommandService {
               {
                 id: input.opportunityId,
                 stage: input.expectedStage,
-                updatedAt: opportunity.updatedAt,
+                updatedAt: buildMillisecondRecordVersionCondition(
+                  recordVersion(opportunity.updatedAt),
+                ),
               },
               {
                 stage: input.nextStage,
