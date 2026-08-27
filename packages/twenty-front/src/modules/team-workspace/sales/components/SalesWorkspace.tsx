@@ -13,6 +13,7 @@ export const SalesWorkspace = ({
   onCompleteMeeting,
   onUpdateOpportunity,
   onOpenRecord,
+  onTaskStatusChange,
   onRecordCoachingLesson,
 }: SalesWorkspaceProps) => {
   const now = providedNow ?? new Date().toISOString();
@@ -26,6 +27,7 @@ export const SalesWorkspace = ({
         now={now}
         onPrepareMeeting={onPrepareMeeting}
         onOpenRecord={onOpenRecord}
+        onTaskStatusChange={onTaskStatusChange}
       />
     );
   }

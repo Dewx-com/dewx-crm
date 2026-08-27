@@ -282,6 +282,10 @@ const coachingLessonFor = (
   );
   if (!task) return null;
 
+  const recordedImprovement = protocolMarkdownField(task, 'Improvement');
+
+  if (recordedImprovement) return recordedImprovement;
+
   return protocolDetail(
     textAfterPrefix(task.title, TEAM_RECORD_PREFIX.coaching),
     recordingId,
@@ -353,11 +357,15 @@ export const buildSalesWorkspaceData = ({
         return {
           id: task.id,
           title: compactText(task.title) || 'Untitled follow-up',
+          detail: task.assignmentDetail?.trim() || null,
           companyName: task.client
             ? (clientNames.get(task.client) ?? nameOfScope(task.client))
             : 'Company not linked',
           dueAt: task.dueAt as string,
-          status: 'open' as const,
+          status:
+            task.status?.toUpperCase() === 'IN_PROGRESS'
+              ? ('in-progress' as const)
+              : ('todo' as const),
           opportunityId: opportunity?.id,
         };
       }),

@@ -323,7 +323,9 @@ export const TeamInboxThreadList = ({
         <StyledSearch
           value={search}
           placeholder="Search"
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onSearch(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            onSearch(event.target.value)
+          }
           aria-label="Search conversations"
         />
       </StyledHeader>
@@ -338,9 +340,14 @@ export const TeamInboxThreadList = ({
             </StyledDayLabel>
             {group.rows.map((thread) => {
               const Wrap =
-                thread.code === selectedCode ? StyledRowWrapSelected : StyledRowWrap;
+                thread.code === selectedCode
+                  ? StyledRowWrapSelected
+                  : StyledRowWrap;
               const last = previews.get(thread.code);
-              const state = unread.get(thread.code) ?? { unread: false, count: 0 };
+              const state = unread.get(thread.code) ?? {
+                unread: false,
+                count: 0,
+              };
               const isUnread = state.unread;
               const Name = isUnread ? StyledNameUnread : StyledName;
               const Preview = isUnread ? StyledPreviewUnread : StyledPreview;
@@ -349,17 +356,25 @@ export const TeamInboxThreadList = ({
               return (
                 <Wrap key={thread.id}>
                   <StyledRow type="button" onClick={() => onSelect(thread)}>
-                    <StyledAvatar>{initialOf(thread.contactAlias)}</StyledAvatar>
+                    <StyledAvatar>
+                      {initialOf(thread.contactAlias)}
+                    </StyledAvatar>
                     <StyledRowBody>
                       <StyledRowTop>
                         <Name>{thread.contactAlias ?? thread.code}</Name>
-                        <StyledStamp>{timeOfDay(thread.lastMessageAt)}</StyledStamp>
+                        <StyledStamp>
+                          {timeOfDay(thread.lastMessageAt)}
+                        </StyledStamp>
                       </StyledRowTop>
-                      <Preview>{previewOf(last?.body) || 'No messages yet'}</Preview>
+                      <Preview>
+                        {previewOf(last?.body) || 'No messages yet'}
+                      </Preview>
                       <StyledMetaRow>
                         <StyledMeta>
                           {channelLabel(thread.channel)}
-                          {thread.client ? ` · ${thread.client.toLowerCase()}` : ''}
+                          {thread.client
+                            ? ` · ${thread.client.toLowerCase()}`
+                            : ''}
                           {thread.flag ? ' · flagged' : ''}
                           {archived ? ' · archived' : ''}
                         </StyledMeta>
@@ -372,7 +387,10 @@ export const TeamInboxThreadList = ({
                               {state.count > 99 ? '99+' : state.count}
                             </StyledUnreadCount>
                           ) : (
-                            <StyledUnreadDot title="Unread" aria-label="Unread" />
+                            <StyledUnreadDot
+                              title="Unread"
+                              aria-label="Unread"
+                            />
                           ))}
                       </StyledMetaRow>
                     </StyledRowBody>
@@ -384,13 +402,19 @@ export const TeamInboxThreadList = ({
                         ? 'Put it back in the inbox'
                         : 'Archive — hides it from your list, changes nothing for them'
                     }
-                    aria-label={archived ? 'Restore conversation' : 'Archive conversation'}
+                    aria-label={
+                      archived ? 'Restore conversation' : 'Archive conversation'
+                    }
                     onClick={(event: MouseEvent<HTMLButtonElement>) => {
                       event.stopPropagation();
                       onArchive(thread, !archived);
                     }}
                   >
-                    {archived ? <IconArchiveOff size={14} /> : <IconArchive size={14} />}
+                    {archived ? (
+                      <IconArchiveOff size={14} />
+                    ) : (
+                      <IconArchive size={14} />
+                    )}
                   </StyledRowAction>
                 </Wrap>
               );

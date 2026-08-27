@@ -9,7 +9,10 @@ export const timeOfDay = (iso: string | null | undefined): string => {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 };
 
 /** "Today" / "Yesterday" / "Aug 19, 2026" — the same ladder the Mac inbox uses. */
@@ -18,28 +21,39 @@ export const dayLabel = (iso: string | null | undefined): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return 'Undated';
 
-  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const startOf = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOf(new Date()) - startOf(date)) / 86_400_000);
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 };
 
 export const dayKey = (iso: string | null | undefined): string => {
   if (!iso) return 'undated';
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? 'undated' : date.toISOString().slice(0, 10);
+  return Number.isNaN(date.getTime())
+    ? 'undated'
+    : date.toISOString().slice(0, 10);
 };
 
 /**
  * Group rows into day buckets, newest day first, newest row first inside a day — which is how a
  * person scans an inbox, and the opposite of how a conversation reads.
  */
-export const groupByDay = <T,>(rows: T[], stampOf: (row: T) => string | null | undefined) => {
+export const groupByDay = <T>(
+  rows: T[],
+  stampOf: (row: T) => string | null | undefined,
+) => {
   const buckets = new Map<string, { label: string; rows: T[] }>();
   for (const row of rows) {
     const key = dayKey(stampOf(row));
-    if (!buckets.has(key)) buckets.set(key, { label: dayLabel(stampOf(row)), rows: [] });
+    if (!buckets.has(key))
+      buckets.set(key, { label: dayLabel(stampOf(row)), rows: [] });
     buckets.get(key)?.rows.push(row);
   }
   return [...buckets.entries()]
@@ -70,11 +84,16 @@ export const channelLabel = (channel: string | null | undefined): string => {
  * person typed, so nothing may render it as their words. Both dashes are accepted: the mirror
  * writes an em dash and a keyboard produces a hyphen.
  */
-export const isAttachmentPlaceholder = (body: string | null | undefined): boolean =>
+export const isAttachmentPlaceholder = (
+  body: string | null | undefined,
+): boolean =>
   /^\[\s*attachment\s*[—–-]\s*not shared\s*\]$/i.test((body ?? '').trim());
 
 /** One line of preview, collapsed onto a single row. */
-export const previewOf = (body: string | null | undefined, max = 90): string => {
+export const previewOf = (
+  body: string | null | undefined,
+  max = 90,
+): string => {
   if (isAttachmentPlaceholder(body)) return 'Attachment';
   const text = (body ?? '').replace(/\s+/g, ' ').trim();
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;

@@ -135,6 +135,12 @@ const TeamWorkspacePage = lazy(() =>
   })),
 );
 
+const TeamManagementPage = lazy(() =>
+  import('~/pages/team-workspace/TeamManagementPage').then((module) => ({
+    default: module.TeamManagementPage,
+  })),
+);
+
 const AiChatPage = lazy(() =>
   import('~/pages/ai-chat/AiChatPage').then((module) => ({
     default: module.AiChatPage,
@@ -227,6 +233,26 @@ const createWorkspaceAppRouter = (
                 element={
                   <LazyRoute>
                     <TodayPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="/team/management"
+                element={<Navigate replace to="/team/management/overview" />}
+              />
+              <Route
+                path="/team/management/overview"
+                element={
+                  <LazyRoute>
+                    <TeamManagementPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="/team/management/member/:workspaceMemberId"
+                element={
+                  <LazyRoute>
+                    <TeamManagementPage />
                   </LazyRoute>
                 }
               />

@@ -20,7 +20,10 @@ import {
   isTeamWorkspaceLane,
   type TeamWorkspaceLane,
 } from '@/team-workspace/role/types/TeamWorkspaceLane';
-import { SalesWorkspace } from '@/team-workspace/sales';
+import {
+  SalesWorkspace,
+  type SalesTaskStatusChange,
+} from '@/team-workspace/sales';
 import {
   TEAM_WORKSPACE_ACTION_MODAL_ID,
   TeamWorkspaceActionModal,
@@ -88,8 +91,6 @@ export const TeamWorkspacePage = () => {
   }>();
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const workspacePublicData = useAtomStateValue(workspacePublicDataState);
-  const isTeamWorkspaceDomain =
-    workspacePublicData?.isTeamWorkspaceDomainAlias === true;
   const roles = currentWorkspaceMember?.roles;
   const allowedLanes = teamWorkspaceLanesFromRoles(roles);
   const requestedLane = isTeamWorkspaceLane(laneParam) ? laneParam : null;
@@ -97,7 +98,7 @@ export const TeamWorkspacePage = () => {
   const isAuthorized = canRolesEnterTeamWorkspaceLane({ roles, lane });
   const recordsQuery = useTeamWorkspaceRecords(
     lane,
-    !isAuthorized || !isTeamWorkspaceDomain,
+    !isAuthorized || allowedLanes.length === 0,
     currentWorkspaceMember?.id,
   );
   const mutations = useTeamWorkspaceActions(lane);
@@ -187,6 +188,30 @@ export const TeamWorkspacePage = () => {
         'All details available to this role are already shown in the secure team workspace.',
     });
 
+  const updateSalesTask = (change: SalesTaskStatusChange) => {
+    const task = recordsQuery.records.tasks.find(
+      (candidate) => candidate.id === change.taskId,
+    );
+    if (!task) {
+      enqueueErrorSnackBar({ message: 'This task is no longer available.' });
+      return;
+    }
+
+    if (change.status === 'done') {
+      showAction({ kind: 'task-finish', taskId: task.id });
+      return;
+    }
+
+    void runDirectUpdate(
+      () =>
+        mutations.updateTaskStatus({
+          task,
+          status: change.status === 'in-progress' ? 'IN_PROGRESS' : 'TODO',
+        }),
+      change.status === 'in-progress' ? 'Work started.' : 'Task moved to do.',
+    );
+  };
+
   const updateOperationsTask = (change: OperationsTaskStatusChange) => {
     const task = recordsQuery.records.tasks.find(
       (candidate) => candidate.id === change.taskId,
@@ -243,10 +268,6 @@ export const TeamWorkspacePage = () => {
         <StyledState>Loading your workspace role…</StyledState>
       </StyledPage>
     );
-  }
-
-  if (!isTeamWorkspaceDomain) {
-    return <Navigate replace to="/" />;
   }
 
   if (allowedLanes.length === 0) {
@@ -308,6 +329,7 @@ export const TeamWorkspacePage = () => {
             showAction({ kind: 'coaching-lesson', recordingId })
           }
           onOpenRecord={explainSafeProjection}
+          onTaskStatusChange={updateSalesTask}
         />
       ) : (
         <OperationsWorkspace

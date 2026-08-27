@@ -125,9 +125,13 @@ export const TeamInboxContextPanel = ({ thread, messages }: Props) => {
   if (!thread) return <StyledColumn />;
 
   const recent = [...messages]
-    .sort((a, b) => String(b.sentAt ?? '').localeCompare(String(a.sentAt ?? '')))
+    .sort((a, b) =>
+      String(b.sentAt ?? '').localeCompare(String(a.sentAt ?? '')),
+    )
     .slice(0, 8);
-  const refused = messages.filter((message) => (message.state ?? '') === 'BLOCKED');
+  const refused = messages.filter(
+    (message) => (message.state ?? '') === 'BLOCKED',
+  );
 
   return (
     <StyledColumn>
@@ -173,8 +177,12 @@ export const TeamInboxContextPanel = ({ thread, messages }: Props) => {
           <StyledSectionTitle>Refused</StyledSectionTitle>
           {refused.slice(0, 3).map((message) => (
             <StyledActivityRow key={message.id}>
-              <StyledActivityHead>{message.blockReason ?? 'refused'}</StyledActivityHead>
-              <StyledActivityBody>{previewOf(message.body, 60)}</StyledActivityBody>
+              <StyledActivityHead>
+                {message.blockReason ?? 'refused'}
+              </StyledActivityHead>
+              <StyledActivityBody>
+                {previewOf(message.body, 60)}
+              </StyledActivityBody>
             </StyledActivityRow>
           ))}
         </StyledSection>
@@ -191,7 +199,9 @@ export const TeamInboxContextPanel = ({ thread, messages }: Props) => {
               {message.state === 'QUEUED' ? ' · queued' : ''}
               {message.state === 'BLOCKED' ? ' · not sent' : ''}
             </StyledActivityHead>
-            <StyledActivityBody>{previewOf(message.body, 70)}</StyledActivityBody>
+            <StyledActivityBody>
+              {previewOf(message.body, 70)}
+            </StyledActivityBody>
           </StyledActivityRow>
         ))}
       </StyledSection>
@@ -199,10 +209,12 @@ export const TeamInboxContextPanel = ({ thread, messages }: Props) => {
       <StyledSection>
         <StyledSectionTitle>What is not here</StyledSectionTitle>
         <StyledNote>
-          No phone number, no email address and no profile link — for this contact or any other.
-          They are held on the Mac that owns the conversation and are never sent to this server, so
-          they cannot be read, exported or shared from here. Sending happens on that account, which
-          is why a reply carrying a number is refused rather than delivered.
+          No phone number, no email address and no profile link — for this
+          contact or any other. They are held on the Mac that owns the
+          conversation and are never sent to this server, so they cannot be
+          read, exported or shared from here. Sending happens on that account,
+          which is why a reply carrying a number is refused rather than
+          delivered.
         </StyledNote>
       </StyledSection>
     </StyledColumn>

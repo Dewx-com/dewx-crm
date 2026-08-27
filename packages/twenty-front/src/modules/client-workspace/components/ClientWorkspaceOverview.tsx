@@ -11,7 +11,11 @@ import {
   StyledSectionMeta,
   StyledSectionTitle,
 } from '@/client-workspace/components/ClientWorkspaceStyles';
-import { type ClientEntry, type ReportRow, type TaskRow } from '@/client-workspace/hooks/useClientWorkspace';
+import {
+  type ClientEntry,
+  type ReportRow,
+  type TaskRow,
+} from '@/client-workspace/hooks/useClientWorkspace';
 import {
   agoWords,
   dayStamp,
@@ -40,7 +44,11 @@ import {
 // beside meetings, in the same size and colour, is the oldest way of making a quiet quarter look
 // busy, so accepts carry their rate, replies stand on their own, and meetings are the last word.
 
-const TONE: Record<SignalLevel, string> = { RISK: 'risk', WATCH: 'watch', CALM: 'calm' };
+const TONE: Record<SignalLevel, string> = {
+  RISK: 'risk',
+  WATCH: 'watch',
+  CALM: 'calm',
+};
 
 const STATUS_WORDS: Record<string, string> = {
   ONBOARDING: 'Setting up',
@@ -70,7 +78,8 @@ export const ClientWorkspaceOverview = ({
   nextReportAt,
   hasSnapshots,
 }: Props) => {
-  const loudest = signals.find((signal) => signal.level === 'RISK') ?? signals[0];
+  const loudest =
+    signals.find((signal) => signal.level === 'RISK') ?? signals[0];
   const acceptance = ratio(totals.accepts, totals.invitations);
   const action = nextAction ? ownerOf(nextAction.title) : undefined;
 
@@ -120,16 +129,22 @@ export const ClientWorkspaceOverview = ({
 
         <StyledCard>
           <StyledBigNumber>
-            {STATUS_WORDS[(entry.status ?? '').toUpperCase()] ?? entry.status ?? '—'}
+            {STATUS_WORDS[(entry.status ?? '').toUpperCase()] ??
+              entry.status ??
+              '—'}
           </StyledBigNumber>
           <StyledCardLabel>Stage</StyledCardLabel>
           <StyledCardHint>
-            {entry.startDate ? `started ${dayStamp(entry.startDate)}` : 'no start date recorded'}
+            {entry.startDate
+              ? `started ${dayStamp(entry.startDate)}`
+              : 'no start date recorded'}
           </StyledCardHint>
         </StyledCard>
 
         <StyledCard>
-          <StyledBigNumber>{totals.measuredAt ? agoWords(totals.measuredAt) : '—'}</StyledBigNumber>
+          <StyledBigNumber>
+            {totals.measuredAt ? agoWords(totals.measuredAt) : '—'}
+          </StyledBigNumber>
           <StyledCardLabel>Figures measured</StyledCardLabel>
           <StyledCardHint>
             {totals.lastActivityAt
@@ -139,7 +154,9 @@ export const ClientWorkspaceOverview = ({
         </StyledCard>
 
         <StyledCard>
-          <StyledBigNumber>{nextReportAt ? dayStamp(nextReportAt) : '—'}</StyledBigNumber>
+          <StyledBigNumber>
+            {nextReportAt ? dayStamp(nextReportAt) : '—'}
+          </StyledBigNumber>
           <StyledCardLabel>Next report</StyledCardLabel>
           <StyledCardHint>
             {latestReport
@@ -169,7 +186,9 @@ export const ClientWorkspaceOverview = ({
         <StyledCard>
           <StyledBigNumber>{formatCount(totals.accepts)}</StyledBigNumber>
           <StyledCardLabel>Connections accepted</StyledCardLabel>
-          <StyledCardHint>{formatPercent(acceptance)} of invitations</StyledCardHint>
+          <StyledCardHint>
+            {formatPercent(acceptance)} of invitations
+          </StyledCardHint>
         </StyledCard>
 
         <StyledCard>

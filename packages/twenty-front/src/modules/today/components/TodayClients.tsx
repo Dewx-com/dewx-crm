@@ -9,8 +9,15 @@ import {
   StyledSectionTitle,
   StyledTable,
 } from '@/client-workspace/components/ClientWorkspaceStyles';
-import { agoWords, formatCount } from '@/client-workspace/utils/clientWorkspaceModel';
-import { formatWait, WEEK_DAYS, type ClientDay } from '@/today/utils/todayModel';
+import {
+  agoWords,
+  formatCount,
+} from '@/client-workspace/utils/clientWorkspaceModel';
+import {
+  formatWait,
+  WEEK_DAYS,
+  type ClientDay,
+} from '@/today/utils/todayModel';
 
 // ── Who is being under-served ───────────────────────────────────────────────────────────────────
 //
@@ -42,8 +49,8 @@ export const TodayClients = ({ clients }: Props) => {
 
       {clients.length === 0 ? (
         <StyledEmpty>
-          No client has any records yet. A client appears here as soon as one contact, deal or task
-          carries their name.
+          No client has any records yet. A client appears here as soon as one
+          contact, deal or task carries their name.
         </StyledEmpty>
       ) : (
         <>
@@ -79,21 +86,33 @@ export const TodayClients = ({ clients }: Props) => {
                         </>
                       )}
                     </td>
-                    <td data-numeric="true">{formatCount(row.repliesThisWeek)}</td>
+                    <td data-numeric="true">
+                      {formatCount(row.repliesThisWeek)}
+                    </td>
                     <td data-numeric="true">{formatCount(row.openReplies)}</td>
                     <td data-numeric="true">
-                      {row.openReplies > 0 ? formatWait(row.longestWaitHours) : '—'}
+                      {row.openReplies > 0
+                        ? formatWait(row.longestWaitHours)
+                        : '—'}
                     </td>
-                    <td data-numeric="true">{formatCount(row.openOpportunities)}</td>
+                    <td data-numeric="true">
+                      {formatCount(row.openOpportunities)}
+                    </td>
                     <td data-numeric="true">
                       {row.stalledOpportunities > 0 ? (
-                        <StyledChip data-tone="watch">{row.stalledOpportunities}</StyledChip>
+                        <StyledChip data-tone="watch">
+                          {row.stalledOpportunities}
+                        </StyledChip>
                       ) : (
                         '0'
                       )}
                     </td>
                     <td data-numeric="true">{formatCount(row.contacts)}</td>
-                    <td>{row.lastActivityAt ? agoWords(row.lastActivityAt) : 'never'}</td>
+                    <td>
+                      {row.lastActivityAt
+                        ? agoWords(row.lastActivityAt)
+                        : 'never'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -101,10 +120,11 @@ export const TodayClients = ({ clients }: Props) => {
           </StyledScroller>
 
           <StyledNote>
-            Replies this week counts the last {WEEK_DAYS} days. Last recorded is the newest task or
-            deal written for that client — never the &ldquo;last update&rdquo; stamp, which an
-            import rewrites on every row it touches and which would show a client nobody has spoken
-            to in a month as touched this morning.
+            Replies this week counts the last {WEEK_DAYS} days. Last recorded is
+            the newest task or deal written for that client — never the
+            &ldquo;last update&rdquo; stamp, which an import rewrites on every
+            row it touches and which would show a client nobody has spoken to in
+            a month as touched this morning.
           </StyledNote>
         </>
       )}

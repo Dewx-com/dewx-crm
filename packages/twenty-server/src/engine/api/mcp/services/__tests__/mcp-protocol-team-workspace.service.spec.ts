@@ -4,6 +4,7 @@ import { McpProtocolService } from 'src/engine/api/mcp/services/mcp-protocol.ser
 import { McpToolExecutorService } from 'src/engine/api/mcp/services/mcp-tool-executor.service';
 import {
   TEAM_WORKSPACE_COMPLETE_TASK_TOOL_NAME,
+  TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME,
   TEAM_WORKSPACE_CREATE_PROTOCOL_TASK_TOOL_NAME,
   TEAM_WORKSPACE_SNAPSHOT_TOOL_NAME,
   TEAM_WORKSPACE_TRANSITION_TASK_STATUS_TOOL_NAME,
@@ -119,6 +120,7 @@ const createHarness = (roleInput: string | string[] = 'Sales') => {
   };
   const teamWorkspaceCommandService = {
     completeTaskWithEvidence: jest.fn().mockResolvedValue(receipt),
+    createAssignedWork: jest.fn().mockResolvedValue(receipt),
     createProtocolTask: jest.fn().mockResolvedValue(receipt),
     transitionTaskStatus: jest.fn().mockResolvedValue(receipt),
     updateOpportunityStage: jest.fn().mockResolvedValue(receipt),
@@ -279,6 +281,55 @@ describe('McpProtocolService team workspace tools', () => {
     );
     expect(employeeNames).not.toContain(
       TEAM_WORKSPACE_UPDATE_OPPORTUNITY_STAGE_TOOL_NAME,
+    );
+    expect(operationsNames).not.toContain(
+      TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME,
+    );
+    expect(employeeNames).not.toContain(
+      TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME,
+    );
+  });
+
+  it('exposes assigned-work creation only to Admin and Team Automation', async () => {
+    const adminTools = await listTools(createHarness('Admin').protocolService);
+
+    expect(adminTools.result.tools.map(({ name }) => name)).toContain(
+      TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME,
+    );
+
+    const { protocolService, teamWorkspaceCommandService } =
+      createHarness('Sales');
+    const apiKey = { id: 'api-key-id', name: 'Team Automation' };
+    const input = {
+      lane: 'OPERATIONS',
+      assigneeId: '4cdf83c1-5987-4cb0-97a7-8f991855af91',
+      title: 'Prepare the client delivery update',
+      detail: 'Check the live campaign and record the verified update.',
+      dueAt: '2026-08-28T09:00:00.000Z',
+      client: 'acme',
+      idempotencyKey: 'assigned-work-001',
+    };
+    const response = (await protocolService.handleMCPCoreQuery(
+      {
+        jsonrpc: '2.0',
+        id: 31,
+        method: 'tools/call',
+        params: {
+          name: TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME,
+          arguments: input,
+        },
+      },
+      { workspace, apiKey: apiKey as never },
+    )) as ToolCallResponse;
+
+    expect(response.result.isError).toBe(false);
+    expect(teamWorkspaceCommandService.createAssignedWork).toHaveBeenCalledWith(
+      {
+        type: 'apiKey',
+        workspace,
+        apiKey,
+      },
+      input,
     );
   });
 
@@ -583,6 +634,7 @@ describe('McpProtocolService team workspace tools', () => {
       [
         TEAM_WORKSPACE_SNAPSHOT_TOOL_NAME,
         TEAM_WORKSPACE_COMPLETE_TASK_TOOL_NAME,
+        TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME,
         TEAM_WORKSPACE_WIN_OPPORTUNITY_TOOL_NAME,
         TEAM_WORKSPACE_CREATE_PROTOCOL_TASK_TOOL_NAME,
         TEAM_WORKSPACE_TRANSITION_TASK_STATUS_TOOL_NAME,

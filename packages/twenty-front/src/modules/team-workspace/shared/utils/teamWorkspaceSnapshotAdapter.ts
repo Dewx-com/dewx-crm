@@ -43,6 +43,7 @@ const taskFromSnapshot = (task: TeamWorkspaceSnapshotTask): TeamTaskRecord =>
       task.bodyMarkdown === null
         ? null
         : { blocknote: null, markdown: task.bodyMarkdown },
+    assignmentDetail: task.assignmentDetail,
     createdBy: task.createdByName
       ? {
           source: null,

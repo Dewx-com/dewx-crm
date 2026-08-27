@@ -7,12 +7,23 @@ import {
 const TEAM_WORKSPACE_LANES_BY_ROLE_LABEL = {
   Sales: ['sales'],
   Operations: ['operations'],
+  // Both lanes, no management hub. See TEAM_WORKSPACE_ROLE_LABEL.team on the server.
+  Team: ['sales', 'operations'],
   Admin: ['sales', 'operations'],
 } as const satisfies Record<string, readonly TeamWorkspaceLane[]>;
 
 type TeamWorkspaceRoleLabel = keyof typeof TEAM_WORKSPACE_LANES_BY_ROLE_LABEL;
 
 const TEAM_WORKSPACE_LANES: TeamWorkspaceLane[] = ['sales', 'operations'];
+
+// A role label is "<capability> · <person>" when it carries a per-person record scope, because a
+// scope value is fixed per role and so each person needs their own (Employee · Siam, Client · Fr8labs
+// already work this way). The capability is the part before the separator; the suffix only says whose
+// rows it is scoped to. Match on the capability so "Team · Abrar" still opens the Team lanes.
+const ROLE_LABEL_SEPARATOR = ' · ';
+
+export const baseRoleLabel = (label: string): string =>
+  label.split(ROLE_LABEL_SEPARATOR)[0].trim();
 
 const isTeamWorkspaceRoleLabel = (
   label: string,
@@ -22,13 +33,15 @@ const isTeamWorkspaceRoleLabel = (
 export const teamWorkspaceLanesFromRoles = (
   roles: readonly TeamWorkspaceRoleSummary[] | null | undefined,
 ): TeamWorkspaceLane[] => {
-  if (roles?.length !== 1 || !isTeamWorkspaceRoleLabel(roles[0].label)) {
+  const label = roles?.length === 1 ? baseRoleLabel(roles[0].label) : null;
+
+  if (label === null || !isTeamWorkspaceRoleLabel(label)) {
     return [];
   }
 
   const lanes = new Set<TeamWorkspaceLane>();
 
-  for (const lane of TEAM_WORKSPACE_LANES_BY_ROLE_LABEL[roles[0].label]) {
+  for (const lane of TEAM_WORKSPACE_LANES_BY_ROLE_LABEL[label]) {
     lanes.add(lane);
   }
 
@@ -42,6 +55,10 @@ export const canRolesEnterTeamWorkspaceLane = ({
   roles: readonly TeamWorkspaceRoleSummary[] | null | undefined;
   lane: TeamWorkspaceLane;
 }) => teamWorkspaceLanesFromRoles(roles).includes(lane);
+
+export const canRolesEnterTeamManagement = (
+  roles: readonly TeamWorkspaceRoleSummary[] | null | undefined,
+): boolean => roles?.length === 1 && baseRoleLabel(roles[0].label) === 'Admin';
 
 export const teamWorkspaceLaneMismatchMessage = ({
   roles,

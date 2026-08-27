@@ -107,10 +107,16 @@ const JUMPS = [
   { id: 'updates', label: 'Updates' },
 ];
 
-const HEALTH_TONE: Record<SignalLevel, string> = { RISK: 'risk', WATCH: 'watch', CALM: 'calm' };
+const HEALTH_TONE: Record<SignalLevel, string> = {
+  RISK: 'risk',
+  WATCH: 'watch',
+  CALM: 'calm',
+};
 
 const jumpTo = (id: string) =>
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document
+    .getElementById(id)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
 export const ClientWorkspacePage = () => {
   const { slug } = useParams();
@@ -128,7 +134,8 @@ export const ClientWorkspacePage = () => {
 
   // The URL always names the workspace being read, so a link to it can be sent to somebody.
   useEffect(() => {
-    if (entry && entry.slug !== slug) navigate(`/client/${entry.slug}`, { replace: true });
+    if (entry && entry.slug !== slug)
+      navigate(`/client/${entry.slug}`, { replace: true });
   }, [entry, slug, navigate]);
 
   // A reader who can see more than one client is staff. It is the only signal this page needs, and
@@ -148,8 +155,12 @@ export const ClientWorkspacePage = () => {
   const myTasks = tasks.filter((row) => row.client === scope);
 
   const publishedPlans = myPlans.filter((plan) => isPublished(plan.status));
-  const publishedReports = myReports.filter((report) => isPublished(report.status));
-  const publishedSnapshots = mySnapshots.filter((row) => isPublished(row.publicationStatus));
+  const publishedReports = myReports.filter((report) =>
+    isPublished(report.status),
+  );
+  const publishedSnapshots = mySnapshots.filter((row) =>
+    isPublished(row.publicationStatus),
+  );
   const publishedDeliverables = myDeliverables.filter(
     (row) => isPublished(row.status) && row.clientVisible === true,
   );
@@ -166,7 +177,10 @@ export const ClientWorkspacePage = () => {
     (mySnapshots.length - publishedSnapshots.length) +
     (myDeliverables.length - publishedDeliverables.length);
 
-  const campaigns = useMemo(() => latestPerCampaign(shownSnapshots), [shownSnapshots]);
+  const campaigns = useMemo(
+    () => latestPerCampaign(shownSnapshots),
+    [shownSnapshots],
+  );
   const totals = useMemo(() => totalsOf(campaigns), [campaigns]);
   const markets = useMemo(() => marketsOf(campaigns), [campaigns]);
 
@@ -244,7 +258,9 @@ export const ClientWorkspacePage = () => {
             )}
             <StyledSelect
               value={periodKey}
-              onChange={(event: ChangeEvent<HTMLSelectElement>) => setPeriodKey(event.target.value)}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                setPeriodKey(event.target.value)
+              }
               aria-label="Period"
             >
               <option value={LIVE}>Live — latest measurement</option>
@@ -270,12 +286,18 @@ export const ClientWorkspacePage = () => {
         </StyledHeaderTop>
 
         <StyledChipRow>
-          <StyledChip data-tone={HEALTH_TONE[health]}>{HEALTH_WORDS[health]}</StyledChip>
-          {entry.status && <StyledChip>{entry.status.toLowerCase()}</StyledChip>}
+          <StyledChip data-tone={HEALTH_TONE[health]}>
+            {HEALTH_WORDS[health]}
+          </StyledChip>
+          {entry.status && (
+            <StyledChip>{entry.status.toLowerCase()}</StyledChip>
+          )}
           {totals.paused > 0 && totals.paused === totals.campaigns && (
             <StyledChip data-tone="risk">all campaigns paused</StyledChip>
           )}
-          {entry.heyreachWorkspace && <StyledChip>seat: {entry.heyreachWorkspace}</StyledChip>}
+          {entry.heyreachWorkspace && (
+            <StyledChip>seat: {entry.heyreachWorkspace}</StyledChip>
+          )}
           <StyledJumps>
             {JUMPS.map((jump) => (
               <StyledTextButton key={jump.id} onClick={() => jumpTo(jump.id)}>
@@ -290,15 +312,15 @@ export const ClientWorkspacePage = () => {
         {everything && (
           <StyledBanner data-tone="watch">
             <span>
-              You are seeing everything, including drafts. A client sees only published plans,
-              reports, measurements and deliverables.
+              You are seeing everything, including drafts. A client sees only
+              published plans, reports, measurements and deliverables.
             </span>
           </StyledBanner>
         )}
         {!everything && isStaff && hidden > 0 && (
           <StyledNote>
-            {hidden} {hidden === 1 ? 'record is' : 'records are'} not published, so they are hidden
-            here — exactly as the client sees it.
+            {hidden} {hidden === 1 ? 'record is' : 'records are'} not published,
+            so they are hidden here — exactly as the client sees it.
           </StyledNote>
         )}
 
@@ -331,21 +353,28 @@ export const ClientWorkspacePage = () => {
           onSelect={setPeriodKey}
         />
 
-        <ClientWorkspaceUpdates deliverables={shownDeliverables} updates={updates} />
+        <ClientWorkspaceUpdates
+          deliverables={shownDeliverables}
+          updates={updates}
+        />
 
         <StyledSection id="how-to-read">
           <StyledSectionTitle>How to read this page</StyledSectionTitle>
           <StyledNote>
-            Every figure here is counted from the records in this workspace at the moment the page
-            loads, and each one says when it was measured. Nothing is copied into a summary that can
-            drift away from the rows behind it. Where a number could only come from a written report
-            — qualified leads and meetings — the report and its period are named beside it.
+            Every figure here is counted from the records in this workspace at
+            the moment the page loads, and each one says when it was measured.
+            Nothing is copied into a summary that can drift away from the rows
+            behind it. Where a number could only come from a written report —
+            qualified leads and meetings — the report and its period are named
+            beside it.
           </StyledNote>
           <StyledNote>
-            Invitations, sequences and messages measure effort. Accepted connections and replies
-            measure interest. Qualified leads and meetings are the results. A page full of the first
-            two and empty of the last two means the machine is running and the outcome has not
-            arrived yet, and it is worth saying so rather than adding the columns together.
+            Invitations, sequences and messages measure effort. Accepted
+            connections and replies measure interest. Qualified leads and
+            meetings are the results. A page full of the first two and empty of
+            the last two means the machine is running and the outcome has not
+            arrived yet, and it is worth saying so rather than adding the
+            columns together.
           </StyledNote>
         </StyledSection>
       </StyledBody>

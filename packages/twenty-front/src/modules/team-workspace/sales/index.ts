@@ -11,6 +11,7 @@ export {
   type SalesCoachingReview,
   type SalesFollowUp,
   type SalesFollowUpStatus,
+  type SalesTaskStatusChange,
   type SalesMeeting,
   type SalesMeetingKind,
   type SalesMeetingStatus,

@@ -10,13 +10,16 @@ import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/wo
 import { WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspace-domains/services/workspace-domains.service';
 import {
   TEAM_WORKSPACE_RECORD_PREFIX,
+  baseRoleLabel,
   TEAM_WORKSPACE_ROLE_LABEL,
 } from 'src/engine/core-modules/team-workspace/team-workspace.constants';
+import { RoleService } from 'src/engine/metadata-modules/role/role.service';
 import { UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/global-workspace-datasource/types/workspace-transaction-scope.type';
 import { type OpportunityWorkspaceEntity } from 'src/modules/opportunity/standard-objects/opportunity.workspace-entity';
 import { CompleteTaskWithEvidenceInput } from 'src/modules/team-workspace/commands/dtos/complete-task-with-evidence.input';
+import { CreateTeamWorkspaceAssignedWorkInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-assigned-work.input';
 import {
   CreateTeamWorkspaceProtocolTaskInput,
   TeamWorkspaceCommandLane,
@@ -35,6 +38,7 @@ import { buildMillisecondRecordVersionCondition } from 'src/modules/team-workspa
 import {
   areSha256HashesEqual,
   computeCompleteTaskWithEvidencePayloadHash,
+  computeCreateTeamWorkspaceAssignedWorkPayloadHash,
   computeCreateTeamWorkspaceProtocolTaskPayloadHash,
   computeTransitionTeamWorkspaceTaskPayloadHash,
   computeUpdateTeamWorkspaceOpportunityStagePayloadHash,
@@ -53,8 +57,22 @@ const SALES_WORK_TYPE = 'OUTREACH';
 const OPERATIONS_WORK_TYPE = 'SOFTWARE';
 const TEAM_AUTOMATION_ROLE_LABEL = TEAM_WORKSPACE_ROLE_LABEL.automation;
 
+// A role that works BOTH lanes. Admin and the automation principal already did; Team is the
+// human version of that (Roki, 2026-08-27) and, unlike Admin, never reaches Team Management.
+// Widening a lane is not widening ownership: isTaskOwnedByPrincipal still gates every write.
+const coversBothLanes = (roleLabel: string): boolean =>
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.admin ||
+  roleLabel === TEAM_AUTOMATION_ROLE_LABEL ||
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.team;
+
+const isHumanLaneRole = (roleLabel: string): boolean =>
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.sales ||
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.operations ||
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.team;
+
 type TeamWorkspaceCommandName =
   | 'completeTaskWithEvidence'
+  | 'createAssignedWork'
   | 'winOpportunityWithHandoff'
   | 'createProtocolTask'
   | 'transitionTaskStatus'
@@ -272,6 +290,7 @@ const parseReceipt = (value: unknown): TeamWorkspaceCommandReceipt => {
     value.schemaVersion !== COMMAND_RECEIPT_SCHEMA_VERSION ||
     ![
       'completeTaskWithEvidence',
+      'createAssignedWork',
       'winOpportunityWithHandoff',
       'createProtocolTask',
       'transitionTaskStatus',
@@ -390,6 +409,7 @@ export class TeamWorkspaceCommandService {
     private readonly workspaceDomainsService: WorkspaceDomainsService,
     private readonly userRoleService: UserRoleService,
     private readonly apiKeyRoleService: ApiKeyRoleService,
+    private readonly roleService: RoleService,
   ) {}
 
   async completeTaskWithEvidence(
@@ -568,6 +588,172 @@ export class TeamWorkspaceCommandService {
               ...audit,
               resultState: COMPLETED_STATUS,
               resultVersion: recordVersion(completedTask.updatedAt),
+            };
+
+            await this.insertReceipt(
+              transactionScope,
+              workspaceId,
+              receiptKey,
+              receipt,
+            );
+
+            return toReceiptDto(receipt, false);
+          },
+        ),
+      authContext,
+    );
+  }
+
+  async createAssignedWork(
+    authContext: WorkspaceAuthContext,
+    rawInput: CreateTeamWorkspaceAssignedWorkInput,
+  ): Promise<TeamWorkspaceCommandReceiptDto> {
+    this.assertWorkspaceIsEnabled(authContext.workspace.id);
+    const authorization = await this.authorizeCommand(
+      authContext,
+      'createAssignedWork',
+    );
+    const input = assertValidInput(
+      CreateTeamWorkspaceAssignedWorkInput,
+      rawInput,
+    );
+    const { idempotencyKey, title, detail, dueAt, client, ...payloadInput } =
+      input;
+    const normalizedClient = optionalNonBlankText(client ?? null);
+    const normalizedInput = {
+      ...payloadInput,
+      title: singleLineText(title),
+      detail: nonEmptyText(detail),
+      dueAt: timestampDate(dueAt, 'Assigned work dueAt').toISOString(),
+      client:
+        normalizedClient === null ? null : singleLineText(normalizedClient),
+    };
+    const payloadHash =
+      computeCreateTeamWorkspaceAssignedWorkPayloadHash(normalizedInput);
+    const workspaceId = authContext.workspace.id;
+    const { principal } = authorization;
+
+    return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      () =>
+        this.globalWorkspaceOrmManager.runInWorkspaceTransaction(
+          async (transactionScope) => {
+            const command = 'createAssignedWork' as const;
+            const receiptKey = receiptKeyFor(command, idempotencyKey);
+
+            await this.acquireCommandLocks(transactionScope, [
+              `${receiptKey}:${workspaceId}`,
+              `${TEAM_WORKSPACE_COMMAND_RECEIPT_PREFIX}:target:${workspaceId}:workspaceMember:${input.assigneeId}`,
+            ]);
+
+            const replay = await this.readReceipt(
+              transactionScope,
+              workspaceId,
+              receiptKey,
+            );
+            const taskRepository =
+              transactionScope.getRepository<TeamWorkspaceTaskEntity>('task', {
+                shouldBypassPermissionChecks: true,
+              });
+
+            if (replay !== null) {
+              assertReplayMatches({
+                receipt: replay,
+                command,
+                workspaceId,
+                principal,
+                idempotencyKey,
+                payloadHash,
+                targetId: input.assigneeId,
+              });
+              await this.readReplayTarget(
+                taskRepository,
+                replay.sideEffectRecordId,
+              );
+
+              return toReceiptDto(replay, true);
+            }
+
+            const assigneeRoleId = await this.assertAssigneeHasExactLaneRole({
+              workspaceId,
+              assigneeId: normalizedInput.assigneeId,
+              lane: normalizedInput.lane,
+            });
+            const clientScope = await this.resolveOptionalClientScope({
+              transactionScope,
+              submittedClient: normalizedInput.client,
+            });
+            const taskId = deterministicCommandUuid(
+              `${TEAM_WORKSPACE_COMMAND_RECEIPT_PREFIX}:assigned-work:${workspaceId}:${normalizedInput.assigneeId}:${idempotencyKey}`,
+            );
+            const existingTask = await taskRepository.findOne({
+              where: { id: taskId },
+            });
+
+            if (existingTask !== null) {
+              commandException(
+                `Assigned work ${taskId} already exists without this receipt`,
+                TeamWorkspaceCommandExceptionCode.SIDE_EFFECT_CONFLICT,
+              );
+            }
+
+            const committedAt = new Date().toISOString();
+            const workType = this.workTypeForLane(normalizedInput.lane);
+            const audit = {
+              schemaVersion: COMMAND_RECEIPT_SCHEMA_VERSION,
+              command,
+              workspaceId,
+              principalType: principal.principalType,
+              principalId: principal.principalId,
+              actor: principal.actor,
+              idempotencyKey,
+              payloadHash,
+              targetId: normalizedInput.assigneeId,
+              expectedState: `ASSIGNEE_ROLE:${normalizedInput.lane}`,
+              expectedVersion: assigneeRoleId,
+              sideEffectRecordId: taskId,
+              committedAt,
+            } satisfies Omit<
+              TeamWorkspaceCommandReceipt,
+              'resultState' | 'resultVersion'
+            >;
+
+            await taskRepository.insert({
+              id: taskId,
+              title: normalizedInput.title,
+              bodyV2: {
+                blocknote: null,
+                markdown: `${receiptAuditComment(audit)}\n\n**Assignment:** ${normalizedInput.detail}`,
+              },
+              client: clientScope,
+              dueAt: new Date(normalizedInput.dueAt),
+              status: 'TODO',
+              workType,
+              assigneeId: normalizedInput.assigneeId,
+              createdBy: principal.actor,
+              updatedBy: principal.actor,
+            });
+
+            const createdTask = await taskRepository.findOne({
+              where: { id: taskId },
+            });
+
+            if (
+              createdTask === null ||
+              createdTask.status !== 'TODO' ||
+              createdTask.workType !== workType ||
+              createdTask.assigneeId !== normalizedInput.assigneeId ||
+              createdTask.client !== clientScope
+            ) {
+              return commandException(
+                `Assigned work ${taskId} did not read back after insert`,
+                TeamWorkspaceCommandExceptionCode.CONCURRENT_MODIFICATION,
+              );
+            }
+
+            const receipt: TeamWorkspaceCommandReceipt = {
+              ...audit,
+              resultState: 'TODO',
+              resultVersion: recordVersion(createdTask.updatedAt),
             };
 
             await this.insertReceipt(
@@ -1293,6 +1479,90 @@ export class TeamWorkspaceCommandService {
     );
   }
 
+  private async assertAssigneeHasExactLaneRole({
+    workspaceId,
+    assigneeId,
+    lane,
+  }: {
+    workspaceId: string;
+    assigneeId: string;
+    lane: TeamWorkspaceCommandLane;
+  }): Promise<string> {
+    const roles = await this.roleService.getWorkspaceRoles(workspaceId);
+    const rolesForAssignee = (
+      await Promise.all(
+        roles.map(async (role) => ({
+          role,
+          members: await this.userRoleService.getWorkspaceMembersAssignedToRole(
+            role.id,
+            workspaceId,
+          ),
+        })),
+      )
+    )
+      .filter(({ members }) =>
+        members.some((member) => member.id === assigneeId),
+      )
+      .map(({ role }) => role);
+    const expectedRoleLabel =
+      lane === TeamWorkspaceCommandLane.SALES
+        ? TEAM_WORKSPACE_ROLE_LABEL.sales
+        : TEAM_WORKSPACE_ROLE_LABEL.operations;
+    // Work in either lane may be assigned to someone on the Team role, who works both.
+    // Still exactly ONE role: Team INSTEAD of the lane role, never alongside it.
+    const acceptedRoleLabels = new Set<string>([
+      expectedRoleLabel,
+      TEAM_WORKSPACE_ROLE_LABEL.team,
+    ]);
+
+    if (
+      rolesForAssignee.length !== 1 ||
+      !acceptedRoleLabels.has(baseRoleLabel(rolesForAssignee[0].label)) ||
+      !rolesForAssignee[0].id
+    ) {
+      commandException(
+        `Workspace member ${assigneeId} must have exactly the ${expectedRoleLabel} or ${TEAM_WORKSPACE_ROLE_LABEL.team} role`,
+        TeamWorkspaceCommandExceptionCode.TARGET_CONTEXT_INVALID,
+      );
+    }
+
+    return rolesForAssignee[0].id;
+  }
+
+  private async resolveOptionalClientScope({
+    transactionScope,
+    submittedClient,
+  }: {
+    transactionScope: WorkspaceTransactionScope;
+    submittedClient: string | null;
+  }): Promise<string | null> {
+    if (submittedClient === null) {
+      return null;
+    }
+
+    const clientRepository =
+      transactionScope.getRepository<TeamWorkspaceClientEntity>('client', {
+        shouldBypassPermissionChecks: true,
+      });
+    const matchingClients = await clientRepository.find({
+      where: { client: submittedClient },
+      select: { id: true, client: true },
+      take: 2,
+    });
+    const exactMatches = matchingClients.filter(
+      (clientRecord) => clientRecord.client === submittedClient,
+    );
+
+    if (exactMatches.length !== 1) {
+      return commandException(
+        `Client scope ${submittedClient} resolved to ${exactMatches.length} Client records`,
+        TeamWorkspaceCommandExceptionCode.TARGET_CONTEXT_INVALID,
+      );
+    }
+
+    return submittedClient;
+  }
+
   private assertProtocolLaneAndOutcome(
     input: Omit<CreateTeamWorkspaceProtocolTaskInput, 'idempotencyKey'>,
     authorization: TeamWorkspaceCommandAuthorization,
@@ -1746,10 +2016,7 @@ export class TeamWorkspaceCommandService {
     ];
     const { principal, roleLabel } = authorization;
 
-    if (
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.sales ||
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.operations
-    ) {
+    if (isHumanLaneRole(roleLabel)) {
       const actorWorkspaceMemberId = principal.actor.workspaceMemberId;
 
       if (
@@ -1892,13 +2159,14 @@ export class TeamWorkspaceCommandService {
       const roleLabels = [
         ...new Set(
           (rolesByUserWorkspace.get(authContext.userWorkspaceId) ?? []).map(
-            (role) => role.label,
+            (role) => baseRoleLabel(role.label),
           ),
         ),
       ];
       const humanRoleLabels = new Set<string>([
         TEAM_WORKSPACE_ROLE_LABEL.sales,
         TEAM_WORKSPACE_ROLE_LABEL.operations,
+        TEAM_WORKSPACE_ROLE_LABEL.team,
         TEAM_WORKSPACE_ROLE_LABEL.admin,
       ]);
 
@@ -1933,19 +2201,26 @@ export class TeamWorkspaceCommandService {
     }
 
     const allowedRoleLabels =
-      command === 'winOpportunityWithHandoff' ||
-      command === 'updateOpportunityStage'
+      command === 'createAssignedWork'
         ? new Set<string>([
-            TEAM_WORKSPACE_ROLE_LABEL.sales,
             TEAM_WORKSPACE_ROLE_LABEL.admin,
             TEAM_AUTOMATION_ROLE_LABEL,
           ])
-        : new Set<string>([
-            TEAM_WORKSPACE_ROLE_LABEL.sales,
-            TEAM_WORKSPACE_ROLE_LABEL.operations,
-            TEAM_WORKSPACE_ROLE_LABEL.admin,
-            TEAM_AUTOMATION_ROLE_LABEL,
-          ]);
+        : command === 'winOpportunityWithHandoff' ||
+            command === 'updateOpportunityStage'
+          ? new Set<string>([
+              TEAM_WORKSPACE_ROLE_LABEL.sales,
+              TEAM_WORKSPACE_ROLE_LABEL.team,
+              TEAM_WORKSPACE_ROLE_LABEL.admin,
+              TEAM_AUTOMATION_ROLE_LABEL,
+            ])
+          : new Set<string>([
+              TEAM_WORKSPACE_ROLE_LABEL.sales,
+              TEAM_WORKSPACE_ROLE_LABEL.operations,
+              TEAM_WORKSPACE_ROLE_LABEL.team,
+              TEAM_WORKSPACE_ROLE_LABEL.admin,
+              TEAM_AUTOMATION_ROLE_LABEL,
+            ]);
 
     if (!allowedRoleLabels.has(roleLabel)) {
       commandException(
@@ -1963,10 +2238,7 @@ export class TeamWorkspaceCommandService {
   ): void {
     const { principal, roleLabel } = authorization;
 
-    if (
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.admin ||
-      roleLabel === TEAM_AUTOMATION_ROLE_LABEL
-    ) {
+    if (coversBothLanes(roleLabel)) {
       return;
     }
 
@@ -2005,10 +2277,7 @@ export class TeamWorkspaceCommandService {
   ): void {
     const { principal, roleLabel } = authorization;
 
-    if (
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.admin ||
-      roleLabel === TEAM_AUTOMATION_ROLE_LABEL
-    ) {
+    if (coversBothLanes(roleLabel)) {
       return;
     }
 
@@ -2112,8 +2381,7 @@ export class TeamWorkspaceCommandService {
     const { roleLabel } = authorization;
 
     if (
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.admin ||
-      roleLabel === TEAM_AUTOMATION_ROLE_LABEL ||
+      coversBothLanes(roleLabel) ||
       roleLabel === TEAM_WORKSPACE_ROLE_LABEL.sales
     ) {
       return;

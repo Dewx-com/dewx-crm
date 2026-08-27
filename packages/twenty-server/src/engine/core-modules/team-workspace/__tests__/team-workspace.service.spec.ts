@@ -97,7 +97,18 @@ const buildHarness = (roleLabel: string) => {
     getRolesByUserWorkspaces: jest
       .fn()
       .mockResolvedValue(new Map([[USER_WORKSPACE_ID, [role]]])),
-    getWorkspaceMembersAssignedToRole: jest.fn().mockResolvedValue([member()]),
+    getWorkspaceMembersAssignedToRole: jest
+      .fn()
+      .mockImplementation((roleId: string) =>
+        Promise.resolve([
+          roleId === 'role-operations'
+            ? {
+                id: '12121212-1212-4121-8121-121212121212',
+                name: { firstName: 'Operations', lastName: 'Member' },
+              }
+            : member(),
+        ]),
+      ),
   };
   const apiKeyRoleService = {
     getRoleDtoByApiKeyId: jest.fn().mockResolvedValue({
@@ -424,6 +435,70 @@ describe('TeamWorkspaceService', () => {
     );
   });
 
+  it('includes automation-authored completion evidence only when it targets visible Sales work', async () => {
+    const harness = buildHarness('Sales');
+    const visibleTask = task({
+      id: 'abababab-abab-4aba-8aba-abababababab',
+      title: 'Send proposal',
+    });
+    const evidenceTask = {
+      ...task({
+        id: 'cdcdcdcd-cdcd-4cdc-8cdc-cdcdcdcdcdcd',
+        title: `Completion evidence · ${visibleTask.id}`,
+      }),
+      status: 'DONE',
+      assigneeId: null,
+      assignee: null,
+      createdBy: { workspaceMemberId: null, name: 'Team Automation' },
+    };
+    const unrelatedEvidenceTask = {
+      ...evidenceTask,
+      id: 'efefefef-efef-4efe-8efe-efefefefefef',
+      title: 'Completion evidence · 01010101-0101-4101-8101-010101010101',
+    };
+
+    harness.repositories.task.find.mockImplementation(
+      (options: { select?: { bodyV2Markdown?: unknown } }) =>
+        options.select?.bodyV2Markdown
+          ? Promise.resolve([
+              {
+                id: evidenceTask.id,
+                bodyV2: {
+                  markdown:
+                    '**Completion evidence:** Proposal delivered.\n\nSource: CRM activity 42',
+                },
+                createdBy: {
+                  workspaceMemberId: null,
+                  name: 'Team Automation',
+                },
+              },
+            ])
+          : Promise.resolve([visibleTask, evidenceTask, unrelatedEvidenceTask]),
+    );
+    harness.repositories.calendarEvent.find.mockResolvedValue([]);
+    harness.repositories.opportunity.find.mockResolvedValue([]);
+    harness.repositories.client.find.mockResolvedValue([]);
+
+    const snapshot = await harness.service.getSnapshot({
+      lane: TeamWorkspaceLane.SALES,
+      workspace,
+      userWorkspaceId: USER_WORKSPACE_ID,
+      workspaceMemberId: WORKSPACE_MEMBER_ID,
+    });
+
+    expect(snapshot.tasks.map(({ id }) => id)).toEqual([
+      visibleTask.id,
+      evidenceTask.id,
+    ]);
+    expect(snapshot.tasks[1].bodyMarkdown).toContain('Proposal delivered.');
+    const taskIndexFind = harness.repositories.task.find.mock.calls[0][0];
+
+    expect(taskIndexFind.where).toHaveLength(3);
+    expect(JSON.stringify(taskIndexFind.where)).toContain(
+      'Completion evidence ·%',
+    );
+  });
+
   it('allows only Team Automation API keys to request a lane-wide safe snapshot', async () => {
     const harness = buildHarness('Sales');
     const ownTask = task({
@@ -541,5 +616,107 @@ describe('TeamWorkspaceService', () => {
     expect(
       harness.userRoleService.getRolesByUserWorkspaces,
     ).not.toHaveBeenCalled();
+  });
+
+  it('returns both lane-wide projections and the role-derived directory only to exact Admin', async () => {
+    const harness = buildHarness('Admin');
+
+    harness.repositories.task.find.mockResolvedValue([]);
+    harness.repositories.calendarEvent.find.mockResolvedValue([]);
+    harness.repositories.opportunity.find.mockResolvedValue([]);
+    harness.repositories.callRecording.find.mockResolvedValue([]);
+    harness.repositories.client.find.mockResolvedValue([]);
+
+    const snapshot = await harness.service.getManagementSnapshot({
+      workspace,
+      userWorkspaceId: USER_WORKSPACE_ID,
+      workspaceMemberId: WORKSPACE_MEMBER_ID,
+    });
+
+    expect(snapshot.members).toEqual([
+      {
+        id: WORKSPACE_MEMBER_ID,
+        name: 'Abrar Hossain',
+        lane: TeamWorkspaceLane.SALES,
+      },
+      {
+        id: '12121212-1212-4121-8121-121212121212',
+        name: 'Operations Member',
+        lane: TeamWorkspaceLane.OPERATIONS,
+      },
+    ]);
+    expect(snapshot.sales.lane).toBe(TeamWorkspaceLane.SALES);
+    expect(snapshot.operations.lane).toBe(TeamWorkspaceLane.OPERATIONS);
+  });
+
+  it('fails closed when the Admin principal has any additional role', async () => {
+    const harness = buildHarness('Admin');
+
+    harness.userRoleService.getRolesByUserWorkspaces.mockResolvedValue(
+      new Map([
+        [
+          USER_WORKSPACE_ID,
+          [harness.role, { id: 'role-sales', label: 'Sales' }],
+        ],
+      ]),
+    );
+
+    await expect(
+      harness.service.getManagementSnapshot({
+        workspace,
+        userWorkspaceId: USER_WORKSPACE_ID,
+        workspaceMemberId: WORKSPACE_MEMBER_ID,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(harness.roleService.getWorkspaceRoles).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when one member is assigned to both employee lanes', async () => {
+    const harness = buildHarness('Admin');
+
+    harness.userRoleService.getWorkspaceMembersAssignedToRole.mockResolvedValue(
+      [member()],
+    );
+
+    await expect(
+      harness.service.getManagementSnapshot({
+        workspace,
+        userWorkspaceId: USER_WORKSPACE_ID,
+        workspaceMemberId: WORKSPACE_MEMBER_ID,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(
+      harness.globalWorkspaceOrmManager.executeInWorkspaceContext,
+    ).not.toHaveBeenCalled();
+  });
+
+  it.each(['Sales', 'Operations', 'Unknown'])(
+    'denies the management projection to the %s role',
+    async (role) => {
+      const harness = buildHarness(role);
+
+      await expect(
+        harness.service.getManagementSnapshot({
+          workspace,
+          userWorkspaceId: USER_WORKSPACE_ID,
+          workspaceMemberId: WORKSPACE_MEMBER_ID,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(
+        harness.globalWorkspaceOrmManager.executeInWorkspaceContext,
+      ).not.toHaveBeenCalled();
+    },
+  );
+
+  it('denies the human-only management projection to API keys', async () => {
+    const harness = buildHarness('Admin');
+
+    await expect(
+      harness.service.getManagementSnapshotForAuthContext({
+        type: 'apiKey',
+        workspace,
+        apiKey: { id: 'automation-api-key-id' },
+      } as unknown as WorkspaceAuthContext),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

@@ -26,12 +26,14 @@ import {
   listSkillsInputSchema,
 } from 'src/engine/api/mcp/tools/list-skills.tool';
 import {
+  createTeamWorkspaceAssignedWorkTool,
   createTeamWorkspaceCompleteTaskTool,
   createTeamWorkspaceProtocolTaskTool,
   createTeamWorkspaceSnapshotTool,
   createTeamWorkspaceTransitionTaskStatusTool,
   createTeamWorkspaceUpdateOpportunityStageTool,
   createTeamWorkspaceWinOpportunityTool,
+  TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME,
   TEAM_WORKSPACE_COMPLETE_TASK_TOOL_NAME,
   TEAM_WORKSPACE_CREATE_PROTOCOL_TASK_TOOL_NAME,
   TEAM_WORKSPACE_SNAPSHOT_TOOL_NAME,
@@ -89,6 +91,7 @@ type McpAnnotatedTool = ToolSet[string] & {
 type TeamWorkspaceMcpAccess = {
   allowedLanes: readonly TeamWorkspaceLane[];
   canCompleteTask: boolean;
+  canCreateAssignedWork: boolean;
   canCreateProtocolTask: boolean;
   canTransitionTaskStatus: boolean;
   canUpdateOpportunityStage: boolean;
@@ -418,6 +421,16 @@ export class McpProtocolService {
       } as McpAnnotatedTool,
     };
 
+    if (access.canCreateAssignedWork) {
+      tools[TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME] = {
+        ...createTeamWorkspaceAssignedWorkTool({
+          authContext,
+          teamWorkspaceCommandService: this.teamWorkspaceCommandService,
+        }),
+        annotations: MCP_CLOSED_WORLD_WRITE_TOOL_ANNOTATIONS,
+      } as McpAnnotatedTool;
+    }
+
     if (access.canCompleteTask) {
       tools[TEAM_WORKSPACE_COMPLETE_TASK_TOOL_NAME] = {
         ...createTeamWorkspaceCompleteTaskTool({
@@ -496,6 +509,7 @@ export class McpProtocolService {
                 TeamWorkspaceLane.OPERATIONS,
               ],
               canCompleteTask: true,
+              canCreateAssignedWork: true,
               canCreateProtocolTask: true,
               canTransitionTaskStatus: true,
               canUpdateOpportunityStage: true,
@@ -536,6 +550,7 @@ export class McpProtocolService {
             access: {
               allowedLanes: [TeamWorkspaceLane.SALES],
               canCompleteTask: true,
+              canCreateAssignedWork: false,
               canCreateProtocolTask: true,
               canTransitionTaskStatus: true,
               canUpdateOpportunityStage: true,
@@ -548,6 +563,7 @@ export class McpProtocolService {
             access: {
               allowedLanes: [TeamWorkspaceLane.OPERATIONS],
               canCompleteTask: true,
+              canCreateAssignedWork: false,
               canCreateProtocolTask: true,
               canTransitionTaskStatus: true,
               canUpdateOpportunityStage: false,
@@ -563,6 +579,7 @@ export class McpProtocolService {
                 TeamWorkspaceLane.OPERATIONS,
               ],
               canCompleteTask: true,
+              canCreateAssignedWork: true,
               canCreateProtocolTask: true,
               canTransitionTaskStatus: true,
               canUpdateOpportunityStage: true,

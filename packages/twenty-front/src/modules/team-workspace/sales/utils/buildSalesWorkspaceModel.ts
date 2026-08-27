@@ -176,9 +176,14 @@ export const buildSalesWorkspaceModel = (
       const dueAt = timestampOrNull(followUp.dueAt);
 
       return (
-        followUp.status === 'open' && dueAt !== null && dueAt < nowTimestamp
+        followUp.status !== 'done' && dueAt !== null && dueAt < nowTimestamp
       );
     }),
+    (followUp) => followUp.dueAt,
+    'ascending',
+  );
+  const assignedWork = sortByTimestamp(
+    data.followUps.filter((followUp) => followUp.status !== 'done'),
     (followUp) => followUp.dueAt,
     'ascending',
   );
@@ -209,6 +214,7 @@ export const buildSalesWorkspaceModel = (
   return {
     nextMeeting: upcomingMeetings[0],
     upcomingMeetings,
+    assignedWork,
     overdueFollowUps,
     coachingReviews,
     latestCoachingReview: coachingReviews[0],

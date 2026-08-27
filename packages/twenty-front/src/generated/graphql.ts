@@ -416,6 +416,7 @@ export type Query = {
   getTimelineThreadsFromPersonId: TimelineThreadsWithTotal;
   isMaintenanceModeBannerDismissed: Scalars['Boolean']['output'];
   search: SearchResultConnection;
+  teamManagementSnapshot: TeamManagementSnapshot;
   teamWorkspaceSnapshot: TeamWorkspaceSnapshot;
   workflowStepConnectedAccountHandle?: Maybe<ConnectedAccountHandleDto>;
   workflowVersionContent: WorkflowVersionContent;
@@ -554,6 +555,21 @@ export type SubmitFormStepInput = {
   stepId: Scalars['UUID']['input'];
   /** Workflow run ID */
   workflowRunId: Scalars['UUID']['input'];
+};
+
+export type TeamManagementMember = {
+  __typename?: 'TeamManagementMember';
+  id: Scalars['UUID']['output'];
+  lane: TeamWorkspaceLane;
+  name?: Maybe<Scalars['String']['output']>;
+};
+
+export type TeamManagementSnapshot = {
+  __typename?: 'TeamManagementSnapshot';
+  generatedAt: Scalars['String']['output'];
+  members: Array<TeamManagementMember>;
+  operations: TeamWorkspaceSnapshot;
+  sales: TeamWorkspaceSnapshot;
 };
 
 export type TeamWorkspaceCallRecording = {

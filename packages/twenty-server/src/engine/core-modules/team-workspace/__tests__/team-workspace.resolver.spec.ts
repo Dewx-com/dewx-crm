@@ -4,6 +4,7 @@ import { TeamWorkspaceLane } from 'src/engine/core-modules/team-workspace/enums/
 import { TeamWorkspaceResolver } from 'src/engine/core-modules/team-workspace/team-workspace.resolver';
 import { type TeamWorkspaceService } from 'src/engine/core-modules/team-workspace/team-workspace.service';
 import { type CompleteTaskWithEvidenceInput } from 'src/modules/team-workspace/commands/dtos/complete-task-with-evidence.input';
+import { type CreateTeamWorkspaceAssignedWorkInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-assigned-work.input';
 import {
   type CreateTeamWorkspaceProtocolTaskInput,
   TeamWorkspaceCommandLane,
@@ -56,9 +57,16 @@ const createHarness = () => {
   const teamWorkspaceService = {
     getSnapshot: jest.fn().mockResolvedValue(snapshot),
     getSnapshotForAuthContext: jest.fn().mockResolvedValue(snapshot),
+    getManagementSnapshotForAuthContext: jest.fn().mockResolvedValue({
+      generatedAt: snapshot.generatedAt,
+      members: [],
+      sales: snapshot,
+      operations: { ...snapshot, lane: TeamWorkspaceLane.OPERATIONS },
+    }),
   };
   const teamWorkspaceCommandService = {
     completeTaskWithEvidence: jest.fn().mockResolvedValue(commandReceipt),
+    createAssignedWork: jest.fn().mockResolvedValue(commandReceipt),
     createProtocolTask: jest.fn().mockResolvedValue(commandReceipt),
     transitionTaskStatus: jest.fn().mockResolvedValue(commandReceipt),
     updateOpportunityStage: jest.fn().mockResolvedValue(commandReceipt),
@@ -105,6 +113,18 @@ describe('TeamWorkspaceResolver', () => {
     );
   });
 
+  it('passes the authenticated user context to the owner management boundary', async () => {
+    const { resolver, teamWorkspaceService } = createHarness();
+
+    await withWorkspaceAuthContext(userAuthContext, () =>
+      resolver.teamManagementSnapshot(),
+    );
+
+    expect(
+      teamWorkspaceService.getManagementSnapshotForAuthContext,
+    ).toHaveBeenCalledWith(userAuthContext);
+  });
+
   it('passes the authenticated actor and typed inputs to every atomic command', async () => {
     const { resolver, teamWorkspaceCommandService } = createHarness();
     const completeInput = {
@@ -130,6 +150,15 @@ describe('TeamWorkspaceResolver', () => {
       source: 'Sales call outcome',
       idempotencyKey: 'win-opportunity-001',
     } satisfies WinOpportunityWithHandoffInput;
+    const assignedWorkInput = {
+      lane: TeamWorkspaceCommandLane.SALES,
+      assigneeId: '4cdf83c1-5987-4cb0-97a7-8f991855af91',
+      title: 'Prepare the Acme proposal follow-up',
+      detail: 'Review the call outcome and send the agreed proposal.',
+      dueAt: '2026-08-28T09:00:00.000Z',
+      client: 'acme',
+      idempotencyKey: 'assigned-work-001',
+    } satisfies CreateTeamWorkspaceAssignedWorkInput;
     const protocolInput = {
       kind: TeamWorkspaceProtocolTaskKind.MEETING_PREP,
       lane: TeamWorkspaceCommandLane.SALES,
@@ -156,6 +185,7 @@ describe('TeamWorkspaceResolver', () => {
 
     await withWorkspaceAuthContext(userAuthContext, async () => {
       await resolver.completeTaskWithEvidence(completeInput);
+      await resolver.createAssignedWork(assignedWorkInput);
       await resolver.winOpportunityWithHandoff(winInput);
       await resolver.createProtocolTask(protocolInput);
       await resolver.transitionTaskStatus(transitionInput);
@@ -165,6 +195,10 @@ describe('TeamWorkspaceResolver', () => {
     expect(
       teamWorkspaceCommandService.completeTaskWithEvidence,
     ).toHaveBeenCalledWith(userAuthContext, completeInput);
+    expect(teamWorkspaceCommandService.createAssignedWork).toHaveBeenCalledWith(
+      userAuthContext,
+      assignedWorkInput,
+    );
     expect(
       teamWorkspaceCommandService.winOpportunityWithHandoff,
     ).toHaveBeenCalledWith(userAuthContext, winInput);

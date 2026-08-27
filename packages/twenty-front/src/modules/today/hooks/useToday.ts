@@ -163,12 +163,13 @@ export const useToday = () => {
     limit: PAGE,
   });
 
-  const { records: clientRecords, loading: clientsLoading } = useFindManyRecords<TodayClientRow>({
-    objectNameSingular: CLIENT,
-    orderBy: [{ name: 'AscNullsLast' }],
-    recordGqlFields: CLIENT_FIELDS,
-    limit: 200,
-  });
+  const { records: clientRecords, loading: clientsLoading } =
+    useFindManyRecords<TodayClientRow>({
+      objectNameSingular: CLIENT,
+      orderBy: [{ name: 'AscNullsLast' }],
+      recordGqlFields: CLIENT_FIELDS,
+      limit: 200,
+    });
 
   /**
    * What each client is called, and whether their engagement is live. Only four of the fourteen
@@ -186,7 +187,11 @@ export const useToday = () => {
       names.set(scope, (row.name ?? '').trim() || nameOfScope(scope));
       statuses.set(scope, row.status ?? null);
     }
-    for (const row of [...(tasks ?? []), ...(opportunities ?? []), ...(people ?? [])]) {
+    for (const row of [
+      ...(tasks ?? []),
+      ...(opportunities ?? []),
+      ...(people ?? []),
+    ]) {
       const scope = row.client ?? '';
       if (scope && !names.has(scope)) names.set(scope, nameOfScope(scope));
     }
@@ -204,6 +209,7 @@ export const useToday = () => {
       opportunities: coverageOf((opportunities ?? []).length, opportunityCount),
       people: coverageOf((people ?? []).length, personCount),
     },
-    loading: tasksLoading || opportunitiesLoading || peopleLoading || clientsLoading,
+    loading:
+      tasksLoading || opportunitiesLoading || peopleLoading || clientsLoading,
   };
 };

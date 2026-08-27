@@ -2,10 +2,12 @@ import { FindOperator } from 'typeorm';
 
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { type WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspace-domains/services/workspace-domains.service';
+import { type RoleService } from 'src/engine/metadata-modules/role/role.service';
 import { type UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
 import { type GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/global-workspace-datasource/types/workspace-transaction-scope.type';
 import { type ApiKeyRoleService } from 'src/engine/core-modules/api-key/services/api-key-role.service';
+import { type CreateTeamWorkspaceAssignedWorkInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-assigned-work.input';
 import {
   type CreateTeamWorkspaceProtocolTaskInput,
   TeamWorkspaceCommandLane,
@@ -27,6 +29,7 @@ const OPPORTUNITY_ID = '55555555-5555-4555-8555-555555555555';
 const MEETING_ID = '66666666-6666-4666-8666-666666666666';
 const RECORDING_ID = '77777777-7777-4777-8777-777777777777';
 const CLIENT_ID = '88888888-8888-4888-8888-888888888888';
+const ASSIGNEE_ID = '99999999-9999-4999-8999-999999999999';
 const VERSION = '2026-08-26T09:00:00.000Z';
 const SUB_MILLISECOND_VERSION = '2026-08-26T09:00:00.000789Z';
 const NEXT_MILLISECOND_VERSION = '2026-08-26T09:00:00.001000Z';
@@ -417,12 +420,27 @@ const stageInput = (
   ...overrides,
 });
 
+const assignedWorkInput = (
+  overrides: Partial<CreateTeamWorkspaceAssignedWorkInput> = {},
+): CreateTeamWorkspaceAssignedWorkInput => ({
+  lane: TeamWorkspaceCommandLane.SALES,
+  assigneeId: ASSIGNEE_ID,
+  title: 'Prepare the Acme proposal follow-up',
+  detail: 'Review the call outcome and send the agreed proposal.',
+  dueAt: '2026-08-28T09:00:00.000Z',
+  client: 'acme',
+  idempotencyKey: 'assigned-work-0001',
+  ...overrides,
+});
+
 const buildHarness = ({
   roleLabel = 'Sales',
   apiKeyRoleLabel = 'Team Automation',
   workspaceEnabled = true,
   forceUpdateConflict = false,
   updatedAtBeforeUpdate,
+  assigneeRoleLabels = ['Sales'],
+  forceReceiptFailure = false,
   initialTasks = [task()],
   initialOpportunities = [opportunity()],
   initialMeetings = [meeting()],
@@ -434,6 +452,8 @@ const buildHarness = ({
   workspaceEnabled?: boolean;
   forceUpdateConflict?: boolean;
   updatedAtBeforeUpdate?: string;
+  assigneeRoleLabels?: string[];
+  forceReceiptFailure?: boolean;
   initialTasks?: FakeTask[];
   initialOpportunities?: FakeOpportunity[];
   initialMeetings?: FakeMeeting[];
@@ -510,6 +530,10 @@ const buildHarness = ({
               }
 
               if (sql.includes('INSERT INTO "core"."keyValuePair"')) {
+                if (forceReceiptFailure) {
+                  throw new Error('forced receipt failure');
+                }
+
                 const receiptKey = String(parameters[2]);
 
                 if (transactionState.receipts.has(receiptKey)) {
@@ -548,6 +572,29 @@ const buildHarness = ({
       .mockResolvedValue(
         new Map([[USER_WORKSPACE_ID, [{ id: 'role-id', label: roleLabel }]]]),
       ),
+    getWorkspaceMembersAssignedToRole: jest
+      .fn()
+      .mockImplementation((roleId: string) =>
+        Promise.resolve(
+          assigneeRoleLabels.some(
+            (label) =>
+              roleId === `role-${label.toLowerCase().replace(/ /g, '-')}`,
+          )
+            ? [{ id: ASSIGNEE_ID }]
+            : [],
+        ),
+      ),
+  };
+  const roleLabels = [
+    ...new Set(['Sales', 'Operations', 'Admin', ...assigneeRoleLabels]),
+  ];
+  const roleService = {
+    getWorkspaceRoles: jest.fn().mockResolvedValue(
+      roleLabels.map((label) => ({
+        id: `role-${label.toLowerCase().replace(/ /g, '-')}`,
+        label,
+      })),
+    ),
   };
   const apiKeyRoleService = {
     getRoleDtoByApiKeyId: jest.fn().mockResolvedValue({
@@ -560,12 +607,14 @@ const buildHarness = ({
     workspaceDomainsService as unknown as WorkspaceDomainsService,
     userRoleService as unknown as UserRoleService,
     apiKeyRoleService as unknown as ApiKeyRoleService,
+    roleService as unknown as RoleService,
   );
 
   return {
     apiKeyRoleService,
     globalWorkspaceOrmManager,
     repositoryCalls,
+    roleService,
     service,
     state,
     userRoleService,
@@ -670,6 +719,171 @@ describe('TeamWorkspaceCommandService', () => {
 
     expect(harness.state.tasks.size).toBe(1);
     expect(harness.state.tasks.get(TASK_ID)?.status).toBe('IN_PROGRESS');
+    expect(harness.state.receipts.size).toBe(0);
+  });
+
+  it('atomically creates Admin-assigned Sales work with server-derived fields', async () => {
+    const harness = buildHarness({ roleLabel: 'Admin', initialTasks: [] });
+
+    const receipt = await harness.service.createAssignedWork(
+      userAuthContext(),
+      assignedWorkInput(),
+    );
+    const created = harness.state.tasks.get(receipt.sideEffectRecordId);
+
+    expect(receipt).toMatchObject({
+      command: 'createAssignedWork',
+      targetId: ASSIGNEE_ID,
+      resultState: 'TODO',
+      replayed: false,
+    });
+    expect(receipt.payloadHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(created).toMatchObject({
+      title: 'Prepare the Acme proposal follow-up',
+      status: 'TODO',
+      workType: 'OUTREACH',
+      client: 'acme',
+      assigneeId: ASSIGNEE_ID,
+      dueAt: new Date('2026-08-28T09:00:00.000Z'),
+      createdBy: expect.objectContaining({
+        workspaceMemberId: WORKSPACE_MEMBER_ID,
+      }),
+    });
+    expect(created?.bodyV2?.markdown).toContain(
+      '**Assignment:** Review the call outcome and send the agreed proposal.',
+    );
+    expect(harness.state.receipts.size).toBe(1);
+  });
+
+  it('exactly replays assigned work and rejects altered data under the same key', async () => {
+    const harness = buildHarness({ roleLabel: 'Admin', initialTasks: [] });
+    const first = await harness.service.createAssignedWork(
+      userAuthContext(),
+      assignedWorkInput(),
+    );
+    const taskCount = harness.state.tasks.size;
+    const replay = await harness.service.createAssignedWork(
+      userAuthContext(),
+      assignedWorkInput(),
+    );
+
+    expect(replay).toEqual({ ...first, replayed: true });
+    expect(harness.state.tasks.size).toBe(taskCount);
+
+    await expectCommandError(
+      harness.service.createAssignedWork(
+        userAuthContext(),
+        assignedWorkInput({ title: 'A different assignment' }),
+      ),
+      TeamWorkspaceCommandExceptionCode.IDEMPOTENCY_CONFLICT,
+    );
+    expect(harness.state.tasks.size).toBe(taskCount);
+    expect(harness.state.receipts.size).toBe(1);
+  });
+
+  it('allows Team Automation to assign Operations work without impersonating a human', async () => {
+    const harness = buildHarness({
+      assigneeRoleLabels: ['Operations'],
+      initialTasks: [],
+    });
+
+    const receipt = await harness.service.createAssignedWork(
+      apiKeyAuthContext(),
+      assignedWorkInput({
+        lane: TeamWorkspaceCommandLane.OPERATIONS,
+        client: null,
+      }),
+    );
+    const created = harness.state.tasks.get(receipt.sideEffectRecordId);
+
+    expect(created).toMatchObject({
+      status: 'TODO',
+      workType: 'SOFTWARE',
+      client: null,
+      assigneeId: ASSIGNEE_ID,
+      createdBy: expect.objectContaining({
+        source: 'API',
+        workspaceMemberId: null,
+        name: 'PE Team MCP',
+      }),
+    });
+  });
+
+  it.each(['Sales', 'Operations'])(
+    'denies assigned-work creation to a %s employee before opening a transaction',
+    async (roleLabel) => {
+      const harness = buildHarness({ roleLabel, initialTasks: [] });
+
+      await expectCommandError(
+        harness.service.createAssignedWork(
+          userAuthContext(),
+          assignedWorkInput(),
+        ),
+        TeamWorkspaceCommandExceptionCode.ROLE_NOT_ALLOWED,
+      );
+      expect(
+        harness.globalWorkspaceOrmManager.runInWorkspaceTransaction,
+      ).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    {
+      name: 'the other lane',
+      assigneeRoleLabels: ['Sales'],
+      lane: TeamWorkspaceCommandLane.OPERATIONS,
+    },
+    {
+      name: 'multiple roles',
+      assigneeRoleLabels: ['Sales', 'Operations'],
+      lane: TeamWorkspaceCommandLane.SALES,
+    },
+  ])('rejects an assignee with $name', async ({ assigneeRoleLabels, lane }) => {
+    const harness = buildHarness({
+      roleLabel: 'Admin',
+      assigneeRoleLabels,
+      initialTasks: [],
+    });
+
+    await expectCommandError(
+      harness.service.createAssignedWork(
+        userAuthContext(),
+        assignedWorkInput({ lane }),
+      ),
+      TeamWorkspaceCommandExceptionCode.TARGET_CONTEXT_INVALID,
+    );
+    expect(harness.state.tasks.size).toBe(0);
+    expect(harness.state.receipts.size).toBe(0);
+  });
+
+  it('rejects a non-existent client scope without creating work', async () => {
+    const harness = buildHarness({ roleLabel: 'Admin', initialTasks: [] });
+
+    await expectCommandError(
+      harness.service.createAssignedWork(
+        userAuthContext(),
+        assignedWorkInput({ client: 'missing-client' }),
+      ),
+      TeamWorkspaceCommandExceptionCode.TARGET_CONTEXT_INVALID,
+    );
+    expect(harness.state.tasks.size).toBe(0);
+    expect(harness.state.receipts.size).toBe(0);
+  });
+
+  it('rolls assigned work back when the durable receipt insert fails', async () => {
+    const harness = buildHarness({
+      roleLabel: 'Admin',
+      forceReceiptFailure: true,
+      initialTasks: [],
+    });
+
+    await expect(
+      harness.service.createAssignedWork(
+        userAuthContext(),
+        assignedWorkInput(),
+      ),
+    ).rejects.toThrow('forced receipt failure');
+    expect(harness.state.tasks.size).toBe(0);
     expect(harness.state.receipts.size).toBe(0);
   });
 

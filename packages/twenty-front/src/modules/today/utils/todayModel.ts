@@ -111,7 +111,10 @@ export const contactNameOf = (title: string | null | undefined): string =>
   collapseSpaces(collapseSpaces(title).slice(REPLY_TITLE_PREFIX.length));
 
 export const fullNameOf = (
-  name: { firstName?: string | null; lastName?: string | null } | null | undefined,
+  name:
+    | { firstName?: string | null; lastName?: string | null }
+    | null
+    | undefined,
 ): string => collapseSpaces(`${name?.firstName ?? ''} ${name?.lastName ?? ''}`);
 
 export type WaitLevel = 'BREACHED' | 'DUE' | 'FRESH';
@@ -255,7 +258,9 @@ export const stalledOpportunitiesOf = ({
           name: collapseSpaces(opportunity.name) || 'Unnamed opportunity',
           stage,
           client: opportunity.client ?? null,
-          owner: opportunity.owner ? fullNameOf(opportunity.owner.name) || null : null,
+          owner: opportunity.owner
+            ? fullNameOf(opportunity.owner.name) || null
+            : null,
           company: opportunity.company?.name ?? null,
           daysInStage,
           limitDays,
@@ -317,7 +322,10 @@ export type ClientDay = {
   quiet: boolean;
 };
 
-const laterOf = (a: string | null, b: string | null | undefined): string | null => {
+const laterOf = (
+  a: string | null,
+  b: string | null | undefined,
+): string | null => {
   if (!b) return a;
   if (!a) return b;
   return a > b ? a : b;
@@ -357,7 +365,9 @@ export const clientDaysOf = ({
   statuses: Map<string, string | null>;
   now?: Date;
 }): ClientDay[] => {
-  const weekAgo = new Date(now.getTime() - WEEK_DAYS * 86_400_000).toISOString();
+  const weekAgo = new Date(
+    now.getTime() - WEEK_DAYS * 86_400_000,
+  ).toISOString();
   const rows = new Map<string, ClientDay>();
 
   const rowFor = (scope: string | null | undefined): ClientDay | null => {
@@ -407,7 +417,8 @@ export const clientDaysOf = ({
     const row = rowFor(opportunity.client);
     if (!row) continue;
     row.lastActivityAt = laterOf(row.lastActivityAt, opportunity.createdAt);
-    if ((opportunity.stage ?? '').toUpperCase() !== 'CUSTOMER') row.openOpportunities += 1;
+    if ((opportunity.stage ?? '').toUpperCase() !== 'CUSTOMER')
+      row.openOpportunities += 1;
   }
 
   for (const row of stalled) {

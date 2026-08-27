@@ -22,6 +22,7 @@ const snapshot: TeamWorkspaceSnapshot = {
       assigneeId: 'member-1',
       assigneeName: 'Abrar',
       bodyMarkdown: '**Preparation:** Confirm the decision process.',
+      assignmentDetail: null,
       createdByName: 'Abrar',
     },
   ],

@@ -17,10 +17,12 @@ import {
   IconUsers,
 } from 'twenty-ui/icon';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
-import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
 import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { type TeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
-import { teamWorkspaceLanesFromRoles } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
+import {
+  canRolesEnterTeamManagement,
+  teamWorkspaceLanesFromRoles,
+} from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { teamWorkspacePath } from '@/team-workspace/shared/utils/teamWorkspaceRoutes';
 import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
@@ -134,11 +136,14 @@ export const MainNavigationDrawerScrollableItems = () => {
   // full drawer below, unchanged.
   const { isClientSeat } = useClientSeat();
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
-  const workspacePublicData = useAtomStateValue(workspacePublicDataState);
-  const teamLanes =
-    workspacePublicData?.isTeamWorkspaceDomainAlias === true
-      ? teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles)
-      : [];
+  // One door: app.prospectengine.com. The lanes a person sees come from their ROLE, never from
+  // which hostname they typed — the server authorizes on role too (isTeamWorkspaceId matches the
+  // workspace id, not the request host), so gating the drawer on a domain only ever hid the nav
+  // while leaving the API reachable. A client seat has no team role and so renders none of this.
+  const teamLanes = teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles);
+  const canManageTeam = canRolesEnterTeamManagement(
+    currentWorkspaceMember?.roles,
+  );
   if (isClientSeat) {
     return (
       <StyledScrollableItemsContainer>
@@ -182,6 +187,15 @@ export const MainNavigationDrawerScrollableItems = () => {
     return (
       <StyledScrollableItemsContainer>
         <NavigationDrawerOpenedSection />
+        {canManageTeam && (
+          <NavigationDrawerSection>
+            <NavigationDrawerItem
+              label="Team management"
+              to="/team/management/overview"
+              Icon={IconUsers}
+            />
+          </NavigationDrawerSection>
+        )}
         {teamLanes.map((lane) => (
           <TeamLaneNavigationSection
             key={lane}

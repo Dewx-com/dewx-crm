@@ -102,7 +102,9 @@ export const ClientWorkspaceFunnel = ({ steps, sourceLabel }: Props) => {
             <StyledBarTrack>
               <StyledBarFill
                 data-tone={step.value === null ? 'muted' : TONE[step.band]}
-                style={{ width: `${Math.round(((step.value ?? 0) / widest) * 100)}%` }}
+                style={{
+                  width: `${Math.round(((step.value ?? 0) / widest) * 100)}%`,
+                }}
               />
             </StyledBarTrack>
             <StyledStepValue>
@@ -124,10 +126,11 @@ export const ClientWorkspaceFunnel = ({ steps, sourceLabel }: Props) => {
       </StyledSources>
 
       <StyledNote>
-        Invitations, sequences and messages are work we did. Accepted connections and replies are
-        interest from the other side. Only qualified leads and meetings are results, and they are the
-        two numbers worth judging a month by — a large number at the top of this list with nothing at
-        the bottom means the outreach is running, not that it is working.
+        Invitations, sequences and messages are work we did. Accepted
+        connections and replies are interest from the other side. Only qualified
+        leads and meetings are results, and they are the two numbers worth
+        judging a month by — a large number at the top of this list with nothing
+        at the bottom means the outreach is running, not that it is working.
       </StyledNote>
     </StyledSection>
   );

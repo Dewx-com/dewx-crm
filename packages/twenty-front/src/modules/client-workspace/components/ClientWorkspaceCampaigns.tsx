@@ -57,9 +57,17 @@ const STATUS_TONE: Record<string, string> = {
   FINISHED: 'info',
 };
 
-type Props = { snapshots: SnapshotRow[]; markets: MarketRow[]; measuredAt: string | null };
+type Props = {
+  snapshots: SnapshotRow[];
+  markets: MarketRow[];
+  measuredAt: string | null;
+};
 
-export const ClientWorkspaceCampaigns = ({ snapshots, markets, measuredAt }: Props) => {
+export const ClientWorkspaceCampaigns = ({
+  snapshots,
+  markets,
+  measuredAt,
+}: Props) => {
   const bestRate = Math.max(
     1,
     ...markets.map((market) => ratio(market.accepts, market.invitations) ?? 0),
@@ -78,7 +86,8 @@ export const ClientWorkspaceCampaigns = ({ snapshots, markets, measuredAt }: Pro
 
         {markets.length === 0 ? (
           <StyledEmpty>
-            No published campaign measurement yet, so there is nothing to compare.
+            No published campaign measurement yet, so there is nothing to
+            compare.
           </StyledEmpty>
         ) : (
           <StyledScroller>
@@ -101,21 +110,31 @@ export const ClientWorkspaceCampaigns = ({ snapshots, markets, measuredAt }: Pro
                   return (
                     <tr key={market.market}>
                       <td data-strong="true">{market.market}</td>
-                      <td data-numeric="true">{formatCount(market.campaigns)}</td>
-                      <td data-numeric="true">{formatCount(market.invitations)}</td>
+                      <td data-numeric="true">
+                        {formatCount(market.campaigns)}
+                      </td>
+                      <td data-numeric="true">
+                        {formatCount(market.invitations)}
+                      </td>
                       <td data-numeric="true">{formatCount(market.accepts)}</td>
                       <td>
                         <StyledRateCell>
                           <StyledBarTrack>
                             <StyledBarFill
                               data-tone="engagement"
-                              style={{ width: `${Math.round(((rate ?? 0) / bestRate) * 100)}%` }}
+                              style={{
+                                width: `${Math.round(((rate ?? 0) / bestRate) * 100)}%`,
+                              }}
                             />
                           </StyledBarTrack>
-                          <StyledRateValue>{formatPercent(rate)}</StyledRateValue>
+                          <StyledRateValue>
+                            {formatPercent(rate)}
+                          </StyledRateValue>
                         </StyledRateCell>
                       </td>
-                      <td data-numeric="true">{formatCount(market.messages)}</td>
+                      <td data-numeric="true">
+                        {formatCount(market.messages)}
+                      </td>
                       <td data-numeric="true">{formatCount(market.flows)}</td>
                       <td data-numeric="true">{formatCount(market.replies)}</td>
                     </tr>
@@ -127,9 +146,10 @@ export const ClientWorkspaceCampaigns = ({ snapshots, markets, measuredAt }: Pro
         )}
 
         <StyledNote>
-          Acceptance says how many people were willing to connect. It is the earliest honest signal
-          that the audience and the message match, and it is not a result on its own — a market can
-          accept well and reply to nothing.
+          Acceptance says how many people were willing to connect. It is the
+          earliest honest signal that the audience and the message match, and it
+          is not a result on its own — a market can accept well and reply to
+          nothing.
         </StyledNote>
       </StyledSection>
 
@@ -137,14 +157,16 @@ export const ClientWorkspaceCampaigns = ({ snapshots, markets, measuredAt }: Pro
         <StyledSectionHead>
           <StyledSectionTitle>Campaigns</StyledSectionTitle>
           <StyledSectionMeta>
-            {snapshots.length > 0 ? `${snapshots.length} campaigns · ${measured}` : measured}
+            {snapshots.length > 0
+              ? `${snapshots.length} campaigns · ${measured}`
+              : measured}
           </StyledSectionMeta>
         </StyledSectionHead>
 
         {snapshots.length === 0 ? (
           <StyledEmpty>
-            No campaign measurement has been published yet. Campaign figures appear here once a
-            measurement is published.
+            No campaign measurement has been published yet. Campaign figures
+            appear here once a measurement is published.
           </StyledEmpty>
         ) : (
           <StyledScroller>
@@ -180,22 +202,42 @@ export const ClientWorkspaceCampaigns = ({ snapshots, markets, measuredAt }: Pro
                       </td>
                       <td>{row.senderName ?? '—'}</td>
                       <td>
-                        <StyledChip data-tone={STATUS_TONE[status]}>{status}</StyledChip>
+                        <StyledChip data-tone={STATUS_TONE[status]}>
+                          {status}
+                        </StyledChip>
                       </td>
-                      <td data-numeric="true">{formatCount(num(row.invitations))}</td>
-                      <td data-numeric="true">{formatCount(num(row.accepts))}</td>
+                      <td data-numeric="true">
+                        {formatCount(num(row.invitations))}
+                      </td>
+                      <td data-numeric="true">
+                        {formatCount(num(row.accepts))}
+                      </td>
                       <td data-numeric="true">{formatPercent(rate)}</td>
-                      <td data-numeric="true">{formatCount(num(row.messages))}</td>
-                      <td data-numeric="true">{formatCount(num(row.replies))}</td>
+                      <td data-numeric="true">
+                        {formatCount(num(row.messages))}
+                      </td>
+                      <td data-numeric="true">
+                        {formatCount(num(row.replies))}
+                      </td>
                       <td data-numeric="true">
                         {formatCount(num(row.pending) + num(row.inProgress))}
                       </td>
                       <td>
-                        <StyledChip data-tone={row.dncProtected === true ? 'calm' : 'risk'}>
-                          {row.dncProtected === true ? 'exclusions on' : 'no exclusions'}
+                        <StyledChip
+                          data-tone={
+                            row.dncProtected === true ? 'calm' : 'risk'
+                          }
+                        >
+                          {row.dncProtected === true
+                            ? 'exclusions on'
+                            : 'no exclusions'}
                         </StyledChip>{' '}
                         <StyledChip
-                          data-tone={row.crossCampaignProtected === true ? 'calm' : 'risk'}
+                          data-tone={
+                            row.crossCampaignProtected === true
+                              ? 'calm'
+                              : 'risk'
+                          }
                         >
                           {row.crossCampaignProtected === true
                             ? 'cross-campaign on'
@@ -216,8 +258,9 @@ export const ClientWorkspaceCampaigns = ({ snapshots, markets, measuredAt }: Pro
         )}
 
         <StyledNote>
-          Queued counts people a campaign still has in hand — invitations waiting to go out and
-          sequences part-way through. A paused campaign keeps its queue; it does not lose it.
+          Queued counts people a campaign still has in hand — invitations
+          waiting to go out and sequences part-way through. A paused campaign
+          keeps its queue; it does not lose it.
         </StyledNote>
       </StyledSection>
     </>

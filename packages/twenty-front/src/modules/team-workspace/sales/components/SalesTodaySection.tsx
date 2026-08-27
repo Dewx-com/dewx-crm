@@ -6,7 +6,7 @@ import { type SalesWorkspaceModel } from '@/team-workspace/sales/utils/buildSale
 import { SalesLatestCallCard } from '@/team-workspace/sales/components/SalesLatestCallCard';
 import { SalesNextMeetingCard } from '@/team-workspace/sales/components/SalesNextMeetingCard';
 import {
-  SalesOverdueFollowUpsCard,
+  SalesAssignedWorkCard,
   SalesUpcomingMeetingsCard,
 } from '@/team-workspace/sales/components/SalesTodayListCards';
 import {
@@ -17,7 +17,7 @@ import {
 
 type SalesTodaySectionProps = Pick<
   SalesWorkspaceCallbacks,
-  'onPrepareMeeting' | 'onOpenRecord'
+  'onPrepareMeeting' | 'onOpenRecord' | 'onTaskStatusChange'
 > & {
   data: SalesWorkspaceData;
   model: SalesWorkspaceModel;
@@ -30,6 +30,7 @@ export const SalesTodaySection = ({
   now,
   onPrepareMeeting,
   onOpenRecord,
+  onTaskStatusChange,
 }: SalesTodaySectionProps) => {
   return (
     <StyledSalesSection aria-labelledby="sales-today-heading">
@@ -51,9 +52,10 @@ export const SalesTodaySection = ({
           review={model.latestCoachingReview}
           onOpenRecord={onOpenRecord}
         />
-        <SalesOverdueFollowUpsCard
-          followUps={model.overdueFollowUps}
-          onOpenRecord={onOpenRecord}
+        <SalesAssignedWorkCard
+          followUps={model.assignedWork}
+          now={now}
+          onTaskStatusChange={onTaskStatusChange}
         />
         <SalesUpcomingMeetingsCard meetings={model.upcomingMeetings} />
       </StyledSectionGrid>

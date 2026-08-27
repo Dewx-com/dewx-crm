@@ -256,7 +256,8 @@ export const TeamInboxConversation = ({
     );
   }
 
-  const willBeRefused = LOOKS_LIKE_IDENTIFIER.test(draft) || OFF_CHANNEL.test(draft);
+  const willBeRefused =
+    LOOKS_LIKE_IDENTIFIER.test(draft) || OFF_CHANNEL.test(draft);
   const canSend = draft.trim() !== '' && !sending;
   const archived = (thread.threadStatus ?? '').toUpperCase() === 'CLOSED';
 
@@ -301,14 +302,18 @@ export const TeamInboxConversation = ({
           if (isAttachmentPlaceholder(message.body)) {
             return (
               <div key={message.id}>
-                {separator !== '' && <StyledDaySeparator>{separator}</StyledDaySeparator>}
+                {separator !== '' && (
+                  <StyledDaySeparator>{separator}</StyledDaySeparator>
+                )}
                 <StyledSystemLine>
                   <IconPaperclip size={12} />
                   {outgoing
                     ? 'An attachment went out on this account'
                     : 'They sent an attachment'}
                   {' — the file is not shared with this inbox'}
-                  {timeOfDay(message.sentAt) ? ` · ${timeOfDay(message.sentAt)}` : ''}
+                  {timeOfDay(message.sentAt)
+                    ? ` · ${timeOfDay(message.sentAt)}`
+                    : ''}
                 </StyledSystemLine>
               </div>
             );
@@ -324,14 +329,18 @@ export const TeamInboxConversation = ({
 
           return (
             <div key={message.id}>
-              {separator !== '' && <StyledDaySeparator>{separator}</StyledDaySeparator>}
+              {separator !== '' && (
+                <StyledDaySeparator>{separator}</StyledDaySeparator>
+              )}
               <Row>
                 <StyledBubbleColumn>
                   <Bubble>{message.body}</Bubble>
                   <Stamp>
                     {timeOfDay(message.sentAt)}
                     {message.state === 'QUEUED' ? ' · queued' : ''}
-                    {blocked ? ` · not sent: ${message.blockReason ?? 'refused'}` : ''}
+                    {blocked
+                      ? ` · not sent: ${message.blockReason ?? 'refused'}`
+                      : ''}
                   </Stamp>
                 </StyledBubbleColumn>
               </Row>
@@ -346,7 +355,9 @@ export const TeamInboxConversation = ({
           value={draft}
           placeholder="Message"
           disabled={sending}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setDraft(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+            setDraft(event.target.value)
+          }
           onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
               event.preventDefault();
@@ -358,7 +369,8 @@ export const TeamInboxConversation = ({
           <span>
             {willBeRefused ? (
               <StyledWarning>
-                This carries a number, a link or an off-channel phrase — it will be refused, not sent.
+                This carries a number, a link or an off-channel phrase — it will
+                be refused, not sent.
               </StyledWarning>
             ) : (
               'Sent from the account that owns this conversation.'

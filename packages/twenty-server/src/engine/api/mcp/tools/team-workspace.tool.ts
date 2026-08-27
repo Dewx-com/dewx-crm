@@ -9,6 +9,7 @@ import {
   type CompleteTaskWithEvidenceInput,
   TEAM_WORKSPACE_COMPLETABLE_TASK_STATUSES,
 } from 'src/modules/team-workspace/commands/dtos/complete-task-with-evidence.input';
+import { type CreateTeamWorkspaceAssignedWorkInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-assigned-work.input';
 import {
   type CreateTeamWorkspaceProtocolTaskInput,
   TeamWorkspaceCommandLane,
@@ -29,6 +30,8 @@ import { type TeamWorkspaceCommandService } from 'src/modules/team-workspace/com
 export const TEAM_WORKSPACE_SNAPSHOT_TOOL_NAME = 'team_workspace_snapshot';
 export const TEAM_WORKSPACE_COMPLETE_TASK_TOOL_NAME =
   'team_workspace_complete_task';
+export const TEAM_WORKSPACE_CREATE_ASSIGNED_WORK_TOOL_NAME =
+  'team_workspace_create_assigned_work';
 export const TEAM_WORKSPACE_WIN_OPPORTUNITY_TOOL_NAME =
   'team_workspace_win_opportunity';
 export const TEAM_WORKSPACE_CREATE_PROTOCOL_TASK_TOOL_NAME =
@@ -60,6 +63,21 @@ export const teamWorkspaceCompleteTaskInputSchema = z
     expectedVersion: recordVersionSchema,
     evidence: nonEmptyTextSchema(12_000),
     source: singleLineTextSchema(2_000),
+    idempotencyKey: idempotencyKeySchema,
+  })
+  .strict();
+
+export const teamWorkspaceCreateAssignedWorkInputSchema = z
+  .object({
+    lane: z.enum([
+      TeamWorkspaceCommandLane.SALES,
+      TeamWorkspaceCommandLane.OPERATIONS,
+    ]),
+    assigneeId: z.string().uuid(),
+    title: singleLineTextSchema(180),
+    detail: nonEmptyTextSchema(12_000),
+    dueAt: recordVersionSchema,
+    client: singleLineTextSchema(160).nullable().optional(),
     idempotencyKey: idempotencyKeySchema,
   })
   .strict();
@@ -187,6 +205,26 @@ export const createTeamWorkspaceCompleteTaskTool = ({
     return teamWorkspaceCommandService.completeTaskWithEvidence(
       authContext,
       input as CompleteTaskWithEvidenceInput,
+    );
+  },
+});
+
+export const createTeamWorkspaceAssignedWorkTool = ({
+  authContext,
+  teamWorkspaceCommandService,
+}: {
+  authContext: WorkspaceAuthContext;
+  teamWorkspaceCommandService: TeamWorkspaceCommandService;
+}) => ({
+  description:
+    'Atomically assign new work to an exact Sales or Operations member. The server validates the member role and derives the lane-safe task state and work type.',
+  inputSchema: teamWorkspaceCreateAssignedWorkInputSchema,
+  execute: async (rawInput: unknown) => {
+    const input = teamWorkspaceCreateAssignedWorkInputSchema.parse(rawInput);
+
+    return teamWorkspaceCommandService.createAssignedWork(
+      authContext,
+      input as CreateTeamWorkspaceAssignedWorkInput,
     );
   },
 });

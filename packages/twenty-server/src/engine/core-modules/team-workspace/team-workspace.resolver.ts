@@ -4,12 +4,14 @@ import { Args, Mutation, Query } from '@nestjs/graphql';
 import { CoreResolver } from 'src/engine/api/graphql/graphql-config/decorators/core-resolver.decorator';
 import { getWorkspaceAuthContext } from 'src/engine/core-modules/auth/storage/workspace-auth-context.storage';
 import { TeamWorkspaceSnapshotDTO } from 'src/engine/core-modules/team-workspace/dtos/team-workspace-snapshot.dto';
+import { TeamManagementSnapshotDTO } from 'src/engine/core-modules/team-workspace/dtos/team-management-snapshot.dto';
 import { TeamWorkspaceLane } from 'src/engine/core-modules/team-workspace/enums/team-workspace-lane.enum';
 import { TeamWorkspaceService } from 'src/engine/core-modules/team-workspace/team-workspace.service';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { CustomPermissionGuard } from 'src/engine/guards/custom-permission.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { CompleteTaskWithEvidenceInput } from 'src/modules/team-workspace/commands/dtos/complete-task-with-evidence.input';
+import { CreateTeamWorkspaceAssignedWorkInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-assigned-work.input';
 import { CreateTeamWorkspaceProtocolTaskInput } from 'src/modules/team-workspace/commands/dtos/create-team-workspace-protocol-task.input';
 import { TeamWorkspaceCommandReceiptDto } from 'src/modules/team-workspace/commands/dtos/team-workspace-command-receipt.dto';
 import { TransitionTeamWorkspaceTaskInput } from 'src/modules/team-workspace/commands/dtos/transition-team-workspace-task.input';
@@ -46,11 +48,28 @@ export class TeamWorkspaceResolver {
     });
   }
 
+  @Query(() => TeamManagementSnapshotDTO)
+  async teamManagementSnapshot(): Promise<TeamManagementSnapshotDTO> {
+    return this.teamWorkspaceService.getManagementSnapshotForAuthContext(
+      getWorkspaceAuthContext(),
+    );
+  }
+
   @Mutation(() => TeamWorkspaceCommandReceiptDto)
   async completeTaskWithEvidence(
     @Args('input') input: CompleteTaskWithEvidenceInput,
   ): Promise<TeamWorkspaceCommandReceiptDto> {
     return this.teamWorkspaceCommandService.completeTaskWithEvidence(
+      getWorkspaceAuthContext(),
+      input,
+    );
+  }
+
+  @Mutation(() => TeamWorkspaceCommandReceiptDto)
+  async createAssignedWork(
+    @Args('input') input: CreateTeamWorkspaceAssignedWorkInput,
+  ): Promise<TeamWorkspaceCommandReceiptDto> {
+    return this.teamWorkspaceCommandService.createAssignedWork(
       getWorkspaceAuthContext(),
       input,
     );

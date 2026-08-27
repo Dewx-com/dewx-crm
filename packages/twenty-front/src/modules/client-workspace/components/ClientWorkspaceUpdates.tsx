@@ -14,7 +14,10 @@ import {
   StyledSectionTitle,
 } from '@/client-workspace/components/ClientWorkspaceStyles';
 import { type DeliverableRow } from '@/client-workspace/hooks/useClientWorkspace';
-import { dayStamp, type Update } from '@/client-workspace/utils/clientWorkspaceModel';
+import {
+  dayStamp,
+  type Update,
+} from '@/client-workspace/utils/clientWorkspaceModel';
 
 // ── Deliverables and updates ────────────────────────────────────────────────────────────────────
 //
@@ -54,9 +57,7 @@ export const ClientWorkspaceUpdates = ({ deliverables, updates }: Props) => (
     <StyledSection id="deliverables">
       <StyledSectionHead>
         <StyledSectionTitle>Deliverables</StyledSectionTitle>
-        <StyledSectionMeta>
-          {deliverables.length} handed over
-        </StyledSectionMeta>
+        <StyledSectionMeta>{deliverables.length} handed over</StyledSectionMeta>
       </StyledSectionHead>
 
       {deliverables.length === 0 ? (
@@ -71,12 +72,16 @@ export const ClientWorkspaceUpdates = ({ deliverables, updates }: Props) => (
                 {row.deliverableType && (
                   <>
                     {' '}
-                    <StyledChip>{TYPE_WORDS[row.deliverableType] ?? row.deliverableType}</StyledChip>
+                    <StyledChip>
+                      {TYPE_WORDS[row.deliverableType] ?? row.deliverableType}
+                    </StyledChip>
                   </>
                 )}
               </StyledListName>
               <StyledListMeta>
-                {row.deliveredAt ? dayStamp(row.deliveredAt) : 'date not recorded'}
+                {row.deliveredAt
+                  ? dayStamp(row.deliveredAt)
+                  : 'date not recorded'}
                 {url && (
                   <>
                     <br />
@@ -112,9 +117,9 @@ export const ClientWorkspaceUpdates = ({ deliverables, updates }: Props) => (
       )}
 
       <StyledNote>
-        This log is generated from published plans and reports, delivered files and completed
-        actions. Work that is still in draft does not appear, which is why the list is shorter than
-        the week usually is.
+        This log is generated from published plans and reports, delivered files
+        and completed actions. Work that is still in draft does not appear,
+        which is why the list is shorter than the week usually is.
       </StyledNote>
     </StyledSection>
   </>

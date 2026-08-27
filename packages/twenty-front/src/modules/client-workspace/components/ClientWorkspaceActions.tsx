@@ -46,12 +46,19 @@ const STATUS_WORDS: Record<string, string> = {
   DONE: 'done',
 };
 
-const TONE: Record<SignalLevel, string> = { RISK: 'risk', WATCH: 'watch', CALM: 'calm' };
+const TONE: Record<SignalLevel, string> = {
+  RISK: 'risk',
+  WATCH: 'watch',
+  CALM: 'calm',
+};
 
 type Props = { tasks: TaskRow[]; signals: Signal[] };
 
 export const ClientWorkspaceActions = ({ tasks, signals }: Props) => {
-  const byOwner = new Map<ActionOwner, Array<{ task: TaskRow; text: string }>>();
+  const byOwner = new Map<
+    ActionOwner,
+    Array<{ task: TaskRow; text: string }>
+  >();
   for (const owner of ORDER) byOwner.set(owner, []);
   for (const task of tasks) {
     const { owner, text } = ownerOf(task.title);
@@ -72,7 +79,9 @@ export const ClientWorkspaceActions = ({ tasks, signals }: Props) => {
         </StyledSectionHead>
 
         {tasks.length === 0 ? (
-          <StyledEmpty>No actions are recorded for this workspace yet.</StyledEmpty>
+          <StyledEmpty>
+            No actions are recorded for this workspace yet.
+          </StyledEmpty>
         ) : (
           <StyledColumns>
             {ORDER.map((owner) => {
@@ -80,7 +89,9 @@ export const ClientWorkspaceActions = ({ tasks, signals }: Props) => {
               return (
                 <StyledColumn key={owner}>
                   <StyledSubTitle>{OWNER_WORDS[owner]}</StyledSubTitle>
-                  {rows.length === 0 && <StyledListMeta>Nothing outstanding.</StyledListMeta>}
+                  {rows.length === 0 && (
+                    <StyledListMeta>Nothing outstanding.</StyledListMeta>
+                  )}
                   {rows.map(({ task, text }) => (
                     <StyledListRow key={task.id}>
                       <StyledListName>{text}</StyledListName>
@@ -94,7 +105,9 @@ export const ClientWorkspaceActions = ({ tasks, signals }: Props) => {
                                 : undefined
                           }
                         >
-                          {STATUS_WORDS[(task.status ?? '').toUpperCase()] ?? task.status ?? '—'}
+                          {STATUS_WORDS[(task.status ?? '').toUpperCase()] ??
+                            task.status ??
+                            '—'}
                         </StyledChip>
                         <br />
                         {task.dueAt ? dayStamp(task.dueAt) : 'no date'}
@@ -108,8 +121,9 @@ export const ClientWorkspaceActions = ({ tasks, signals }: Props) => {
         )}
 
         <StyledNote>
-          Actions are grouped by who has to move next. Anything in your column is what we are waiting
-          on; anything in ours is what you are waiting on.
+          Actions are grouped by who has to move next. Anything in your column
+          is what we are waiting on; anything in ours is what you are waiting
+          on.
         </StyledNote>
       </StyledSection>
 
@@ -117,14 +131,16 @@ export const ClientWorkspaceActions = ({ tasks, signals }: Props) => {
         <StyledSectionHead>
           <StyledSectionTitle>Risks</StyledSectionTitle>
           <StyledSectionMeta>
-            {signals.length === 0 ? 'nothing flagged' : `${signals.length} flagged`}
+            {signals.length === 0
+              ? 'nothing flagged'
+              : `${signals.length} flagged`}
           </StyledSectionMeta>
         </StyledSectionHead>
 
         {signals.length === 0 ? (
           <StyledEmpty>
-            Nothing measured here is off track: campaigns are running, the figures are fresh and the
-            reporting is up to date.
+            Nothing measured here is off track: campaigns are running, the
+            figures are fresh and the reporting is up to date.
           </StyledEmpty>
         ) : (
           signals.map((signal) => (
