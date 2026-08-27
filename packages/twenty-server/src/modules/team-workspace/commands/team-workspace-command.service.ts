@@ -56,6 +56,19 @@ const SALES_WORK_TYPE = 'OUTREACH';
 const OPERATIONS_WORK_TYPE = 'SOFTWARE';
 const TEAM_AUTOMATION_ROLE_LABEL = TEAM_WORKSPACE_ROLE_LABEL.automation;
 
+// A role that works BOTH lanes. Admin and the automation principal already did; Team is the
+// human version of that (Roki, 2026-08-27) and, unlike Admin, never reaches Team Management.
+// Widening a lane is not widening ownership: isTaskOwnedByPrincipal still gates every write.
+const coversBothLanes = (roleLabel: string): boolean =>
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.admin ||
+  roleLabel === TEAM_AUTOMATION_ROLE_LABEL ||
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.team;
+
+const isHumanLaneRole = (roleLabel: string): boolean =>
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.sales ||
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.operations ||
+  roleLabel === TEAM_WORKSPACE_ROLE_LABEL.team;
+
 type TeamWorkspaceCommandName =
   | 'completeTaskWithEvidence'
   | 'createAssignedWork'
@@ -1494,14 +1507,20 @@ export class TeamWorkspaceCommandService {
       lane === TeamWorkspaceCommandLane.SALES
         ? TEAM_WORKSPACE_ROLE_LABEL.sales
         : TEAM_WORKSPACE_ROLE_LABEL.operations;
+    // Work in either lane may be assigned to someone on the Team role, who works both.
+    // Still exactly ONE role: Team INSTEAD of the lane role, never alongside it.
+    const acceptedRoleLabels = new Set<string>([
+      expectedRoleLabel,
+      TEAM_WORKSPACE_ROLE_LABEL.team,
+    ]);
 
     if (
       rolesForAssignee.length !== 1 ||
-      rolesForAssignee[0].label !== expectedRoleLabel ||
+      !acceptedRoleLabels.has(rolesForAssignee[0].label) ||
       !rolesForAssignee[0].id
     ) {
       commandException(
-        `Workspace member ${assigneeId} must have exactly the ${expectedRoleLabel} role`,
+        `Workspace member ${assigneeId} must have exactly the ${expectedRoleLabel} or ${TEAM_WORKSPACE_ROLE_LABEL.team} role`,
         TeamWorkspaceCommandExceptionCode.TARGET_CONTEXT_INVALID,
       );
     }
@@ -1996,10 +2015,7 @@ export class TeamWorkspaceCommandService {
     ];
     const { principal, roleLabel } = authorization;
 
-    if (
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.sales ||
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.operations
-    ) {
+    if (isHumanLaneRole(roleLabel)) {
       const actorWorkspaceMemberId = principal.actor.workspaceMemberId;
 
       if (
@@ -2149,6 +2165,7 @@ export class TeamWorkspaceCommandService {
       const humanRoleLabels = new Set<string>([
         TEAM_WORKSPACE_ROLE_LABEL.sales,
         TEAM_WORKSPACE_ROLE_LABEL.operations,
+        TEAM_WORKSPACE_ROLE_LABEL.team,
         TEAM_WORKSPACE_ROLE_LABEL.admin,
       ]);
 
@@ -2192,12 +2209,14 @@ export class TeamWorkspaceCommandService {
             command === 'updateOpportunityStage'
           ? new Set<string>([
               TEAM_WORKSPACE_ROLE_LABEL.sales,
+              TEAM_WORKSPACE_ROLE_LABEL.team,
               TEAM_WORKSPACE_ROLE_LABEL.admin,
               TEAM_AUTOMATION_ROLE_LABEL,
             ])
           : new Set<string>([
               TEAM_WORKSPACE_ROLE_LABEL.sales,
               TEAM_WORKSPACE_ROLE_LABEL.operations,
+              TEAM_WORKSPACE_ROLE_LABEL.team,
               TEAM_WORKSPACE_ROLE_LABEL.admin,
               TEAM_AUTOMATION_ROLE_LABEL,
             ]);
@@ -2218,10 +2237,7 @@ export class TeamWorkspaceCommandService {
   ): void {
     const { principal, roleLabel } = authorization;
 
-    if (
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.admin ||
-      roleLabel === TEAM_AUTOMATION_ROLE_LABEL
-    ) {
+    if (coversBothLanes(roleLabel)) {
       return;
     }
 
@@ -2260,10 +2276,7 @@ export class TeamWorkspaceCommandService {
   ): void {
     const { principal, roleLabel } = authorization;
 
-    if (
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.admin ||
-      roleLabel === TEAM_AUTOMATION_ROLE_LABEL
-    ) {
+    if (coversBothLanes(roleLabel)) {
       return;
     }
 
@@ -2367,8 +2380,7 @@ export class TeamWorkspaceCommandService {
     const { roleLabel } = authorization;
 
     if (
-      roleLabel === TEAM_WORKSPACE_ROLE_LABEL.admin ||
-      roleLabel === TEAM_AUTOMATION_ROLE_LABEL ||
+      coversBothLanes(roleLabel) ||
       roleLabel === TEAM_WORKSPACE_ROLE_LABEL.sales
     ) {
       return;

@@ -116,7 +116,10 @@ export type DeliverableRow = ObjectRecord & {
   deliverableType: string | null;
   status: string | null;
   deliveredAt: string | null;
-  safeLink: { primaryLinkLabel?: string | null; primaryLinkUrl?: string | null } | null;
+  safeLink: {
+    primaryLinkLabel?: string | null;
+    primaryLinkUrl?: string | null;
+  } | null;
   clientVisible: boolean | null;
   createdAt: string | null;
 };
@@ -257,7 +260,10 @@ const TASK_FIELDS = {
  * is being set up and its rows arrive before its row does.
  */
 export const slugOfScope = (scope: string): string =>
-  scope.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  scope
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 
 /** `MCS_MICROMINDER` → `Mcs Microminder`, the last-resort display name for the same case. */
 export const nameOfScope = (scope: string): string =>
@@ -269,33 +275,38 @@ export const nameOfScope = (scope: string): string =>
     .join(' ');
 
 export const useClientWorkspace = () => {
-  const { records: clientRecords, loading: clientsLoading } = useFindManyRecords<ClientRow>({
-    objectNameSingular: CLIENT,
-    orderBy: [{ name: 'AscNullsLast' }],
-    recordGqlFields: CLIENT_FIELDS,
-    limit: 200,
-  });
+  const { records: clientRecords, loading: clientsLoading } =
+    useFindManyRecords<ClientRow>({
+      objectNameSingular: CLIENT,
+      orderBy: [{ name: 'AscNullsLast' }],
+      recordGqlFields: CLIENT_FIELDS,
+      limit: 200,
+    });
 
-  const { records: plans, loading: plansLoading } = useFindManyRecords<PlanRow>({
-    objectNameSingular: CLIENT_PLAN,
-    orderBy: [{ effectiveFrom: 'DescNullsLast' }],
-    recordGqlFields: PLAN_FIELDS,
-    limit: 200,
-  });
+  const { records: plans, loading: plansLoading } = useFindManyRecords<PlanRow>(
+    {
+      objectNameSingular: CLIENT_PLAN,
+      orderBy: [{ effectiveFrom: 'DescNullsLast' }],
+      recordGqlFields: PLAN_FIELDS,
+      limit: 200,
+    },
+  );
 
-  const { records: reports, loading: reportsLoading } = useFindManyRecords<ReportRow>({
-    objectNameSingular: CLIENT_REPORT,
-    orderBy: [{ periodEnd: 'DescNullsLast' }],
-    recordGqlFields: REPORT_FIELDS,
-    limit: 200,
-  });
+  const { records: reports, loading: reportsLoading } =
+    useFindManyRecords<ReportRow>({
+      objectNameSingular: CLIENT_REPORT,
+      orderBy: [{ periodEnd: 'DescNullsLast' }],
+      recordGqlFields: REPORT_FIELDS,
+      limit: 200,
+    });
 
-  const { records: snapshots, loading: snapshotsLoading } = useFindManyRecords<SnapshotRow>({
-    objectNameSingular: CAMPAIGN_SNAPSHOT,
-    orderBy: [{ measuredAt: 'DescNullsLast' }],
-    recordGqlFields: SNAPSHOT_FIELDS,
-    limit: 500,
-  });
+  const { records: snapshots, loading: snapshotsLoading } =
+    useFindManyRecords<SnapshotRow>({
+      objectNameSingular: CAMPAIGN_SNAPSHOT,
+      orderBy: [{ measuredAt: 'DescNullsLast' }],
+      recordGqlFields: SNAPSHOT_FIELDS,
+      limit: 500,
+    });
 
   const { records: deliverables, loading: deliverablesLoading } =
     useFindManyRecords<DeliverableRow>({
@@ -305,12 +316,14 @@ export const useClientWorkspace = () => {
       limit: 200,
     });
 
-  const { records: tasks, loading: tasksLoading } = useFindManyRecords<TaskRow>({
-    objectNameSingular: TASK,
-    orderBy: [{ dueAt: 'AscNullsLast' }],
-    recordGqlFields: TASK_FIELDS,
-    limit: 300,
-  });
+  const { records: tasks, loading: tasksLoading } = useFindManyRecords<TaskRow>(
+    {
+      objectNameSingular: TASK,
+      orderBy: [{ dueAt: 'AscNullsLast' }],
+      recordGqlFields: TASK_FIELDS,
+      limit: 300,
+    },
+  );
 
   /**
    * Who the reader may look at. The `client` records are the good source because they carry the

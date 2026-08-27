@@ -91,8 +91,6 @@ export const TeamWorkspacePage = () => {
   }>();
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const workspacePublicData = useAtomStateValue(workspacePublicDataState);
-  const isTeamWorkspaceDomain =
-    workspacePublicData?.isTeamWorkspaceDomainAlias === true;
   const roles = currentWorkspaceMember?.roles;
   const allowedLanes = teamWorkspaceLanesFromRoles(roles);
   const requestedLane = isTeamWorkspaceLane(laneParam) ? laneParam : null;
@@ -100,7 +98,7 @@ export const TeamWorkspacePage = () => {
   const isAuthorized = canRolesEnterTeamWorkspaceLane({ roles, lane });
   const recordsQuery = useTeamWorkspaceRecords(
     lane,
-    !isAuthorized || !isTeamWorkspaceDomain,
+    !isAuthorized || allowedLanes.length === 0,
     currentWorkspaceMember?.id,
   );
   const mutations = useTeamWorkspaceActions(lane);
@@ -270,10 +268,6 @@ export const TeamWorkspacePage = () => {
         <StyledState>Loading your workspace role…</StyledState>
       </StyledPage>
     );
-  }
-
-  if (!isTeamWorkspaceDomain) {
-    return <Navigate replace to="/" />;
   }
 
   if (allowedLanes.length === 0) {

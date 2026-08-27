@@ -41,7 +41,11 @@ export const dayStamp = (iso: string | null | undefined): string => {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
     ? '—'
-    : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    : date.toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
 };
 
 export const shortDay = (iso: string | null | undefined): string => {
@@ -52,7 +56,10 @@ export const shortDay = (iso: string | null | undefined): string => {
     : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 };
 
-export const daysSince = (iso: string | null | undefined, now = Date.now()): number | null => {
+export const daysSince = (
+  iso: string | null | undefined,
+  now = Date.now(),
+): number | null => {
   if (!iso) return null;
   const then = new Date(iso).getTime();
   if (!Number.isFinite(then)) return null;
@@ -63,7 +70,10 @@ export const daysSince = (iso: string | null | undefined, now = Date.now()): num
   return Math.round((startOf(now) - startOf(then)) / 86_400_000);
 };
 
-export const agoWords = (iso: string | null | undefined, now = Date.now()): string => {
+export const agoWords = (
+  iso: string | null | undefined,
+  now = Date.now(),
+): string => {
   const days = daysSince(iso, now);
   if (days === null) return '';
   if (days <= 0) return 'today';
@@ -72,7 +82,10 @@ export const agoWords = (iso: string | null | undefined, now = Date.now()): stri
 };
 
 /** The later of two ISO stamps, either of which may be missing. */
-const later = (a: string | null | undefined, b: string | null | undefined): string | null => {
+const later = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): string | null => {
   if (!a) return b ?? null;
   if (!b) return a;
   return a > b ? a : b;
@@ -101,7 +114,8 @@ export const periodLabel = (report: ReportRow): string => {
 
 // ── Campaigns ───────────────────────────────────────────────────────────────────────────────────
 
-const measuredKey = (row: SnapshotRow): string => row.measuredAt ?? row.createdAt ?? '';
+const measuredKey = (row: SnapshotRow): string =>
+  row.measuredAt ?? row.createdAt ?? '';
 
 /**
  * A campaign is measured again and again, so the table wants the newest row per campaign, not every
@@ -167,7 +181,8 @@ export const totalsOf = (rows: SnapshotRow[]): CampaignTotals => {
     totals.replies += num(row.replies);
     totals.pending += num(row.pending);
     totals.inProgress += num(row.inProgress);
-    if (row.dncProtected !== true && row.crossCampaignProtected !== true) totals.unprotected += 1;
+    if (row.dncProtected !== true && row.crossCampaignProtected !== true)
+      totals.unprotected += 1;
     if (row.senderName) senders.add(row.senderName);
     totals.measuredAt = later(totals.measuredAt, row.measuredAt);
     totals.lastActivityAt = later(totals.lastActivityAt, row.lastActivityAt);
@@ -191,9 +206,15 @@ export const marketsOf = (rows: SnapshotRow[]): MarketRow[] => {
   const byMarket = new Map<string, MarketRow>();
   for (const row of rows) {
     const market = (row.market ?? '').trim() || 'Unspecified';
-    const held =
-      byMarket.get(market) ??
-      { market, campaigns: 0, invitations: 0, accepts: 0, messages: 0, flows: 0, replies: 0 };
+    const held = byMarket.get(market) ?? {
+      market,
+      campaigns: 0,
+      invitations: 0,
+      accepts: 0,
+      messages: 0,
+      flows: 0,
+      replies: 0,
+    };
     held.campaigns += 1;
     held.invitations += num(row.invitations);
     held.accepts += num(row.accepts);
@@ -234,16 +255,48 @@ export const liveFunnel = (
   totals: CampaignTotals,
   report: ReportRow | undefined,
 ): FunnelStep[] => {
-  const measured = totals.measuredAt ? `measured ${dayStamp(totals.measuredAt)}` : 'not yet measured';
+  const measured = totals.measuredAt
+    ? `measured ${dayStamp(totals.measuredAt)}`
+    : 'not yet measured';
   const fromReport = report
     ? `report ${periodLabel(report)}`
     : 'no published report yet';
   return [
-    { key: 'invitations', label: 'Invitations sent', value: totals.invitations, band: 'activity', source: measured },
-    { key: 'accepts', label: 'Invitations accepted', value: totals.accepts, band: 'engagement', source: measured },
-    { key: 'flows', label: 'Sequences started', value: totals.flows, band: 'activity', source: measured },
-    { key: 'messages', label: 'Messages sent', value: totals.messages, band: 'activity', source: measured },
-    { key: 'replies', label: 'Replies received', value: totals.replies, band: 'engagement', source: measured },
+    {
+      key: 'invitations',
+      label: 'Invitations sent',
+      value: totals.invitations,
+      band: 'activity',
+      source: measured,
+    },
+    {
+      key: 'accepts',
+      label: 'Invitations accepted',
+      value: totals.accepts,
+      band: 'engagement',
+      source: measured,
+    },
+    {
+      key: 'flows',
+      label: 'Sequences started',
+      value: totals.flows,
+      band: 'activity',
+      source: measured,
+    },
+    {
+      key: 'messages',
+      label: 'Messages sent',
+      value: totals.messages,
+      band: 'activity',
+      source: measured,
+    },
+    {
+      key: 'replies',
+      label: 'Replies received',
+      value: totals.replies,
+      band: 'engagement',
+      source: measured,
+    },
     {
       key: 'qualified',
       label: 'Qualified leads',
@@ -265,13 +318,55 @@ export const liveFunnel = (
 export const reportFunnel = (report: ReportRow): FunnelStep[] => {
   const source = `report ${periodLabel(report)}`;
   return [
-    { key: 'invitations', label: 'Invitations sent', value: num(report.invitations), band: 'activity', source },
-    { key: 'accepts', label: 'Invitations accepted', value: num(report.accepts), band: 'engagement', source },
-    { key: 'flows', label: 'Sequences started', value: num(report.flowsStarted), band: 'activity', source },
-    { key: 'messages', label: 'Messages sent', value: num(report.messagesSent), band: 'activity', source },
-    { key: 'replies', label: 'Replies received', value: num(report.replies), band: 'engagement', source },
-    { key: 'qualified', label: 'Qualified leads', value: num(report.qualifiedLeads), band: 'qualified', source },
-    { key: 'meetings', label: 'Meetings booked', value: num(report.meetingsBooked), band: 'meeting', source },
+    {
+      key: 'invitations',
+      label: 'Invitations sent',
+      value: num(report.invitations),
+      band: 'activity',
+      source,
+    },
+    {
+      key: 'accepts',
+      label: 'Invitations accepted',
+      value: num(report.accepts),
+      band: 'engagement',
+      source,
+    },
+    {
+      key: 'flows',
+      label: 'Sequences started',
+      value: num(report.flowsStarted),
+      band: 'activity',
+      source,
+    },
+    {
+      key: 'messages',
+      label: 'Messages sent',
+      value: num(report.messagesSent),
+      band: 'activity',
+      source,
+    },
+    {
+      key: 'replies',
+      label: 'Replies received',
+      value: num(report.replies),
+      band: 'engagement',
+      source,
+    },
+    {
+      key: 'qualified',
+      label: 'Qualified leads',
+      value: num(report.qualifiedLeads),
+      band: 'qualified',
+      source,
+    },
+    {
+      key: 'meetings',
+      label: 'Meetings booked',
+      value: num(report.meetingsBooked),
+      band: 'meeting',
+      source,
+    },
   ];
 };
 
@@ -340,17 +435,34 @@ export const phaseProgress = (
     const needle = phase.label.toLowerCase();
     const owned =
       needle.length >= 4
-        ? tasks.filter((task) => (task.title ?? '').toLowerCase().includes(needle))
+        ? tasks.filter((task) =>
+            (task.title ?? '').toLowerCase().includes(needle),
+          )
         : [];
 
     let state: PhaseState = 'UNTRACKED';
     if (owned.length > 0) {
-      const done = owned.filter((task) => (task.status ?? '').toUpperCase() === 'DONE');
-      const running = owned.filter((task) => (task.status ?? '').toUpperCase() === 'IN_PROGRESS');
-      state = done.length === owned.length ? 'DONE' : running.length > 0 ? 'ACTIVE' : 'TODO';
+      const done = owned.filter(
+        (task) => (task.status ?? '').toUpperCase() === 'DONE',
+      );
+      const running = owned.filter(
+        (task) => (task.status ?? '').toUpperCase() === 'IN_PROGRESS',
+      );
+      state =
+        done.length === owned.length
+          ? 'DONE'
+          : running.length > 0
+            ? 'ACTIVE'
+            : 'TODO';
     }
 
-    return { key: `${index}-${phase.label}`, label: phase.label, body: phase.body, state, tasks: owned };
+    return {
+      key: `${index}-${phase.label}`,
+      label: phase.label,
+      body: phase.body,
+      state,
+      tasks: owned,
+    };
   });
 
 export const currentPhase = (phases: Phase[]): Phase | undefined =>
@@ -371,20 +483,26 @@ export const OWNER_WORDS: Record<ActionOwner, string> = {
  * list with no owner is a wish list. The prefix is stripped for display, so the board reads as
  * sentences rather than as labels repeated in every row.
  */
-export const ownerOf = (title: string | null | undefined): { owner: ActionOwner; text: string } => {
+export const ownerOf = (
+  title: string | null | undefined,
+): { owner: ActionOwner; text: string } => {
   const raw = (title ?? '').trim();
   const match = raw.match(/^([A-Za-z][A-Za-z ‑-]{0,24}?)\s*:\s*(.*)$/);
   if (!match) return { owner: 'PE', text: raw };
 
   const head = match[1].trim().toLowerCase();
   const rest = match[2].trim() || raw;
-  if (head === 'client' || head === 'customer') return { owner: 'CLIENT', text: rest };
-  if (head === 'joint' || head === 'both' || head === 'together') return { owner: 'JOINT', text: rest };
-  if (head === 'pe' || head === 'prospect engine' || head === 'us') return { owner: 'PE', text: rest };
+  if (head === 'client' || head === 'customer')
+    return { owner: 'CLIENT', text: rest };
+  if (head === 'joint' || head === 'both' || head === 'together')
+    return { owner: 'JOINT', text: rest };
+  if (head === 'pe' || head === 'prospect engine' || head === 'us')
+    return { owner: 'PE', text: rest };
   return { owner: 'PE', text: raw };
 };
 
-export const isOpen = (task: TaskRow): boolean => (task.status ?? '').toUpperCase() !== 'DONE';
+export const isOpen = (task: TaskRow): boolean =>
+  (task.status ?? '').toUpperCase() !== 'DONE';
 
 export const isOverdue = (task: TaskRow, now = Date.now()): boolean =>
   isOpen(task) && !!task.dueAt && new Date(task.dueAt).getTime() < now;
@@ -409,10 +527,14 @@ export const nextReportDue = (
   const latest = publishedReports[0];
   if (latest?.periodEnd) {
     const end = new Date(latest.periodEnd).getTime();
-    if (Number.isFinite(end)) return new Date(end + 7 * 86_400_000).toISOString();
+    if (Number.isFinite(end))
+      return new Date(end + 7 * 86_400_000).toISOString();
   }
   const reportTask = tasks
-    .filter((task) => isOpen(task) && !!task.dueAt && /report/i.test(task.title ?? ''))
+    .filter(
+      (task) =>
+        isOpen(task) && !!task.dueAt && /report/i.test(task.title ?? ''),
+    )
     .sort((a, b) => String(a.dueAt).localeCompare(String(b.dueAt)))[0];
   return reportTask?.dueAt ?? null;
 };
@@ -493,7 +615,11 @@ export const signalsOf = ({
   }
 
   const measurementAge = daysSince(totals.measuredAt, now);
-  if (snapshots.length > 0 && measurementAge !== null && measurementAge > STALE_MEASUREMENT_DAYS) {
+  if (
+    snapshots.length > 0 &&
+    measurementAge !== null &&
+    measurementAge > STALE_MEASUREMENT_DAYS
+  ) {
     signals.push({
       key: 'stale',
       level: 'WATCH',
@@ -502,7 +628,10 @@ export const signalsOf = ({
   }
 
   const latestReport = publishedReports[0];
-  const reportAge = daysSince(latestReport?.periodEnd ?? latestReport?.createdAt, now);
+  const reportAge = daysSince(
+    latestReport?.periodEnd ?? latestReport?.createdAt,
+    now,
+  );
   if (!latestReport) {
     signals.push({
       key: 'no-report',
@@ -552,7 +681,12 @@ export const healthOf = (signals: Signal[]): SignalLevel => {
 
 // ── The activity log ────────────────────────────────────────────────────────────────────────────
 
-export type Update = { key: string; at: string | null; kind: string; text: string };
+export type Update = {
+  key: string;
+  at: string | null;
+  kind: string;
+  text: string;
+};
 
 /**
  * A dated log built only from published records and finished work — never from internal notes,
@@ -593,7 +727,8 @@ export const updatesOf = ({
   }
 
   for (const deliverable of deliverables) {
-    if (!isPublished(deliverable.status) || deliverable.clientVisible !== true) continue;
+    if (!isPublished(deliverable.status) || deliverable.clientVisible !== true)
+      continue;
     updates.push({
       key: `deliverable-${deliverable.id}`,
       at: deliverable.deliveredAt ?? deliverable.createdAt,
@@ -612,5 +747,7 @@ export const updatesOf = ({
     });
   }
 
-  return updates.sort((a, b) => String(b.at ?? '').localeCompare(String(a.at ?? '')));
+  return updates.sort((a, b) =>
+    String(b.at ?? '').localeCompare(String(a.at ?? '')),
+  );
 };

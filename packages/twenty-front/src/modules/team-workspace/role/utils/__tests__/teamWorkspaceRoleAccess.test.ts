@@ -58,3 +58,33 @@ describe('teamWorkspaceRoleAccess', () => {
     );
   });
 });
+
+describe('the Team role', () => {
+  const rolesOf = (...labels: string[]) =>
+    labels.map((label, index) => ({ id: `role-${index}`, label }));
+
+  it('should open both lanes', () => {
+    expect(teamWorkspaceLanesFromRoles(rolesOf('Team'))).toEqual([
+      'sales',
+      'operations',
+    ]);
+  });
+
+  it('should NOT open Team Management, where the notes about that person live', () => {
+    expect(canRolesEnterTeamManagement(rolesOf('Team'))).toBe(false);
+    expect(canRolesEnterTeamManagement(rolesOf('Admin'))).toBe(true);
+  });
+
+  it('should still fail closed when stacked with a lane role', () => {
+    expect(teamWorkspaceLanesFromRoles(rolesOf('Team', 'Sales'))).toEqual([]);
+  });
+
+  it('should leave a client seat with no lanes at all', () => {
+    expect(teamWorkspaceLanesFromRoles(rolesOf('Client · Fr8labs'))).toEqual(
+      [],
+    );
+    expect(canRolesEnterTeamManagement(rolesOf('Client · Fr8labs'))).toBe(
+      false,
+    );
+  });
+});

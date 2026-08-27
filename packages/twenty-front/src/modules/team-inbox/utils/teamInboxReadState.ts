@@ -44,12 +44,18 @@ export const readOpenedAt = (): OpenedAtByThread => {
     if (!raw) return {};
 
     const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
       return {};
     }
 
     const opened: OpenedAtByThread = {};
-    for (const [code, at] of Object.entries(parsed as Record<string, unknown>)) {
+    for (const [code, at] of Object.entries(
+      parsed as Record<string, unknown>,
+    )) {
       if (typeof at === 'string' && stampMs(at) > 0) opened[code] = at;
     }
     return opened;

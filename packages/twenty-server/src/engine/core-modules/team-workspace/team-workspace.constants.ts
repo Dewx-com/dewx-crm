@@ -5,6 +5,10 @@ export const TEAM_WORKSPACE_ROLE_LABEL = {
   automation: 'Team Automation',
   operations: 'Operations',
   sales: 'Sales',
+  // Team = one person who works both lanes (Roki, 2026-08-27: Abrar covers Sales and Operations).
+  // It is a union of the two lane roles and deliberately NOT Admin: it never opens Team Management,
+  // where the coaching notes and attention flags about that same person live.
+  team: 'Team',
 } as const;
 
 export const TEAM_WORKSPACE_RECORD_PREFIX = {

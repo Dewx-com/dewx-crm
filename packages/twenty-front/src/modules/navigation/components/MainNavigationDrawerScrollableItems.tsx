@@ -17,7 +17,6 @@ import {
   IconUsers,
 } from 'twenty-ui/icon';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
-import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
 import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { type TeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
 import {
@@ -137,14 +136,14 @@ export const MainNavigationDrawerScrollableItems = () => {
   // full drawer below, unchanged.
   const { isClientSeat } = useClientSeat();
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
-  const workspacePublicData = useAtomStateValue(workspacePublicDataState);
-  const teamLanes =
-    workspacePublicData?.isTeamWorkspaceDomainAlias === true
-      ? teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles)
-      : [];
-  const canManageTeam =
-    workspacePublicData?.isTeamWorkspaceDomainAlias === true &&
-    canRolesEnterTeamManagement(currentWorkspaceMember?.roles);
+  // One door: app.prospectengine.com. The lanes a person sees come from their ROLE, never from
+  // which hostname they typed — the server authorizes on role too (isTeamWorkspaceId matches the
+  // workspace id, not the request host), so gating the drawer on a domain only ever hid the nav
+  // while leaving the API reachable. A client seat has no team role and so renders none of this.
+  const teamLanes = teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles);
+  const canManageTeam = canRolesEnterTeamManagement(
+    currentWorkspaceMember?.roles,
+  );
   if (isClientSeat) {
     return (
       <StyledScrollableItemsContainer>

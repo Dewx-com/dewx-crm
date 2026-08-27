@@ -63,7 +63,13 @@ const StyledArchiveMeta = styled.span`
   font-size: ${themeCssVariables.font.size.xs};
 `;
 
-const Passage = ({ label, value }: { label: string; value: string | null | undefined }) => {
+const Passage = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) => {
   const parts = paragraphsOf(value);
   if (parts.length === 0) return null;
   return (
@@ -82,7 +88,11 @@ type Props = {
   onSelect: (reportId: string) => void;
 };
 
-export const ClientWorkspaceReports = ({ reports, selected, onSelect }: Props) => (
+export const ClientWorkspaceReports = ({
+  reports,
+  selected,
+  onSelect,
+}: Props) => (
   <>
     <StyledSection id="report">
       <StyledSectionHead>
@@ -96,15 +106,18 @@ export const ClientWorkspaceReports = ({ reports, selected, onSelect }: Props) =
 
       {!selected ? (
         <StyledEmpty>
-          No report has been published yet. Reports appear here once they are written, approved and
-          published; drafts stay with us until then.
+          No report has been published yet. Reports appear here once they are
+          written, approved and published; drafts stay with us until then.
         </StyledEmpty>
       ) : (
         <>
           <StyledSubTitle>{selected.title ?? 'Report'}</StyledSubTitle>
           <Passage label="In short" value={selected.executiveSummary} />
           <Passage label="What the numbers mean" value={selected.analysis} />
-          <Passage label="What changed since the last report" value={selected.changesSincePrior} />
+          <Passage
+            label="What changed since the last report"
+            value={selected.changesSincePrior}
+          />
           <Passage label="What we recommend" value={selected.recommendations} />
         </>
       )}
@@ -114,7 +127,8 @@ export const ClientWorkspaceReports = ({ reports, selected, onSelect }: Props) =
       <StyledSectionHead>
         <StyledSectionTitle>Report archive</StyledSectionTitle>
         <StyledSectionMeta>
-          {reports.length} published {reports.length === 1 ? 'report' : 'reports'}
+          {reports.length} published{' '}
+          {reports.length === 1 ? 'report' : 'reports'}
         </StyledSectionMeta>
       </StyledSectionHead>
 
@@ -131,15 +145,17 @@ export const ClientWorkspaceReports = ({ reports, selected, onSelect }: Props) =
             <StyledArchiveMeta>
               {periodLabel(report)}
               {report.id === selected?.id ? ' · ' : ''}
-              {report.id === selected?.id && <StyledChip data-tone="info">showing</StyledChip>}
+              {report.id === selected?.id && (
+                <StyledChip data-tone="info">showing</StyledChip>
+              )}
             </StyledArchiveMeta>
           </StyledArchiveRow>
         ))
       )}
 
       <StyledNote>
-        Every report keeps the figures that were true when it was published. The sections above
-        follow whichever period is selected here.
+        Every report keeps the figures that were true when it was published. The
+        sections above follow whichever period is selected here.
       </StyledNote>
     </StyledSection>
   </>

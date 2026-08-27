@@ -54,12 +54,8 @@ export const TeamManagementPage = () => {
   const { workspaceMemberId } = useParams<{ workspaceMemberId?: string }>();
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const workspacePublicData = useAtomStateValue(workspacePublicDataState);
-  const isTeamWorkspaceDomain =
-    workspacePublicData?.isTeamWorkspaceDomainAlias === true;
   const isManager = canRolesEnterTeamManagement(currentWorkspaceMember?.roles);
-  const records = useTeamManagementRecords(
-    !isTeamWorkspaceDomain || !isManager,
-  );
+  const records = useTeamManagementRecords(!isManager);
   const { openModal } = useModal();
   const { enqueueErrorSnackBar, enqueueSuccessSnackBar } = useSnackBar();
   const [assignmentEmployee, setAssignmentEmployee] =
@@ -118,10 +114,6 @@ export const TeamManagementPage = () => {
         <StyledState>Loading the owner workspace…</StyledState>
       </StyledPage>
     );
-  }
-
-  if (!isTeamWorkspaceDomain) {
-    return <Navigate replace to="/" />;
   }
 
   if (!isManager) {

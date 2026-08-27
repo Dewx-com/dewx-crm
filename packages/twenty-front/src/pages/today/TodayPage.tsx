@@ -87,16 +87,34 @@ const JUMPS = [
 ];
 
 const jumpTo = (id: string) =>
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document
+    .getElementById(id)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
 export const TodayPage = () => {
-  const { tasks, opportunities, people, names, statuses, coverage, loading } = useToday();
+  const { tasks, opportunities, people, names, statuses, coverage, loading } =
+    useToday();
 
-  const waiting = useMemo(() => waitingRepliesOf({ tasks, people }), [tasks, people]);
-  const stalled = useMemo(() => stalledOpportunitiesOf({ opportunities }), [opportunities]);
+  const waiting = useMemo(
+    () => waitingRepliesOf({ tasks, people }),
+    [tasks, people],
+  );
+  const stalled = useMemo(
+    () => stalledOpportunitiesOf({ opportunities }),
+    [opportunities],
+  );
   const summary = useMemo(() => stageSummaryOf(stalled), [stalled]);
   const clients = useMemo(
-    () => clientDaysOf({ tasks, opportunities, people, waiting, stalled, names, statuses }),
+    () =>
+      clientDaysOf({
+        tasks,
+        opportunities,
+        people,
+        waiting,
+        stalled,
+        names,
+        statuses,
+      }),
     [tasks, opportunities, people, waiting, stalled, names, statuses],
   );
 
@@ -111,7 +129,9 @@ export const TodayPage = () => {
   const showClient = clients.length > 1;
 
   const partial = [
-    isPartial(coverage.tasks) ? `tasks ${coverage.tasks.read} of ${coverage.tasks.total}` : null,
+    isPartial(coverage.tasks)
+      ? `tasks ${coverage.tasks.read} of ${coverage.tasks.total}`
+      : null,
     isPartial(coverage.opportunities)
       ? `deals ${coverage.opportunities.read} of ${coverage.opportunities.total}`
       : null,
@@ -121,7 +141,10 @@ export const TodayPage = () => {
   ].filter(Boolean);
 
   const nothingToShow =
-    !loading && waiting.length === 0 && stalled.length === 0 && clients.length === 0;
+    !loading &&
+    waiting.length === 0 &&
+    stalled.length === 0 &&
+    clients.length === 0;
 
   return (
     <StyledPage>
@@ -145,10 +168,14 @@ export const TodayPage = () => {
             </StyledChip>
           )}
           {unassigned.length > 0 && (
-            <StyledChip data-tone="risk">{unassigned.length} unassigned</StyledChip>
+            <StyledChip data-tone="risk">
+              {unassigned.length} unassigned
+            </StyledChip>
           )}
           {quiet.length > 0 && (
-            <StyledChip data-tone="watch">{quiet.length} quiet clients</StyledChip>
+            <StyledChip data-tone="watch">
+              {quiet.length} quiet clients
+            </StyledChip>
           )}
         </StyledChipRow>
       </StyledHeader>
@@ -160,16 +187,18 @@ export const TodayPage = () => {
 
         {nothingToShow && (
           <StyledEmpty>
-            Nothing is waiting, nothing has stalled, and no client has any records yet. If you
-            expected to see work here, your access has not been set up.
+            Nothing is waiting, nothing has stalled, and no client has any
+            records yet. If you expected to see work here, your access has not
+            been set up.
           </StyledEmpty>
         )}
 
         {partial.length > 0 && (
           <StyledBanner data-tone="watch">
             <span>
-              This page has read {partial.join(', ')}. Every count below is taken from what was
-              read, so treat them as a floor rather than a total until the rest is paged in.
+              This page has read {partial.join(', ')}. Every count below is
+              taken from what was read, so treat them as a floor rather than a
+              total until the rest is paged in.
             </span>
           </StyledBanner>
         )}
@@ -184,9 +213,13 @@ export const TodayPage = () => {
           </StyledCard>
 
           <StyledCard>
-            <StyledBigNumber>{formatWait(longest?.waitingHours ?? null)}</StyledBigNumber>
+            <StyledBigNumber>
+              {formatWait(longest?.waitingHours ?? null)}
+            </StyledBigNumber>
             <StyledCardLabel>longest wait</StyledCardLabel>
-            <StyledCardHint>{longest ? longest.contact : 'nobody is waiting'}</StyledCardHint>
+            <StyledCardHint>
+              {longest ? longest.contact : 'nobody is waiting'}
+            </StyledCardHint>
           </StyledCard>
 
           <StyledCard>
@@ -198,7 +231,9 @@ export const TodayPage = () => {
           <StyledCard>
             <StyledBigNumber>{stalled.length}</StyledBigNumber>
             <StyledCardLabel>deals stopped moving</StyledCardLabel>
-            <StyledCardHint>{unowned.length} of them with no owner</StyledCardHint>
+            <StyledCardHint>
+              {unowned.length} of them with no owner
+            </StyledCardHint>
           </StyledCard>
 
           <StyledCard>
@@ -210,28 +245,35 @@ export const TodayPage = () => {
 
         <TodayReplies replies={waiting} showClient={showClient} />
 
-        <TodayPipeline stalled={stalled} summary={summary} showClient={showClient} />
+        <TodayPipeline
+          stalled={stalled}
+          summary={summary}
+          showClient={showClient}
+        />
 
         <TodayClients clients={clients} />
 
         <StyledSection id="how-to-read">
           <StyledSectionTitle>How to read this page</StyledSectionTitle>
           <StyledNote>
-            A reply is anything recorded as a task titled &ldquo;Reply from …&rdquo;, and it stays
-            here until that task is marked done. Marking it done is what clears it — nothing on this
-            page watches whether an answer was actually sent, so the list is only as honest as the
+            A reply is anything recorded as a task titled &ldquo;Reply from
+            …&rdquo;, and it stays here until that task is marked done. Marking
+            it done is what clears it — nothing on this page watches whether an
+            answer was actually sent, so the list is only as honest as the
             people closing it.
           </StyledNote>
           <StyledNote>
-            The name in the title is also the only link back to the contact, because a reply task
-            carries no relation to the person who sent it. Where that name matches somebody on file
-            their role and company are shown beside it; where it does not, the name stands alone
-            rather than the row disappearing.
+            The name in the title is also the only link back to the contact,
+            because a reply task carries no relation to the person who sent it.
+            Where that name matches somebody on file their role and company are
+            shown beside it; where it does not, the name stands alone rather
+            than the row disappearing.
           </StyledNote>
           <StyledNote>
-            Counts are taken from the records as they were when this page loaded. Reload it to
-            recount. Nothing here is stored, so there is no summary that can quietly fall out of step
-            with the rows underneath it.
+            Counts are taken from the records as they were when this page
+            loaded. Reload it to recount. Nothing here is stored, so there is no
+            summary that can quietly fall out of step with the rows underneath
+            it.
           </StyledNote>
         </StyledSection>
       </StyledBody>

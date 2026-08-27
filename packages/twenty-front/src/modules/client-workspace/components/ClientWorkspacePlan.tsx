@@ -13,7 +13,10 @@ import {
   StyledSectionTitle,
   StyledSubTitle,
 } from '@/client-workspace/components/ClientWorkspaceStyles';
-import { type PlanRow, type TaskRow } from '@/client-workspace/hooks/useClientWorkspace';
+import {
+  type PlanRow,
+  type TaskRow,
+} from '@/client-workspace/hooks/useClientWorkspace';
 import {
   currentPhase,
   dayStamp,
@@ -34,7 +37,10 @@ import {
 // Only a PUBLISHED plan reaches this section. A draft is a conversation we are still having.
 
 /** Only the two states worth colouring are listed; the rest stay the neutral chip. */
-const PHASE_TONE: Partial<Record<PhaseState, string>> = { DONE: 'calm', ACTIVE: 'info' };
+const PHASE_TONE: Partial<Record<PhaseState, string>> = {
+  DONE: 'calm',
+  ACTIVE: 'info',
+};
 
 const PHASE_WORDS: Record<PhaseState, string> = {
   DONE: 'done',
@@ -87,7 +93,13 @@ const StyledFieldLabel = styled.span`
   text-transform: uppercase;
 `;
 
-const Field = ({ label, value }: { label: string; value: string | null | undefined }) => {
+const Field = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) => {
   const parts = paragraphsOf(value);
   if (parts.length === 0) return null;
   return (
@@ -110,8 +122,9 @@ export const ClientWorkspacePlan = ({ plan, tasks }: Props) => {
           <StyledSectionTitle>Plan</StyledSectionTitle>
         </StyledSectionHead>
         <StyledEmpty>
-          No plan has been published yet. A plan appears here once it has been written, approved and
-          published — until then what is agreed lives in the conversation, not on this page.
+          No plan has been published yet. A plan appears here once it has been
+          written, approved and published — until then what is agreed lives in
+          the conversation, not on this page.
         </StyledEmpty>
       </StyledSection>
     );
@@ -128,7 +141,9 @@ export const ClientWorkspacePlan = ({ plan, tasks }: Props) => {
         <StyledSectionTitle>Plan</StyledSectionTitle>
         <StyledSectionMeta>
           {plan.version ? `${plan.version} · ` : ''}
-          {plan.effectiveFrom ? `effective ${dayStamp(plan.effectiveFrom)}` : 'published'}
+          {plan.effectiveFrom
+            ? `effective ${dayStamp(plan.effectiveFrom)}`
+            : 'published'}
         </StyledSectionMeta>
       </StyledSectionHead>
 
@@ -162,7 +177,8 @@ export const ClientWorkspacePlan = ({ plan, tasks }: Props) => {
                 </StyledChip>
                 {phase.tasks.length > 0 && (
                   <StyledChip>
-                    {phase.tasks.length} {phase.tasks.length === 1 ? 'action' : 'actions'}
+                    {phase.tasks.length}{' '}
+                    {phase.tasks.length === 1 ? 'action' : 'actions'}
                   </StyledChip>
                 )}
               </StyledPhaseHead>
@@ -170,8 +186,9 @@ export const ClientWorkspacePlan = ({ plan, tasks }: Props) => {
             </StyledPhase>
           ))}
           <StyledNote>
-            A phase is marked complete when every action written against it is done. Phases with no
-            actions yet say so rather than pretending to be waiting.
+            A phase is marked complete when every action written against it is
+            done. Phases with no actions yet say so rather than pretending to be
+            waiting.
           </StyledNote>
         </>
       )}

@@ -97,7 +97,8 @@ export const TeamInboxPage = () => {
     for (const message of pool) {
       const key = message.threadCode ?? '';
       const current = map.get(key);
-      if (!current || (message.sentAt ?? '') > (current.sentAt ?? '')) map.set(key, message);
+      if (!current || (message.sentAt ?? '') > (current.sentAt ?? ''))
+        map.set(key, message);
     }
     return map;
   }, [pool]);

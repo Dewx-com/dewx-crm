@@ -7,6 +7,8 @@ import {
 const TEAM_WORKSPACE_LANES_BY_ROLE_LABEL = {
   Sales: ['sales'],
   Operations: ['operations'],
+  // Both lanes, no management hub. See TEAM_WORKSPACE_ROLE_LABEL.team on the server.
+  Team: ['sales', 'operations'],
   Admin: ['sales', 'operations'],
 } as const satisfies Record<string, readonly TeamWorkspaceLane[]>;
 

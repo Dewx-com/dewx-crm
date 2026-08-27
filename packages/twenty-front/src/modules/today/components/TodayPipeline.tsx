@@ -53,8 +53,9 @@ export const TodayPipeline = ({ stalled, summary, showClient }: Props) => {
 
       {stalled.length === 0 ? (
         <StyledEmpty>
-          Nothing has been sitting in a stage longer than that stage allows. New deals appear here
-          once they pass their limit: 7 days at new, 5 at screening, 3 at meeting, 7 at proposal.
+          Nothing has been sitting in a stage longer than that stage allows. New
+          deals appear here once they pass their limit: 7 days at new, 5 at
+          screening, 3 at meeting, 7 at proposal.
         </StyledEmpty>
       ) : (
         <>
@@ -72,7 +73,9 @@ export const TodayPipeline = ({ stalled, summary, showClient }: Props) => {
               <tbody>
                 {summary.map((row) => (
                   <tr key={row.stage}>
-                    <td data-strong="true">{STAGE_WORDS[row.stage] ?? row.stage.toLowerCase()}</td>
+                    <td data-strong="true">
+                      {STAGE_WORDS[row.stage] ?? row.stage.toLowerCase()}
+                    </td>
                     <td data-numeric="true">{row.stalled}</td>
                     <td data-numeric="true">{row.limitDays}d</td>
                     <td data-numeric="true">{row.oldestDays}d</td>
@@ -114,9 +117,17 @@ export const TodayPipeline = ({ stalled, summary, showClient }: Props) => {
                     </td>
                     {showClient && <td>{row.client ?? '—'}</td>}
                     <td>{STAGE_WORDS[row.stage] ?? row.stage.toLowerCase()}</td>
-                    <td>{row.owner ?? <StyledChip data-tone="risk">nobody&rsquo;s job</StyledChip>}</td>
+                    <td>
+                      {row.owner ?? (
+                        <StyledChip data-tone="risk">
+                          nobody&rsquo;s job
+                        </StyledChip>
+                      )}
+                    </td>
                     <td data-numeric="true">
-                      <StyledChip data-tone="watch">+{row.daysOver}d</StyledChip>
+                      <StyledChip data-tone="watch">
+                        +{row.daysOver}d
+                      </StyledChip>
                     </td>
                   </tr>
                 ))}
@@ -126,21 +137,24 @@ export const TodayPipeline = ({ stalled, summary, showClient }: Props) => {
 
           {rest > 0 && (
             <StyledNote>
-              The {SHOWN} furthest past their limit are listed. {rest} more are also over, and the
-              stage table above counts every one of them.
+              The {SHOWN} furthest past their limit are listed. {rest} more are
+              also over, and the stage table above counts every one of them.
             </StyledNote>
           )}
 
           <StyledNote>
-            Days are counted from the last time a person touched the deal by hand, and from when it
-            arrived for every deal nobody has. This CRM does not record when a stage changed, and an
-            import rewrites the &ldquo;last update&rdquo; on every row it runs over, so a figure
-            taken from that would read as nought for all of them. What the number means is: this
-            deal has been with us this long and is still at this stage.
+            Days are counted from the last time a person touched the deal by
+            hand, and from when it arrived for every deal nobody has. This CRM
+            does not record when a stage changed, and an import rewrites the
+            &ldquo;last update&rdquo; on every row it runs over, so a figure
+            taken from that would read as nought for all of them. What the
+            number means is: this deal has been with us this long and is still
+            at this stage.
             {undated > 0 && (
               <>
                 {' '}
-                {undated} of them carry no close date, so nothing can forecast them either.
+                {undated} of them carry no close date, so nothing can forecast
+                them either.
               </>
             )}
           </StyledNote>

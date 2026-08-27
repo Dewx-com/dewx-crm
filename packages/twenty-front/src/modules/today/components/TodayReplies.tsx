@@ -34,7 +34,11 @@ const STATUS_WORDS: Record<string, string> = {
   IN_PROGRESS: 'in progress',
 };
 
-const TONE: Record<string, string> = { BREACHED: 'risk', DUE: 'watch', FRESH: 'calm' };
+const TONE: Record<string, string> = {
+  BREACHED: 'risk',
+  DUE: 'watch',
+  FRESH: 'calm',
+};
 
 type Props = {
   replies: WaitingReply[];
@@ -58,8 +62,8 @@ export const TodayReplies = ({ replies, showClient }: Props) => {
 
       {replies.length === 0 ? (
         <StyledEmpty>
-          Every reply has been answered. Replies appear here the moment one is recorded, and stay
-          until the task carrying them is marked done.
+          Every reply has been answered. Replies appear here the moment one is
+          recorded, and stay until the task carrying them is marked done.
         </StyledEmpty>
       ) : (
         <>
@@ -84,14 +88,20 @@ export const TodayReplies = ({ replies, showClient }: Props) => {
                         <>
                           {' '}
                           <StyledHint>
-                            {[reply.jobTitle, reply.company].filter(Boolean).join(' · ')}
+                            {[reply.jobTitle, reply.company]
+                              .filter(Boolean)
+                              .join(' · ')}
                           </StyledHint>
                         </>
                       )}
                     </td>
                     {showClient && <td>{reply.client ?? '—'}</td>}
                     <td>
-                      {reply.owner ?? <StyledChip data-tone="risk">nobody&rsquo;s job</StyledChip>}
+                      {reply.owner ?? (
+                        <StyledChip data-tone="risk">
+                          nobody&rsquo;s job
+                        </StyledChip>
+                      )}
                     </td>
                     <td data-numeric="true">
                       <StyledChip data-tone={TONE[reply.level]}>
@@ -99,7 +109,9 @@ export const TodayReplies = ({ replies, showClient }: Props) => {
                       </StyledChip>
                     </td>
                     <td>{agoWords(reply.arrivedAt)}</td>
-                    <td>{STATUS_WORDS[reply.status ?? ''] ?? (reply.status ?? '—')}</td>
+                    <td>
+                      {STATUS_WORDS[reply.status ?? ''] ?? reply.status ?? '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -107,10 +119,11 @@ export const TodayReplies = ({ replies, showClient }: Props) => {
           </StyledScroller>
 
           <StyledNote>
-            Waiting is counted in working hours — Monday to Friday, {WORK_START_HOUR}:00 to{' '}
-            {WORK_END_HOUR}:00 in your own timezone — so a reply that arrived on Friday evening is
-            not called late on Monday morning. A day here is {WORK_END_HOUR - WORK_START_HOUR} of
-            those hours, not twenty-four.
+            Waiting is counted in working hours — Monday to Friday,{' '}
+            {WORK_START_HOUR}:00 to {WORK_END_HOUR}:00 in your own timezone — so
+            a reply that arrived on Friday evening is not called late on Monday
+            morning. A day here is {WORK_END_HOUR - WORK_START_HOUR} of those
+            hours, not twenty-four.
           </StyledNote>
         </>
       )}

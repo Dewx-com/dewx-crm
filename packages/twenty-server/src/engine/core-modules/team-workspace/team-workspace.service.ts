@@ -412,8 +412,10 @@ export class TeamWorkspaceService {
       (label) => !KNOWN_ROLE_LABELS.has(label),
     );
     const isAdmin = roleLabels.includes(TEAM_WORKSPACE_ROLE_LABEL.admin);
+    const isBothLanes = roleLabels.includes(TEAM_WORKSPACE_ROLE_LABEL.team);
     const hasLaneRole =
       isAdmin ||
+      isBothLanes ||
       (lane === TeamWorkspaceLane.SALES
         ? roleLabels.includes(TEAM_WORKSPACE_ROLE_LABEL.sales)
         : roleLabels.includes(TEAM_WORKSPACE_ROLE_LABEL.operations));
@@ -501,8 +503,23 @@ export class TeamWorkspaceService {
       }),
     ]);
     const salesMemberIds = new Set(salesMembers.map((member) => member.id));
+    // A person in both lanes is a misconfiguration UNLESS they hold the Team role, which is
+    // both lanes by definition. Anything else overlapping still denies, as it did before.
+    const bothLaneMemberIds = new Set(
+      (
+        await this.getRoleMembers({
+          roleLabel: TEAM_WORKSPACE_ROLE_LABEL.team,
+          workspaceId: workspace.id,
+        })
+      ).map((member) => member.id),
+    );
 
-    if (operationsMembers.some((member) => salesMemberIds.has(member.id))) {
+    if (
+      operationsMembers.some(
+        (member) =>
+          salesMemberIds.has(member.id) && !bothLaneMemberIds.has(member.id),
+      )
+    ) {
       throw this.accessDenied();
     }
 
@@ -602,6 +619,44 @@ export class TeamWorkspaceService {
     ).map((member) => member.id);
   }
 
+  // Members holding one role label. Returns [] when the role does not exist in the workspace,
+  // so an optional role (Team) never breaks a workspace that has not created it.
+  private async getRoleMembers({
+    roleLabel,
+    workspaceId,
+  }: {
+    roleLabel: string;
+    workspaceId: string;
+  }): Promise<LaneWorkspaceMember[]> {
+    const roles = (
+      await this.roleService.getWorkspaceRoles(workspaceId)
+    ).filter((role) => role.label === roleLabel);
+
+    if (roles.length > 1) {
+      throw this.accessDenied();
+    }
+
+    if (roles.length === 0) {
+      return [];
+    }
+
+    const members =
+      await this.userRoleService.getWorkspaceMembersAssignedToRole(
+        roles[0].id,
+        workspaceId,
+      );
+
+    const uniqueMembers = new Map<string, LaneWorkspaceMember>();
+
+    for (const member of members) {
+      if (member.id) {
+        uniqueMembers.set(member.id, member as LaneWorkspaceMember);
+      }
+    }
+
+    return [...uniqueMembers.values()];
+  }
+
   private async getLaneMembers({
     lane,
     workspaceId,
@@ -613,23 +668,38 @@ export class TeamWorkspaceService {
       lane === TeamWorkspaceLane.SALES
         ? TEAM_WORKSPACE_ROLE_LABEL.sales
         : TEAM_WORKSPACE_ROLE_LABEL.operations;
-    const matchingRoles = (
-      await this.roleService.getWorkspaceRoles(workspaceId)
-    ).filter((role) => role.label === expectedRoleLabel);
+    const workspaceRoles =
+      await this.roleService.getWorkspaceRoles(workspaceId);
+    const matchingRoles = workspaceRoles.filter(
+      (role) => role.label === expectedRoleLabel,
+    );
 
     if (matchingRoles.length !== 1) {
       throw this.accessDenied();
     }
 
-    const members =
-      await this.userRoleService.getWorkspaceMembersAssignedToRole(
-        matchingRoles[0].id,
-        workspaceId,
-      );
+    // Someone on the Team role works both lanes, so they are a member of this one too.
+    // The role is optional: a workspace that has not created it still resolves normally.
+    const bothLaneRoles = workspaceRoles.filter(
+      (role) => role.label === TEAM_WORKSPACE_ROLE_LABEL.team,
+    );
+
+    if (bothLaneRoles.length > 1) {
+      throw this.accessDenied();
+    }
+
+    const membersByRole = await Promise.all(
+      [...matchingRoles, ...bothLaneRoles].map((role) =>
+        this.userRoleService.getWorkspaceMembersAssignedToRole(
+          role.id,
+          workspaceId,
+        ),
+      ),
+    );
 
     const uniqueMembers = new Map<string, LaneWorkspaceMember>();
 
-    for (const member of members) {
+    for (const member of membersByRole.flat()) {
       if (member.id) {
         uniqueMembers.set(member.id, member as LaneWorkspaceMember);
       }
