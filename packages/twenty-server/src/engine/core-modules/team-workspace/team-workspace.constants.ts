@@ -30,3 +30,11 @@ export const TEAM_WORKSPACE_QUERY_LIMIT = {
   opportunities: 200,
   tasks: 500,
 } as const;
+
+// A role label is "<capability> · <person>" when it carries a per-person record scope: a scope value
+// is fixed per role, so each person needs their own (Employee · Siam, Client · Fr8labs already do
+// this). The capability is the part before the separator. Compare capabilities, never raw labels.
+export const TEAM_WORKSPACE_ROLE_LABEL_SEPARATOR = ' · ';
+
+export const baseRoleLabel = (label: string): string =>
+  label.split(TEAM_WORKSPACE_ROLE_LABEL_SEPARATOR)[0].trim();

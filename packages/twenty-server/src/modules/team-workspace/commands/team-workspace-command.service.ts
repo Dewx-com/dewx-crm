@@ -10,6 +10,7 @@ import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/wo
 import { WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspace-domains/services/workspace-domains.service';
 import {
   TEAM_WORKSPACE_RECORD_PREFIX,
+  baseRoleLabel,
   TEAM_WORKSPACE_ROLE_LABEL,
 } from 'src/engine/core-modules/team-workspace/team-workspace.constants';
 import { RoleService } from 'src/engine/metadata-modules/role/role.service';
@@ -1516,7 +1517,7 @@ export class TeamWorkspaceCommandService {
 
     if (
       rolesForAssignee.length !== 1 ||
-      !acceptedRoleLabels.has(rolesForAssignee[0].label) ||
+      !acceptedRoleLabels.has(baseRoleLabel(rolesForAssignee[0].label)) ||
       !rolesForAssignee[0].id
     ) {
       commandException(
@@ -2158,7 +2159,7 @@ export class TeamWorkspaceCommandService {
       const roleLabels = [
         ...new Set(
           (rolesByUserWorkspace.get(authContext.userWorkspaceId) ?? []).map(
-            (role) => role.label,
+            (role) => baseRoleLabel(role.label),
           ),
         ),
       ];

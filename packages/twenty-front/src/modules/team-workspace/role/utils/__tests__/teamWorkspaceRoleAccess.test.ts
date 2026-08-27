@@ -88,3 +88,31 @@ describe('the Team role', () => {
     );
   });
 });
+
+describe('per-person scoped roles', () => {
+  const rolesOf = (...labels: string[]) =>
+    labels.map((label, index) => ({ id: `role-${index}`, label }));
+
+  it('should open the same lanes for "Team · Abrar" as for "Team"', () => {
+    expect(teamWorkspaceLanesFromRoles(rolesOf('Team · Abrar'))).toEqual([
+      'sales',
+      'operations',
+    ]);
+  });
+
+  it('should keep a suffixed lane role in its own lane only', () => {
+    expect(teamWorkspaceLanesFromRoles(rolesOf('Operations · Fahim'))).toEqual([
+      'operations',
+    ]);
+  });
+
+  it('should let "Admin · Roki" reach management, but never "Team · Abrar"', () => {
+    expect(canRolesEnterTeamManagement(rolesOf('Admin · Roki'))).toBe(true);
+    expect(canRolesEnterTeamManagement(rolesOf('Team · Abrar'))).toBe(false);
+  });
+
+  it('should not be fooled by a lookalike label', () => {
+    expect(teamWorkspaceLanesFromRoles(rolesOf('TeamLead'))).toEqual([]);
+    expect(teamWorkspaceLanesFromRoles(rolesOf('Client · Team'))).toEqual([]);
+  });
+});

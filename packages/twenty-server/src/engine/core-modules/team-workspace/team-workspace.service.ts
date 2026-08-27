@@ -7,6 +7,7 @@ import { WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspac
 import { ApiKeyRoleService } from 'src/engine/core-modules/api-key/services/api-key-role.service';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import {
+  baseRoleLabel,
   TEAM_WORKSPACE_QUERY_LIMIT,
   TEAM_WORKSPACE_RECORD_PREFIX,
   TEAM_WORKSPACE_ROLE_LABEL,
@@ -407,7 +408,7 @@ export class TeamWorkspaceService {
         workspaceId: workspace.id,
       });
     const roles = rolesByUserWorkspace.get(userWorkspaceId) ?? [];
-    const roleLabels = roles.map((role) => role.label);
+    const roleLabels = roles.map((role) => baseRoleLabel(role.label));
     const hasUnknownRole = roleLabels.some(
       (label) => !KNOWN_ROLE_LABELS.has(label),
     );
@@ -486,7 +487,7 @@ export class TeamWorkspaceService {
 
     if (
       roles.length !== 1 ||
-      roles[0].label !== TEAM_WORKSPACE_ROLE_LABEL.admin ||
+      baseRoleLabel(roles[0].label) !== TEAM_WORKSPACE_ROLE_LABEL.admin ||
       !roles[0].id
     ) {
       throw this.accessDenied();
@@ -580,7 +581,10 @@ export class TeamWorkspaceService {
       workspaceId: authContext.workspace.id,
     });
 
-    if (role.label !== TEAM_WORKSPACE_ROLE_LABEL.automation || !role.id) {
+    if (
+      baseRoleLabel(role.label) !== TEAM_WORKSPACE_ROLE_LABEL.automation ||
+      !role.id
+    ) {
       throw this.accessDenied();
     }
 
@@ -671,7 +675,7 @@ export class TeamWorkspaceService {
     const workspaceRoles =
       await this.roleService.getWorkspaceRoles(workspaceId);
     const matchingRoles = workspaceRoles.filter(
-      (role) => role.label === expectedRoleLabel,
+      (role) => baseRoleLabel(role.label) === expectedRoleLabel,
     );
 
     if (matchingRoles.length !== 1) {
@@ -681,7 +685,7 @@ export class TeamWorkspaceService {
     // Someone on the Team role works both lanes, so they are a member of this one too.
     // The role is optional: a workspace that has not created it still resolves normally.
     const bothLaneRoles = workspaceRoles.filter(
-      (role) => role.label === TEAM_WORKSPACE_ROLE_LABEL.team,
+      (role) => baseRoleLabel(role.label) === TEAM_WORKSPACE_ROLE_LABEL.team,
     );
 
     if (bothLaneRoles.length > 1) {
