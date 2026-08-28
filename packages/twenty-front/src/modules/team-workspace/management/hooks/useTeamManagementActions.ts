@@ -1,5 +1,6 @@
 import { useMutation } from '@apollo/client/react';
 
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { type TeamManagementEmployee } from '@/team-workspace/management/utils/buildTeamManagementModel';
 import {
   CREATE_ASSIGNED_WORK,
@@ -64,10 +65,12 @@ export const buildCreateAssignedWorkInput = ({
 };
 
 export const useTeamManagementActions = () => {
+  // Served on the record endpoint, see useTeamWorkspaceRecords.
+  const apolloCoreClient = useApolloCoreClient();
   const [runCreateAssignedWork, state] = useMutation<
     { createAssignedWork: TeamWorkspaceCommandReceipt },
     { input: CreateAssignedWorkInput }
-  >(CREATE_ASSIGNED_WORK);
+  >(CREATE_ASSIGNED_WORK, { client: apolloCoreClient });
 
   const createAssignedWork = (draft: TeamManagementAssignmentDraft) =>
     runCreateAssignedWork({

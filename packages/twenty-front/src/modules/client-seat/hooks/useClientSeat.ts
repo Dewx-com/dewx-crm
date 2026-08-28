@@ -1,3 +1,5 @@
+import { gql } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
 import { useMemo } from 'react';
 
 import { clientScopeFromPermissions } from '@/client-seat/utils/clientScopeFromPermissions';
@@ -5,8 +7,8 @@ import {
   nameOfScope,
   slugOfScope,
 } from '@/client-workspace/hooks/useClientWorkspace';
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { objectMetadataItemsSelector } from '@/object-metadata/states/objectMetadataItemsSelector';
-import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 
@@ -17,6 +19,31 @@ type ClientRecordLite = {
   slug?: string | null;
   client?: string | null;
 };
+
+type ClientSeatRecordsData = {
+  clients?: { edges?: { node: ClientRecordLite }[] | null } | null;
+};
+
+// A plain query on the core client, not useFindManyRecords: that hook resolves the "client"
+// object's metadata synchronously and throws ObjectMetadataItemNotFoundError while the metadata
+// store is still empty, which is the first render in any fresh browser. Seen 2026-08-28 06:40
+// (Roki, app.dewx.com, new origin so no cached state): 'Object metadata item "client" cannot be
+// found in an array of 0 elements' at the app root. This query runs only once the store holds
+// a "client" object and the seat is scoped.
+const CLIENT_SEAT_RECORDS = gql`
+  query ClientSeatRecords {
+    clients(first: 2) {
+      edges {
+        node {
+          id
+          name
+          slug
+          client
+        }
+      }
+    }
+  }
+`;
 
 /**
  * Prospect Engine: is this seat a client's, and which client?
@@ -47,12 +74,20 @@ export const useClientSeat = () => {
 
   const isClientSeat = clientValue !== null;
 
-  const { records } = useFindManyRecords<ClientRecordLite>({
-    objectNameSingular: 'client',
-    recordGqlFields: { id: true, name: true, slug: true, client: true },
-    limit: 2,
-    skip: !isClientSeat,
+  const hasClientObject = objectMetadataItems.some(
+    (item) => item.nameSingular === 'client',
+  );
+
+  const apolloCoreClient = useApolloCoreClient();
+  const { data } = useQuery<ClientSeatRecordsData>(CLIENT_SEAT_RECORDS, {
+    client: apolloCoreClient,
+    skip: !isClientSeat || !hasClientObject,
   });
+
+  const records = useMemo(
+    () => data?.clients?.edges?.map((edge) => edge.node) ?? [],
+    [data],
+  );
 
   const record =
     records?.find((row) => row.client === clientValue) ?? records?.[0] ?? null;

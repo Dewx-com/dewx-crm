@@ -63,14 +63,9 @@ import {
 } from '@/team-workspace/role/graphql/queries/getCurrentTeamWorkspaceMemberRoles';
 import {
   isTeamWorkspaceDomainAlias,
-  isTeamWorkspaceLane,
   type TeamWorkspaceRoleSummary,
 } from '@/team-workspace/role/types/TeamWorkspaceLane';
-import {
-  canRolesEnterTeamWorkspaceLane,
-  TeamWorkspaceLaneAccessError,
-  teamWorkspaceLaneMismatchMessage,
-} from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
+import { TeamWorkspaceLaneAccessError } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { useLoadCurrentUser } from '@/users/hooks/useLoadCurrentUser';
 import { i18n } from '@lingui/core';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -343,22 +338,13 @@ export const useAuth = () => {
           workspacePublicData?.isTeamWorkspaceDomainAlias,
         );
 
-        if (!isTeamWorkspace) {
-          store.set(selectedTeamWorkspaceLaneState.atom, null);
-        }
-        const storedLane = store.get(selectedTeamWorkspaceLaneState.atom);
-        const selectedLane = isTeamWorkspaceLane(storedLane)
-          ? storedLane
-          : null;
+        // Sign in is email and password, nothing else (Roki, 2026-08-28: "it should just let
+        // you login"). The role decides what the person sees afterwards: a client seat lands
+        // on its client page, a team seat on its lanes, an Admin on the whole book. No door.
+        store.set(selectedTeamWorkspaceLaneState.atom, null);
         let verifiedRoles: TeamWorkspaceRoleSummary[] | null = null;
 
-        if (isTeamWorkspace && !selectedLane) {
-          await rejectTeamWorkspaceLane(
-            'Choose Sales or Operations before signing in.',
-          );
-        }
-
-        if (isTeamWorkspace && selectedLane) {
+        if (isTeamWorkspace) {
           try {
             const rolesResult =
               await apolloClient.query<CurrentTeamWorkspaceMemberRolesQuery>({
@@ -369,29 +355,7 @@ export const useAuth = () => {
             verifiedRoles =
               rolesResult.data?.currentUser?.workspaceMember?.roles ?? null;
           } catch {
-            await rejectTeamWorkspaceLane(
-              "We couldn't verify this account's workspace role. Please try again.",
-            );
-          }
-
-          if (!verifiedRoles) {
-            await rejectTeamWorkspaceLane(
-              "We couldn't verify this account's workspace role. Please try again.",
-            );
-          }
-
-          if (
-            !canRolesEnterTeamWorkspaceLane({
-              roles: verifiedRoles,
-              lane: selectedLane,
-            })
-          ) {
-            await rejectTeamWorkspaceLane(
-              teamWorkspaceLaneMismatchMessage({
-                roles: verifiedRoles,
-                selectedLane,
-              }),
-            );
+            verifiedRoles = null;
           }
         }
 

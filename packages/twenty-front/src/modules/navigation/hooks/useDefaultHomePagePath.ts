@@ -2,6 +2,7 @@ import { currentUserState } from '@/auth/states/currentUserState';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
 import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
+import { isTeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
 import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
 import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { metadataStoreStatusFamilySelector } from '@/metadata-store/states/metadataStoreStatusFamilySelector';
@@ -134,7 +135,8 @@ export const useDefaultHomePagePath = () => {
         ? teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles)
         : [];
     const defaultTeamLane =
-      selectedTeamWorkspaceLane && teamLanes.includes(selectedTeamWorkspaceLane)
+      isTeamWorkspaceLane(selectedTeamWorkspaceLane) &&
+      teamLanes.includes(selectedTeamWorkspaceLane)
         ? selectedTeamWorkspaceLane
         : teamLanes[0];
 

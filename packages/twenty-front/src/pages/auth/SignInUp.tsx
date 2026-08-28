@@ -1,6 +1,5 @@
 import { useSignInUp } from '@/auth/sign-in-up/hooks/useSignInUp';
 import { useSignInUpForm } from '@/auth/sign-in-up/hooks/useSignInUpForm';
-import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
 import { isCreatingWorkspaceState } from '@/auth/states/isCreatingWorkspaceState';
 import {
   SignInUpStep,
@@ -10,7 +9,6 @@ import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState
 import { isTeamWorkspaceDomainAlias } from '@/team-workspace/role/types/TeamWorkspaceLane';
 import { styled } from '@linaria/react';
 
-import { useAtomState } from '@/ui/utilities/state/jotai/hooks/useAtomState';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 
@@ -71,8 +69,6 @@ export const SignInUp = () => {
   const { isDefaultDomain } = useIsCurrentLocationOnDefaultDomain();
   const { isOnAWorkspace } = useIsCurrentLocationOnAWorkspace();
   const workspacePublicData = useAtomStateValue(workspacePublicDataState);
-  const [selectedTeamWorkspaceLane, setSelectedTeamWorkspaceLane] =
-    useAtomState(selectedTeamWorkspaceLaneState);
   const { loading: getPublicWorkspaceDataLoading } =
     useGetPublicWorkspaceDataByDomain();
   const isMultiWorkspaceEnabled = useAtomStateValue(
@@ -85,14 +81,6 @@ export const SignInUp = () => {
 
   const onClickOnLogo = () => {
     setSignInUpStep(SignInUpStep.Init);
-
-    if (
-      isTeamWorkspaceDomainAlias(
-        workspacePublicData?.isTeamWorkspaceDomainAlias,
-      )
-    ) {
-      setSelectedTeamWorkspaceLane(null);
-    }
   };
 
   const onBackFromWorkspaceCreation = () => {
@@ -135,22 +123,6 @@ export const SignInUp = () => {
 
     const workspaceName = workspacePublicData?.displayName;
 
-    if (
-      isTeamWorkspaceDomainAlias(
-        workspacePublicData?.isTeamWorkspaceDomainAlias,
-      )
-    ) {
-      if (!selectedTeamWorkspaceLane) {
-        return t`Choose your work area`;
-      }
-
-      if (selectedTeamWorkspaceLane === 'sales') {
-        return t`Sign in to Sales`;
-      }
-
-      return t`Sign in to Operations`;
-    }
-
     if (!workspaceName) {
       return t`Sign in to your workspace`;
     }
@@ -162,7 +134,6 @@ export const SignInUp = () => {
     workspacePublicData?.displayName,
     workspacePublicData?.isTeamWorkspaceDomainAlias,
     isGlobalScope,
-    selectedTeamWorkspaceLane,
     t,
     workspaceFromInviteHash?.displayName,
   ]);

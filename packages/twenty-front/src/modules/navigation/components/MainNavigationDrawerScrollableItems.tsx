@@ -183,32 +183,42 @@ export const MainNavigationDrawerScrollableItems = () => {
     );
   }
 
-  if (teamLanes.length > 0) {
+  const teamSections = (
+    <>
+      {canManageTeam && (
+        <NavigationDrawerSection>
+          <NavigationDrawerItem
+            label="Team management"
+            to="/team/management/overview"
+            Icon={IconUsers}
+          />
+        </NavigationDrawerSection>
+      )}
+      {teamLanes.map((lane) => (
+        <TeamLaneNavigationSection
+          key={lane}
+          lane={lane}
+          title={
+            teamLanes.length === 1
+              ? PE_SECTION_TITLE
+              : lane === 'sales'
+                ? 'Sales'
+                : 'Operations'
+          }
+        />
+      ))}
+    </>
+  );
+
+  // A team seat (Sales, Operations, Team) sees its lanes and nothing else. An Admin sees the
+  // lanes AND the whole book below them: measured 2026-08-28 on app.dewx.com, Roki's drawer
+  // carried only the team items and Companies, Prospects and every other list were reachable
+  // by typing the address alone.
+  if (teamLanes.length > 0 && !canManageTeam) {
     return (
       <StyledScrollableItemsContainer>
         <NavigationDrawerOpenedSection />
-        {canManageTeam && (
-          <NavigationDrawerSection>
-            <NavigationDrawerItem
-              label="Team management"
-              to="/team/management/overview"
-              Icon={IconUsers}
-            />
-          </NavigationDrawerSection>
-        )}
-        {teamLanes.map((lane) => (
-          <TeamLaneNavigationSection
-            key={lane}
-            lane={lane}
-            title={
-              teamLanes.length === 1
-                ? PE_SECTION_TITLE
-                : lane === 'sales'
-                  ? 'Sales'
-                  : 'Operations'
-            }
-          />
-        ))}
+        {teamSections}
       </StyledScrollableItemsContainer>
     );
   }
@@ -216,6 +226,7 @@ export const MainNavigationDrawerScrollableItems = () => {
   return (
     <StyledScrollableItemsContainer>
       <NavigationDrawerOpenedSection />
+      {canManageTeam && teamSections}
       {/* Prospect Engine: our own surfaces, under one heading of ours and above their object
           list, which carries a heading of its own reading Workspace. */}
       <NavigationDrawerSection>

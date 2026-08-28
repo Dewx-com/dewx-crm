@@ -2,8 +2,9 @@ import { styled } from '@linaria/react';
 
 import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
 import {
-  TEAM_WORKSPACE_LANE_LABELS,
-  type TeamWorkspaceLane,
+  SIGN_IN_DOOR_LABELS,
+  type SignInDoor,
+  WORKSPACE_DOOR,
 } from '@/team-workspace/role/types/TeamWorkspaceLane';
 import {
   SignInUpStep,
@@ -14,7 +15,7 @@ import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomStat
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const LANE_OPTIONS: Array<{
-  lane: TeamWorkspaceLane;
+  lane: SignInDoor;
   description: string;
 }> = [
   {
@@ -26,6 +27,11 @@ const LANE_OPTIONS: Array<{
     lane: 'operations',
     description:
       'Track client delivery, meetings, work updates, and next actions.',
+  },
+  {
+    lane: WORKSPACE_DOOR,
+    description:
+      'Clients and employees: your own records, as they were set up for you.',
   },
 ];
 
@@ -112,7 +118,7 @@ export const TeamWorkspaceLanePicker = () => {
     useAtomState(selectedTeamWorkspaceLaneState);
   const setSignInUpStep = useSetAtomState(signInUpStepState);
 
-  const chooseLane = (lane: TeamWorkspaceLane) => {
+  const chooseLane = (lane: SignInDoor) => {
     setSelectedTeamWorkspaceLane(lane);
     setSignInUpStep(SignInUpStep.Init);
   };
@@ -126,7 +132,9 @@ export const TeamWorkspaceLanePicker = () => {
     return (
       <StyledSelection>
         <span>
-          {TEAM_WORKSPACE_LANE_LABELS[selectedTeamWorkspaceLane]} workspace
+          {selectedTeamWorkspaceLane === WORKSPACE_DOOR
+            ? SIGN_IN_DOOR_LABELS[selectedTeamWorkspaceLane]
+            : `${SIGN_IN_DOOR_LABELS[selectedTeamWorkspaceLane]} workspace`}
         </span>
         <StyledChangeButton type="button" onClick={changeLane}>
           Change
@@ -144,7 +152,7 @@ export const TeamWorkspaceLanePicker = () => {
           type="button"
           onClick={() => chooseLane(lane)}
         >
-          <StyledLaneLabel>{TEAM_WORKSPACE_LANE_LABELS[lane]}</StyledLaneLabel>
+          <StyledLaneLabel>{SIGN_IN_DOOR_LABELS[lane]}</StyledLaneLabel>
           <StyledLaneDescription>{description}</StyledLaneDescription>
         </StyledLaneButton>
       ))}

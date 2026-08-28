@@ -75,6 +75,10 @@ export const teamWorkspaceLaneMismatchMessage = ({
     return `This account belongs to ${TEAM_WORKSPACE_LANE_LABELS[allowedLane]}. Choose ${TEAM_WORKSPACE_LANE_LABELS[allowedLane]} to continue.`;
   }
 
+  if (allowedLanes.length === 0) {
+    return `This account is a client or employee seat, not part of ${TEAM_WORKSPACE_LANE_LABELS[selectedLane]}. Choose My workspace to continue.`;
+  }
+
   return `This account is not assigned to ${TEAM_WORKSPACE_LANE_LABELS[selectedLane]}. Ask an administrator to check the account role.`;
 };
 

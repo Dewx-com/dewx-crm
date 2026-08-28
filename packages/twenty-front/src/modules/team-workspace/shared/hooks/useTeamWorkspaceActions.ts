@@ -1,5 +1,6 @@
 import { useMutation } from '@apollo/client/react';
 
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { type TeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
 import {
   COMPLETE_TASK_WITH_EVIDENCE,
@@ -125,26 +126,28 @@ export type MeetingOutcomeKind =
   | 'CANCELLED';
 
 export const useTeamWorkspaceActions = (lane: TeamWorkspaceLane) => {
+  // Team commands are served on the record endpoint, see useTeamWorkspaceRecords.
+  const apolloCoreClient = useApolloCoreClient();
   const [runCreateProtocolTask, createProtocolState] = useMutation<
     { createProtocolTask: TeamWorkspaceCommandReceipt },
     { input: CreateProtocolTaskInput }
-  >(CREATE_PROTOCOL_TASK);
+  >(CREATE_PROTOCOL_TASK, { client: apolloCoreClient });
   const [runTransitionTaskStatus, transitionTaskState] = useMutation<
     { transitionTaskStatus: TeamWorkspaceCommandReceipt },
     { input: TransitionTaskStatusInput }
-  >(TRANSITION_TASK_STATUS);
+  >(TRANSITION_TASK_STATUS, { client: apolloCoreClient });
   const [runUpdateOpportunityStage, updateOpportunityState] = useMutation<
     { updateOpportunityStage: TeamWorkspaceCommandReceipt },
     { input: UpdateOpportunityStageInput }
-  >(UPDATE_OPPORTUNITY_STAGE);
+  >(UPDATE_OPPORTUNITY_STAGE, { client: apolloCoreClient });
   const [runCompleteTask, completeTaskState] = useMutation<
     { completeTaskWithEvidence: TeamWorkspaceCommandReceipt },
     { input: CompleteTaskWithEvidenceInput }
-  >(COMPLETE_TASK_WITH_EVIDENCE);
+  >(COMPLETE_TASK_WITH_EVIDENCE, { client: apolloCoreClient });
   const [runWinOpportunity, winOpportunityState] = useMutation<
     { winOpportunityWithHandoff: TeamWorkspaceCommandReceipt },
     { input: WinOpportunityWithHandoffInput }
-  >(WIN_OPPORTUNITY_WITH_HANDOFF);
+  >(WIN_OPPORTUNITY_WITH_HANDOFF, { client: apolloCoreClient });
 
   const createProtocolTask = (input: CreateProtocolTaskInput) =>
     runCreateProtocolTask({ variables: { input } });

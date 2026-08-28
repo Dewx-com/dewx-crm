@@ -7,8 +7,6 @@ import { useHandleResetPassword } from '@/auth/sign-in-up/hooks/useHandleResetPa
 import { useSignInUp } from '@/auth/sign-in-up/hooks/useSignInUp';
 import { useSignInUpForm } from '@/auth/sign-in-up/hooks/useSignInUpForm';
 import { useWorkspaceBypass } from '@/auth/sign-in-up/hooks/useWorkspaceBypass';
-import { TeamWorkspaceLanePicker } from '@/auth/sign-in-up/team-workspace/components/TeamWorkspaceLanePicker';
-import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
 import { SignInUpStep } from '@/auth/states/signInUpStepState';
 import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
 import { isTeamWorkspaceDomainAlias } from '@/team-workspace/role/types/TeamWorkspaceLane';
@@ -26,9 +24,6 @@ export const SignInUpWorkspaceScopeForm = () => {
     workspaceAuthBypassProvidersState,
   );
   const workspacePublicData = useAtomStateValue(workspacePublicDataState);
-  const selectedTeamWorkspaceLane = useAtomStateValue(
-    selectedTeamWorkspaceLaneState,
-  );
   const { shouldOfferBypass, shouldUseBypass } = useWorkspaceBypass();
 
   const { form } = useSignInUpForm();
@@ -45,14 +40,6 @@ export const SignInUpWorkspaceScopeForm = () => {
     workspacePublicData?.isTeamWorkspaceDomainAlias,
   );
 
-  if (isTeamWorkspace && !selectedTeamWorkspaceLane) {
-    return (
-      <StyledOnboardingContentContainer>
-        <TeamWorkspaceLanePicker />
-      </StyledOnboardingContentContainer>
-    );
-  }
-
   const providers =
     shouldOfferBypass && shouldUseBypass
       ? {
@@ -64,7 +51,6 @@ export const SignInUpWorkspaceScopeForm = () => {
   return (
     <>
       <StyledOnboardingContentContainer>
-        {isTeamWorkspace && <TeamWorkspaceLanePicker />}
 
         {!isTeamWorkspace && providers.google && (
           <SignInUpWithGoogle action="join-workspace" />
