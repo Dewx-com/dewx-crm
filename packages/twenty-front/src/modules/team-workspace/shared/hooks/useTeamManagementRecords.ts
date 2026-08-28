@@ -1,6 +1,7 @@
 import { useQuery } from '@apollo/client/react';
 import { useMemo } from 'react';
 
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import {
   GET_TEAM_MANAGEMENT_SNAPSHOT,
   type GetTeamManagementSnapshotQuery,
@@ -8,9 +9,12 @@ import {
 import { teamWorkspaceRecordsFromSnapshot } from '@/team-workspace/shared/utils/teamWorkspaceSnapshotAdapter';
 
 export const useTeamManagementRecords = (skip = false) => {
+  // Served on the record endpoint, see useTeamWorkspaceRecords.
+  const apolloCoreClient = useApolloCoreClient();
   const query = useQuery<GetTeamManagementSnapshotQuery>(
     GET_TEAM_MANAGEMENT_SNAPSHOT,
     {
+      client: apolloCoreClient,
       skip,
       fetchPolicy: 'cache-and-network',
     },

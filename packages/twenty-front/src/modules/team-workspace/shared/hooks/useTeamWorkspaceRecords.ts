@@ -1,6 +1,7 @@
 import { useQuery } from '@apollo/client/react';
 import { useMemo } from 'react';
 
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { type TeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
 import { TEAM_TASK_STATUS } from '@/team-workspace/shared/constants/teamWorkspaceTaskStatus';
 import {
@@ -37,10 +38,16 @@ export const useTeamWorkspaceRecords = (
   // resolves the authenticated member scope.
   void _currentWorkspaceMemberId;
 
+  // Team reads and commands are served on the record endpoint (/graphql), not on the default
+  // metadata client: measured 2026-08-28 on app.dewx.com, the default client answered every
+  // team page with 'Unknown type "TeamWorkspaceLane"' and the pages showed nothing.
+  const apolloCoreClient = useApolloCoreClient();
+
   const snapshotQuery = useQuery<
     GetTeamWorkspaceSnapshotQuery,
     GetTeamWorkspaceSnapshotQueryVariables
   >(GET_TEAM_WORKSPACE_SNAPSHOT, {
+    client: apolloCoreClient,
     variables: { lane: snapshotLaneOf(lane) },
     skip: skipAll,
     fetchPolicy: 'cache-and-network',
