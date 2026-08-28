@@ -1,13 +1,14 @@
 import { createAtomState } from '@/ui/utilities/state/jotai/utils/createAtomState';
 import {
-  isTeamWorkspaceLane,
-  type TeamWorkspaceLane,
+  isSignInDoor,
+  type SignInDoor,
 } from '@/team-workspace/role/types/TeamWorkspaceLane';
 
-export const selectedTeamWorkspaceLaneState =
-  createAtomState<TeamWorkspaceLane | null>({
+export const selectedTeamWorkspaceLaneState = createAtomState<SignInDoor | null>(
+  {
     key: 'selectedTeamWorkspaceLaneState',
     defaultValue: null,
     useSessionStorage: true,
-    validateInitFn: isTeamWorkspaceLane,
-  });
+    validateInitFn: isSignInDoor,
+  },
+);

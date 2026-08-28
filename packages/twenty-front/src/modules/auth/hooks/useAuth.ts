@@ -62,14 +62,17 @@ import {
   type CurrentTeamWorkspaceMemberRolesQuery,
 } from '@/team-workspace/role/graphql/queries/getCurrentTeamWorkspaceMemberRoles';
 import {
+  isSignInDoor,
   isTeamWorkspaceDomainAlias,
-  isTeamWorkspaceLane,
   type TeamWorkspaceRoleSummary,
+  WORKSPACE_DOOR,
 } from '@/team-workspace/role/types/TeamWorkspaceLane';
 import {
+  canRolesEnterTeamManagement,
   canRolesEnterTeamWorkspaceLane,
   TeamWorkspaceLaneAccessError,
   teamWorkspaceLaneMismatchMessage,
+  teamWorkspaceLanesFromRoles,
 } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { useLoadCurrentUser } from '@/users/hooks/useLoadCurrentUser';
 import { i18n } from '@lingui/core';
@@ -347,14 +350,12 @@ export const useAuth = () => {
           store.set(selectedTeamWorkspaceLaneState.atom, null);
         }
         const storedLane = store.get(selectedTeamWorkspaceLaneState.atom);
-        const selectedLane = isTeamWorkspaceLane(storedLane)
-          ? storedLane
-          : null;
+        const selectedLane = isSignInDoor(storedLane) ? storedLane : null;
         let verifiedRoles: TeamWorkspaceRoleSummary[] | null = null;
 
         if (isTeamWorkspace && !selectedLane) {
           await rejectTeamWorkspaceLane(
-            'Choose Sales or Operations before signing in.',
+            'Choose Sales, Operations or My workspace before signing in.',
           );
         }
 
@@ -380,7 +381,20 @@ export const useAuth = () => {
             );
           }
 
-          if (
+          if (selectedLane === WORKSPACE_DOOR) {
+            // "My workspace" is for seats with no team lane (Client · …, Employee · …, Pending).
+            // A team role (Sales, Operations, Team) is sent back to its own door; an Admin may
+            // enter anywhere. The seat's data boundary is the server's, not this door's.
+            const isTeamSeat =
+              teamWorkspaceLanesFromRoles(verifiedRoles).length > 0 &&
+              !canRolesEnterTeamManagement(verifiedRoles);
+
+            if (isTeamSeat) {
+              await rejectTeamWorkspaceLane(
+                'This account belongs to the team workspace. Choose Sales or Operations to continue.',
+              );
+            }
+          } else if (
             !canRolesEnterTeamWorkspaceLane({
               roles: verifiedRoles,
               lane: selectedLane,

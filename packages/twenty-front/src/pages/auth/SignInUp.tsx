@@ -148,7 +148,11 @@ export const SignInUp = () => {
         return t`Sign in to Sales`;
       }
 
-      return t`Sign in to Operations`;
+      if (selectedTeamWorkspaceLane === 'operations') {
+        return t`Sign in to Operations`;
+      }
+
+      return t`Sign in to your workspace`;
     }
 
     if (!workspaceName) {
