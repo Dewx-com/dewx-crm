@@ -6,7 +6,7 @@ import {
   signInUpStepState,
 } from '@/auth/states/signInUpStepState';
 import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
-import { isTeamWorkspaceDomainAlias } from '@/team-workspace/role/types/TeamWorkspaceLane';
+import { isTeamWorkspaceDomainAlias } from '@/auth/utils/isTeamWorkspaceDomainAlias';
 import { styled } from '@linaria/react';
 
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';

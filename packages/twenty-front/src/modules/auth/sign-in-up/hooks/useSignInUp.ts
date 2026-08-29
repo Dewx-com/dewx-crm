@@ -16,9 +16,8 @@ import { useCaptcha } from '@/client-config/hooks/useCaptcha';
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
 import { useBuildSearchParamsFromUrlSyncedStates } from '@/domain-manager/hooks/useBuildSearchParamsFromUrlSyncedStates';
 import { useIsCurrentLocationOnAWorkspace } from '@/domain-manager/hooks/useIsCurrentLocationOnAWorkspace';
-import { TeamWorkspaceLaneAccessError } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
-import { isTeamWorkspaceDomainAlias } from '@/team-workspace/role/types/TeamWorkspaceLane';
+import { isTeamWorkspaceDomainAlias } from '@/auth/utils/isTeamWorkspaceDomainAlias';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { isErrorLike } from '@apollo/client/errors';
 import { useLingui } from '@lingui/react/macro';
@@ -191,11 +190,6 @@ export const useSignInUp = (form: UseFormReturn<Form>) => {
           verifyEmailRedirectPath,
         });
       } catch (error: unknown) {
-        if (error instanceof TeamWorkspaceLaneAccessError) {
-          enqueueErrorSnackBar({ message: error.message });
-          return;
-        }
-
         enqueueErrorSnackBar({
           ...(isErrorLike(error) ? { apolloError: error } : {}),
         });

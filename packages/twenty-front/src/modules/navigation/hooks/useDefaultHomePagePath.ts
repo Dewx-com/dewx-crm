@@ -1,9 +1,7 @@
 import { currentUserState } from '@/auth/states/currentUserState';
-import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
-import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
-import { isTeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
 import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
+import { isTeamWorkspaceDomainAlias } from '@/auth/utils/isTeamWorkspaceDomainAlias';
 import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { metadataStoreStatusFamilySelector } from '@/metadata-store/states/metadataStoreStatusFamilySelector';
 import { useNavigationMenuItemSectionItems } from '@/navigation-menu-item/display/hooks/useNavigationMenuItemSectionItems';
@@ -18,11 +16,6 @@ import { useAtomFamilySelectorValue } from '@/ui/utilities/state/jotai/hooks/use
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { viewsSelector } from '@/views/states/selectors/viewsSelector';
-import {
-  canRolesEnterTeamManagement,
-  teamWorkspaceLanesFromRoles,
-} from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
-import { teamWorkspacePath } from '@/team-workspace/shared/utils/teamWorkspaceRoutes';
 import isEmpty from 'lodash.isempty';
 import { useCallback, useMemo } from 'react';
 import { AppPath, SettingsPath } from 'twenty-shared/types';
@@ -30,11 +23,7 @@ import { getAppPath, getSettingsPath, isDefined } from 'twenty-shared/utils';
 
 export const useDefaultHomePagePath = () => {
   const currentUser = useAtomStateValue(currentUserState);
-  const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const workspacePublicData = useAtomStateValue(workspacePublicDataState);
-  const selectedTeamWorkspaceLane = useAtomStateValue(
-    selectedTeamWorkspaceLaneState,
-  );
   const isMobile = useIsMobile();
   // Prospect Engine: a client's seat opens on its own workspace page.
   const { isClientSeat } = useClientSeat();
@@ -123,25 +112,11 @@ export const useDefaultHomePagePath = () => {
       return '/client';
     }
 
-    if (
-      workspacePublicData?.isTeamWorkspaceDomainAlias === true &&
-      canRolesEnterTeamManagement(currentWorkspaceMember?.roles)
-    ) {
-      return '/team/management/overview';
-    }
-
-    const teamLanes =
-      workspacePublicData?.isTeamWorkspaceDomainAlias === true
-        ? teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles)
-        : [];
-    const defaultTeamLane =
-      isTeamWorkspaceLane(selectedTeamWorkspaceLane) &&
-      teamLanes.includes(selectedTeamWorkspaceLane)
-        ? selectedTeamWorkspaceLane
-        : teamLanes[0];
-
-    if (defaultTeamLane) {
-      return teamWorkspacePath({ lane: defaultTeamLane, section: 'today' });
+    // On our own host everyone else opens on Today: one operating screen, scoped by their role.
+    // Before 2026-08-29 an Admin landed on the team management hub and a team seat on a lane
+    // page. Any other host keeps Twenty's own fallback chain below.
+    if (isTeamWorkspaceDomainAlias(workspacePublicData?.isTeamWorkspaceDomainAlias)) {
+      return AppPath.Today;
     }
 
     if (isEmpty(readableNonSystemObjectMetadataItems)) {
@@ -167,9 +142,7 @@ export const useDefaultHomePagePath = () => {
     currentUser,
     isMobile,
     isClientSeat,
-    currentWorkspaceMember?.roles,
     workspacePublicData?.isTeamWorkspaceDomainAlias,
-    selectedTeamWorkspaceLane,
     readableNonSystemObjectMetadataItems,
     areObjectMetadataItemsLoaded,
     areNavigationMenuItemsLoaded,

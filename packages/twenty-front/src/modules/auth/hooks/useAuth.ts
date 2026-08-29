@@ -24,7 +24,6 @@ import {
 } from '~/generated-metadata/graphql';
 
 import { currentUserState } from '@/auth/states/currentUserState';
-import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
 import { isCookieAuthActiveState } from '@/auth/states/isCookieAuthActiveState';
 import { isPendingServerSignOutState } from '@/auth/states/isPendingServerSignOutState';
 import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
@@ -57,15 +56,6 @@ import { useLastAuthenticatedWorkspaceDomain } from '@/domain-manager/hooks/useL
 import { useOrigin } from '@/domain-manager/hooks/useOrigin';
 import { useRedirect } from '@/domain-manager/hooks/useRedirect';
 import { useRedirectToWorkspaceDomain } from '@/domain-manager/hooks/useRedirectToWorkspaceDomain';
-import {
-  GET_CURRENT_TEAM_WORKSPACE_MEMBER_ROLES,
-  type CurrentTeamWorkspaceMemberRolesQuery,
-} from '@/team-workspace/role/graphql/queries/getCurrentTeamWorkspaceMemberRoles';
-import {
-  isTeamWorkspaceDomainAlias,
-  type TeamWorkspaceRoleSummary,
-} from '@/team-workspace/role/types/TeamWorkspaceLane';
-import { TeamWorkspaceLaneAccessError } from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
 import { useLoadCurrentUser } from '@/users/hooks/useLoadCurrentUser';
 import { i18n } from '@lingui/core';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -129,7 +119,6 @@ export const useAuth = () => {
 
   const clearSessionState = useCallback(() => {
     store.set(isAppEffectRedirectEnabledState.atom, false);
-    store.set(selectedTeamWorkspaceLaneState.atom, null);
     sessionStorage.clear();
     store.set(tokenPairState.atom, null);
     store.set(isCookieAuthActiveState.atom, false);
@@ -147,28 +136,6 @@ export const useAuth = () => {
     clearSessionState();
     window.location.assign(AppPath.SignInUp);
   }, [clearSessionState]);
-
-  const rejectTeamWorkspaceLane = useCallback(
-    async (message: string): Promise<never> => {
-      store.set(isPendingServerSignOutState.atom, true);
-
-      try {
-        await signOutMutation({
-          variables: {
-            refreshToken: store.get(tokenPairState.atom)?.refreshToken?.token,
-          },
-        });
-      } catch {
-        // Local session removal must still happen if the server is unavailable.
-      } finally {
-        store.set(isPendingServerSignOutState.atom, false);
-        clearSessionState();
-      }
-
-      throw new TeamWorkspaceLaneAccessError(message);
-    },
-    [clearSessionState, signOutMutation, store],
-  );
 
   const handleSetAuthTokens = useCallback(
     (tokens: AuthTokenPair) => {
@@ -334,52 +301,14 @@ export const useAuth = () => {
       setIsAppEffectRedirectEnabled(false);
 
       try {
-        const isTeamWorkspace = isTeamWorkspaceDomainAlias(
-          workspacePublicData?.isTeamWorkspaceDomainAlias,
-        );
-
-        // Sign in is email and password, nothing else (Roki, 2026-08-28: "it should just let
-        // you login"). The role decides what the person sees afterwards: a client seat lands
-        // on its client page, a team seat on its lanes, an Admin on the whole book. No door.
-        store.set(selectedTeamWorkspaceLaneState.atom, null);
-        let verifiedRoles: TeamWorkspaceRoleSummary[] | null = null;
-
-        if (isTeamWorkspace) {
-          try {
-            const rolesResult =
-              await apolloClient.query<CurrentTeamWorkspaceMemberRolesQuery>({
-                query: GET_CURRENT_TEAM_WORKSPACE_MEMBER_ROLES,
-                fetchPolicy: 'network-only',
-              });
-
-            verifiedRoles =
-              rolesResult.data?.currentUser?.workspaceMember?.roles ?? null;
-          } catch {
-            verifiedRoles = null;
-          }
-        }
-
-        const { workspaceMember } = await loadCurrentUser();
-
-        if (workspaceMember && verifiedRoles) {
-          store.set(currentWorkspaceMemberState.atom, {
-            ...workspaceMember,
-            roles: verifiedRoles,
-          });
-        }
+        // Sign in is email and password; the role decides where the person lands and what they
+        // read (Roki, 2026-08-28/29). Nothing is verified here beyond loading the member.
+        await loadCurrentUser();
       } finally {
         setIsAppEffectRedirectEnabled(true);
       }
     },
-    [
-      apolloClient,
-      handleSetAuthTokens,
-      loadCurrentUser,
-      rejectTeamWorkspaceLane,
-      setIsAppEffectRedirectEnabled,
-      store,
-      workspacePublicData?.isTeamWorkspaceDomainAlias,
-    ],
+    [handleSetAuthTokens, loadCurrentUser, setIsAppEffectRedirectEnabled],
   );
 
   const handleGetAuthTokensFromLoginToken = useCallback(

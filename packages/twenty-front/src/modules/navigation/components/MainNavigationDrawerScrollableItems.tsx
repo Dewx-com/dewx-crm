@@ -3,9 +3,6 @@ import { NavigationDrawerWorkspaceSectionSkeletonLoader } from '@/object-metadat
 
 import { styled } from '@linaria/react';
 import {
-  IconCalendarEvent,
-  IconListCheck,
-  IconPhone,
   IconInbox,
   IconLayoutDashboard,
   IconMap,
@@ -16,14 +13,7 @@ import {
   IconTargetArrow,
   IconUsers,
 } from 'twenty-ui/icon';
-import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { useClientSeat } from '@/client-seat/hooks/useClientSeat';
-import { type TeamWorkspaceLane } from '@/team-workspace/role/types/TeamWorkspaceLane';
-import {
-  canRolesEnterTeamManagement,
-  teamWorkspaceLanesFromRoles,
-} from '@/team-workspace/role/utils/teamWorkspaceRoleAccess';
-import { teamWorkspacePath } from '@/team-workspace/shared/utils/teamWorkspaceRoutes';
 import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
 import { NavigationDrawerSection } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSection';
@@ -51,7 +41,7 @@ const WorkspaceSectionDispatcher = lazy(() =>
 
 // Prospect Engine: the heading over our own two surfaces. It lives in one string so that a
 // differently branded build of this same source changes the menu by changing this line.
-const PE_SECTION_TITLE = 'Prospect Engine';
+const PE_SECTION_TITLE = 'Dewx';
 
 // Their section headings collapse the section when clicked, so the shared style paints a hover
 // tint and a pointer cursor. Ours is a plain label with nothing to collapse, and a pointer over
@@ -71,79 +61,12 @@ const StyledScrollableItemsContainer = styled.div`
   gap: ${themeCssVariables.spacing[3]};
 `;
 
-const TeamLaneNavigationSection = ({
-  lane,
-  title,
-}: {
-  lane: TeamWorkspaceLane;
-  title: string;
-}) => (
-  <NavigationDrawerSection>
-    <NavigationDrawerAnimatedCollapseWrapper>
-      <StyledStaticSectionTitle>
-        <NavigationDrawerSectionTitle label={title} />
-      </StyledStaticSectionTitle>
-    </NavigationDrawerAnimatedCollapseWrapper>
-    <NavigationDrawerItem
-      label="Today"
-      to={teamWorkspacePath({ lane, section: 'today' })}
-      Icon={IconSun}
-    />
-    {lane === 'sales' ? (
-      <>
-        <NavigationDrawerItem
-          label="Meetings"
-          to={teamWorkspacePath({ lane, section: 'meetings' })}
-          Icon={IconCalendarEvent}
-        />
-        <NavigationDrawerItem
-          label="Pipeline"
-          to={teamWorkspacePath({ lane, section: 'pipeline' })}
-          Icon={IconTargetArrow}
-        />
-        <NavigationDrawerItem
-          label="Call coaching"
-          to={teamWorkspacePath({ lane, section: 'call-coaching' })}
-          Icon={IconPhone}
-        />
-      </>
-    ) : (
-      <>
-        <NavigationDrawerItem
-          label="Clients"
-          to={teamWorkspacePath({ lane, section: 'clients' })}
-          Icon={IconUsers}
-        />
-        <NavigationDrawerItem
-          label="Work"
-          to={teamWorkspacePath({ lane, section: 'work' })}
-          Icon={IconListCheck}
-        />
-        <NavigationDrawerItem
-          label="Meetings"
-          to={teamWorkspacePath({ lane, section: 'meetings' })}
-          Icon={IconCalendarEvent}
-        />
-      </>
-    )}
-  </NavigationDrawerSection>
-);
-
 export const MainNavigationDrawerScrollableItems = () => {
   // Prospect Engine: a client's seat sees ITS menu — Overview · Plan · Reports · Deliverables ·
   // Prospects · Deals — and nothing of ours (no Clients list, no Tasks, no Snapshots, no Inbox,
   // no Today). Roki, 2026-08-25: "why a client should see Clients? That's for us." Staff keep the
   // full drawer below, unchanged.
   const { isClientSeat } = useClientSeat();
-  const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
-  // One door: app.prospectengine.com. The lanes a person sees come from their ROLE, never from
-  // which hostname they typed — the server authorizes on role too (isTeamWorkspaceId matches the
-  // workspace id, not the request host), so gating the drawer on a domain only ever hid the nav
-  // while leaving the API reachable. A client seat has no team role and so renders none of this.
-  const teamLanes = teamWorkspaceLanesFromRoles(currentWorkspaceMember?.roles);
-  const canManageTeam = canRolesEnterTeamManagement(
-    currentWorkspaceMember?.roles,
-  );
   if (isClientSeat) {
     return (
       <StyledScrollableItemsContainer>
@@ -183,52 +106,12 @@ export const MainNavigationDrawerScrollableItems = () => {
     );
   }
 
-  const teamSections = (
-    <>
-      {canManageTeam && (
-        <NavigationDrawerSection>
-          <NavigationDrawerItem
-            label="Team management"
-            to="/team/management/overview"
-            Icon={IconUsers}
-          />
-        </NavigationDrawerSection>
-      )}
-      {teamLanes.map((lane) => (
-        <TeamLaneNavigationSection
-          key={lane}
-          lane={lane}
-          title={
-            teamLanes.length === 1
-              ? PE_SECTION_TITLE
-              : lane === 'sales'
-                ? 'Sales'
-                : 'Operations'
-          }
-        />
-      ))}
-    </>
-  );
-
-  // A team seat (Sales, Operations, Team) sees its lanes and nothing else. An Admin sees the
-  // lanes AND the whole book below them: measured 2026-08-28 on app.dewx.com, Roki's drawer
-  // carried only the team items and Companies, Prospects and every other list were reachable
-  // by typing the address alone.
-  if (teamLanes.length > 0 && !canManageTeam) {
-    return (
-      <StyledScrollableItemsContainer>
-        <NavigationDrawerOpenedSection />
-        {teamSections}
-      </StyledScrollableItemsContainer>
-    );
-  }
-
   return (
     <StyledScrollableItemsContainer>
       <NavigationDrawerOpenedSection />
-      {canManageTeam && teamSections}
-      {/* Prospect Engine: our own surfaces, under one heading of ours and above their object
-          list, which carries a heading of its own reading Workspace. */}
+      {/* One navigation for everyone (Roki, 2026-08-29): the lanes were a second world with no
+          rows of their own — Pipeline said "no opportunities" beside 1,430 deals. What a person
+          sees is decided by their role's assignment scope, not by a separate set of pages. */}
       <NavigationDrawerSection>
         <NavigationDrawerAnimatedCollapseWrapper>
           <StyledStaticSectionTitle>

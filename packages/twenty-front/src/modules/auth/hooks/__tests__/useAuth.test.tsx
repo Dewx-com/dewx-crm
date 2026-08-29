@@ -20,7 +20,6 @@ import {
   type CurrentWorkspace,
   currentWorkspaceState,
 } from '@/auth/states/currentWorkspaceState';
-import { selectedTeamWorkspaceLaneState } from '@/auth/sign-in-up/team-workspace/states/selectedTeamWorkspaceLaneState';
 import { returnToPathState } from '@/auth/states/returnToPathState';
 import { tokenPairState } from '@/auth/states/tokenPairState';
 import {
@@ -28,7 +27,6 @@ import {
   workspacePublicDataState,
 } from '@/auth/states/workspacePublicDataState';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
-import { GET_CURRENT_TEAM_WORKSPACE_MEMBER_ROLES } from '@/team-workspace/role/graphql/queries/getCurrentTeamWorkspaceMemberRoles';
 import { SnackBarComponentInstanceContext } from '@/ui/feedback/snack-bar-manager/contexts/SnackBarComponentInstanceContext';
 import { renderHook } from '@testing-library/react';
 import { getDefaultStore } from 'jotai';
@@ -120,7 +118,6 @@ describe('useAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getDefaultStore().set(returnToPathState.atom, '');
-    getDefaultStore().set(selectedTeamWorkspaceLaneState.atom, null);
     getDefaultStore().set(workspacePublicDataState.atom, null);
     getDefaultStore().set(tokenPairState.atom, null);
     getDefaultStore().set(currentWorkspaceMemberState.atom, null);
@@ -251,104 +248,3 @@ describe('useAuth', () => {
 
     expect(mocks.signUpInWorkspace.result).toHaveBeenCalled();
   });
-
-  it('accepts the selected team lane only when the server role matches', async () => {
-    getDefaultStore().set(workspacePublicDataState.atom, {
-      displayName: 'Prospect Engine',
-      isTeamWorkspaceDomainAlias: true,
-    } as WorkspacePublicData);
-    getDefaultStore().set(selectedTeamWorkspaceLaneState.atom, 'sales');
-
-    const salesRoleResult = jest.fn(() => ({
-      data: {
-        currentUser: {
-          workspaceMember: {
-            roles: [{ id: 'sales-role', label: 'Sales' }],
-          },
-        },
-      },
-    }));
-    const salesRoleMock: MockedResponse = {
-      request: { query: GET_CURRENT_TEAM_WORKSPACE_MEMBER_ROLES },
-      result: salesRoleResult,
-    };
-    const { result } = renderHooks([...Object.values(mocks), salesRoleMock]);
-
-    await act(async () => {
-      await result.current.getAuthTokensFromLoginToken(token);
-    });
-
-    expect(salesRoleResult).toHaveBeenCalled();
-    expect(mocks.getCurrentUser.result).toHaveBeenCalled();
-    expect(getDefaultStore().get(selectedTeamWorkspaceLaneState.atom)).toBe(
-      'sales',
-    );
-    expect(getDefaultStore().get(tokenPairState.atom)).toEqual(
-      results.getAuthTokensFromLoginToken.tokens,
-    );
-  });
-
-  it('rejects and clears a team session when the selected lane mismatches the server role', async () => {
-    getDefaultStore().set(workspacePublicDataState.atom, {
-      displayName: 'Prospect Engine',
-      isTeamWorkspaceDomainAlias: true,
-    } as WorkspacePublicData);
-    getDefaultStore().set(selectedTeamWorkspaceLaneState.atom, 'sales');
-
-    const operationsRoleMock: MockedResponse = {
-      request: { query: GET_CURRENT_TEAM_WORKSPACE_MEMBER_ROLES },
-      result: {
-        data: {
-          currentUser: {
-            workspaceMember: {
-              roles: [{ id: 'operations-role', label: 'Operations' }],
-            },
-          },
-        },
-      },
-    };
-    const signOutMock: MockedResponse = {
-      request: {
-        query: SignOutDocument,
-        variables: { refreshToken: token },
-      },
-      result: { data: { signOut: true } },
-    };
-    const { result } = renderHooks([
-      ...Object.values(mocks),
-      operationsRoleMock,
-      signOutMock,
-    ]);
-
-    await act(async () => {
-      await expect(
-        result.current.getAuthTokensFromLoginToken(token),
-      ).rejects.toThrow('This account belongs to Operations');
-    });
-
-    expect(
-      getDefaultStore().get(selectedTeamWorkspaceLaneState.atom),
-    ).toBeNull();
-    expect(getDefaultStore().get(tokenPairState.atom)).toBeNull();
-    expect(getDefaultStore().get(currentWorkspaceMemberState.atom)).toBeNull();
-  });
-
-  it('keeps the canonical app login outside the team lane flow', async () => {
-    getDefaultStore().set(workspacePublicDataState.atom, {
-      displayName: 'Prospect Engine',
-      isTeamWorkspaceDomainAlias: false,
-    } as WorkspacePublicData);
-    getDefaultStore().set(selectedTeamWorkspaceLaneState.atom, 'sales');
-
-    const { result } = renderHooks();
-
-    await act(async () => {
-      await result.current.getAuthTokensFromLoginToken(token);
-    });
-
-    expect(mocks.getCurrentUser.result).toHaveBeenCalled();
-    expect(getDefaultStore().get(selectedTeamWorkspaceLaneState.atom)).toBe(
-      null,
-    );
-  });
-});
