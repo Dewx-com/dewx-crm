@@ -248,3 +248,4 @@ describe('useAuth', () => {
 
     expect(mocks.signUpInWorkspace.result).toHaveBeenCalled();
   });
+});
