@@ -54,6 +54,13 @@ const StyledFilter = styled.select`
   font-size: ${themeCssVariables.font.size.sm};
   outline: none;
   padding: ${themeCssVariables.spacing[1]};
+
+  /* Native <option>s take the OS colours unless told otherwise: on the dark theme they rendered
+     light grey on light grey (Abrar's screenshot, 2026-09-01). Paint them with the app's own tokens. */
+  option {
+    background: ${themeCssVariables.background.primary};
+    color: ${themeCssVariables.font.color.primary};
+  }
 `;
 
 const StyledScroll = styled.div`
@@ -196,6 +203,19 @@ const StyledMeta = styled.span`
   white-space: nowrap;
 `;
 
+// Priority is the one word a reply queue needs at a glance (HubSpot's inbox shows the same, 2026-09-01).
+const StyledPriority = styled.span<{ level: 'URGENT' | 'HIGH' }>`
+  border: 1px solid ${({ level }) => (level === 'URGENT' ? themeCssVariables.color.red : themeCssVariables.color.orange)};
+  border-radius: ${themeCssVariables.border.radius.sm};
+  color: ${({ level }) => (level === 'URGENT' ? themeCssVariables.color.red : themeCssVariables.color.orange)};
+  flex-shrink: 0;
+  font-size: ${themeCssVariables.font.size.xs};
+  font-weight: ${themeCssVariables.font.weight.medium};
+  line-height: 1;
+  padding: 2px ${themeCssVariables.spacing[1]};
+  text-transform: lowercase;
+`;
+
 const StyledUnreadCount = styled.span`
   background: ${themeCssVariables.color.blue};
   border-radius: ${themeCssVariables.border.radius.pill};
@@ -222,7 +242,19 @@ const StyledEmpty = styled.div`
   text-align: center;
 `;
 
-export type ThreadFilter = 'all' | 'waiting' | 'flagged' | 'archived';
+export type ThreadFilter =
+  | 'all'
+  | 'open'
+  | 'waiting'
+  | 'flagged'
+  | 'urgent'
+  | 'high'
+  | 'archived';
+
+const priorityOf = (thread: TeamInboxThread): 'URGENT' | 'HIGH' | null => {
+  const level = (thread.priority ?? '').toUpperCase();
+  return level === 'URGENT' || level === 'HIGH' ? level : null;
+};
 
 const isArchived = (thread: TeamInboxThread): boolean =>
   (thread.threadStatus ?? '').toUpperCase() === 'CLOSED';
@@ -265,6 +297,9 @@ export const TeamInboxThreadList = ({
     }
 
     if (filter === 'flagged' && !thread.flag) return false;
+    if (filter === 'open' && (thread.threadStatus ?? 'OPEN').toUpperCase() !== 'OPEN') return false;
+    if (filter === 'urgent' && priorityOf(thread) !== 'URGENT') return false;
+    if (filter === 'high' && priorityOf(thread) !== 'HIGH') return false;
     // "Waiting" means the other person spoke last and nobody has answered — the queue that matters.
     if (filter === 'waiting') {
       const last = previews.get(thread.code);
@@ -296,8 +331,14 @@ export const TeamInboxThreadList = ({
     switch (filter) {
       case 'waiting':
         return 'Nobody is waiting on a reply.';
+      case 'open':
+        return 'Nothing is open.';
       case 'flagged':
         return 'Nothing is flagged.';
+      case 'urgent':
+        return 'Nothing is urgent.';
+      case 'high':
+        return 'Nothing is marked high priority.';
       case 'archived':
         return 'Nothing has been archived.';
       default:
@@ -316,8 +357,11 @@ export const TeamInboxThreadList = ({
           aria-label="Filter conversations"
         >
           <option value="all">All</option>
+          <option value="open">Open</option>
           <option value="waiting">Waiting</option>
           <option value="flagged">Flagged</option>
+          <option value="urgent">Urgent</option>
+          <option value="high">High priority</option>
           <option value="archived">Archived</option>
         </StyledFilter>
         <StyledSearch
@@ -352,6 +396,8 @@ export const TeamInboxThreadList = ({
               const Name = isUnread ? StyledNameUnread : StyledName;
               const Preview = isUnread ? StyledPreviewUnread : StyledPreview;
               const archived = isArchived(thread);
+              const priority = priorityOf(thread);
+              const waiting = (thread.threadStatus ?? '').toUpperCase() === 'WAITING';
 
               return (
                 <Wrap key={thread.id}>
@@ -376,8 +422,14 @@ export const TeamInboxThreadList = ({
                             ? ` · ${thread.client.toLowerCase()}`
                             : ''}
                           {thread.flag ? ' · flagged' : ''}
+                          {waiting ? ' · waiting' : ''}
                           {archived ? ' · archived' : ''}
                         </StyledMeta>
+                        {priority && (
+                          <StyledPriority level={priority} title={`${priority.toLowerCase()} priority`}>
+                            {priority}
+                          </StyledPriority>
+                        )}
                         {isUnread &&
                           (state.count > 0 ? (
                             <StyledUnreadCount

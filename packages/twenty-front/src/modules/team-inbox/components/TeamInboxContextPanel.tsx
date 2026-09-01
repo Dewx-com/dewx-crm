@@ -160,6 +160,10 @@ export const TeamInboxContextPanel = ({ thread, messages }: Props) => {
           <StyledValue>{thread.threadStatus ?? '—'}</StyledValue>
         </StyledRow>
         <StyledRow>
+          <StyledKey>Priority</StyledKey>
+          <StyledValue>{thread.priority ?? 'NORMAL'}</StyledValue>
+        </StyledRow>
+        <StyledRow>
           <StyledKey>Last message</StyledKey>
           <StyledValue>{timeOfDay(thread.lastMessageAt) || '—'}</StyledValue>
         </StyledRow>

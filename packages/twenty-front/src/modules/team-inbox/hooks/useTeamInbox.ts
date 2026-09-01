@@ -26,6 +26,7 @@ export type TeamInboxThread = ObjectRecord & {
   threadStatus: string | null;
   lastMessageAt: string | null;
   flag: string | null;
+  priority: string | null;
 };
 
 export type TeamInboxMessage = ObjectRecord & {
@@ -48,6 +49,7 @@ const THREAD_FIELDS = {
   threadStatus: true,
   lastMessageAt: true,
   flag: true,
+  priority: true,
 };
 
 const MESSAGE_FIELDS = {

@@ -351,6 +351,11 @@ export const StyledSelect = styled.select`
   max-width: 260px;
   outline: none;
   padding: ${themeCssVariables.spacing[1]} ${themeCssVariables.spacing[2]};
+
+  option {
+    background: ${themeCssVariables.background.primary};
+    color: ${themeCssVariables.font.color.primary};
+  }
 `;
 
 export const StyledTextButton = styled.button`
