@@ -206,6 +206,24 @@ async function openStream(auth) {
     console.log(
       'PASS shared member: two account sessions in one cookie jar; own contacts and private attachment accessible',
     );
+    const noteTitle = `Member work ${randomUUID()}`;
+    const noteBody = 'Client history must remain after the member is removed.';
+    const createdNote = await gql(
+      member,
+      'mutation($title: String!, $body: String!) { createNote(data: { title: $title, bodyV2: { markdown: $body } }) { id } }',
+      { title: noteTitle, body: noteBody },
+      sessions[0],
+      '/graphql',
+    );
+    const noteId = createdNote.data.createNote.id;
+    await gql(
+      member,
+      'mutation($note: UUID!, $person: UUID!) { createNoteTarget(data: { noteId: $note, targetPersonId: $person }) { id } }',
+      { note: noteId, person: a.fixture.personId },
+      sessions[0],
+      '/graphql',
+    );
+
     const streamA = await openStream(sessions[0]);
     const streamB = await openStream(sessions[1]);
 
@@ -278,6 +296,42 @@ async function openStream(auth) {
     }
     console.log(
       'PASS removal: stale account A Bearer/cookie and signed private download denied; account B remains usable',
+    );
+    const noteQuery =
+      'query($id: UUID!) { notes(filter: { id: { eq: $id } }) { edges { node { id title bodyV2 { markdown } } } } }';
+    const retainedNote = await gql(
+      a.client,
+      noteQuery,
+      { id: noteId },
+      a.auth,
+      '/graphql',
+    );
+    assert.equal(retainedNote.data.notes.edges[0]?.node.title, noteTitle);
+    assert.equal(
+      retainedNote.data.notes.edges[0]?.node.bodyV2.markdown,
+      noteBody,
+    );
+    const retainedLink = await gql(
+      a.client,
+      'query($note: UUID!) { noteTargets(filter: { noteId: { eq: $note } }) { edges { node { targetPersonId } } } }',
+      { note: noteId },
+      a.auth,
+      '/graphql',
+    );
+    assert.equal(
+      retainedLink.data.noteTargets.edges[0]?.node.targetPersonId,
+      a.fixture.personId,
+    );
+    const foreignNote = await gql(
+      b.client,
+      noteQuery,
+      { id: noteId },
+      b.auth,
+      '/graphql',
+    );
+    assert.equal(foreignNote.data.notes.edges.length, 0);
+    console.log(
+      'PASS retained work: removed member note content and contact link remain in account A and stay hidden from B',
     );
     await waitFor(
       () => streamA.ended && streamB.frames.length > framesBAtRemoval,
