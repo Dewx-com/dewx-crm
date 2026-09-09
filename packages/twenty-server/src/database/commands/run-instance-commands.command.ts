@@ -151,10 +151,19 @@ export class RunInstanceCommandsCommand extends CommandRunner {
       return;
     }
 
+    const sequence = this.upgradeSequenceReaderService.getUpgradeSequence();
+    const requiredCursor =
+      this.upgradeSequenceReaderService.locateStepInSequenceOrThrow({
+        sequence,
+        stepName: lastWorkspaceCommand.name,
+      });
     const allAtPreviousVersion =
       await this.upgradeMigrationService.areAllWorkspacesAtCommand({
         commandName: lastWorkspaceCommand.name,
         workspaceIds: activeOrSuspendedWorkspaceIds,
+        initialCommandNamesAtOrAfter: sequence
+          .slice(requiredCursor)
+          .map((step) => step.name),
       });
 
     if (!allAtPreviousVersion) {

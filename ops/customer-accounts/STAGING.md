@@ -100,3 +100,27 @@ Run `verify-staging-core.cjs` with the API container command above for companies
 contacts, opportunities and tasks. It reuses owners A/B, creates synthetic linked
 records, changes the deal stage, completes a task and checks cross-account denial.
 It retains those synthetic records for inspection.
+
+## Upgrade prerequisites after fresh signup
+
+`verify-staging-upgrade.cjs` runs against the private synthetic PostgreSQL service
+with the staging app environment. It inserts probe journal rows inside one
+transaction and always rolls them back. It checks exact migration completion,
+newer initial schema state, duplicate qualifying rows, older initialization and
+latest failed attempts. Run with the native Node image and app source mounted;
+this script requires the compiled server and refuses another database hostname.
+
+Fresh accounts record their initial schema position rather than an execution row
+for every older migration. The instance upgrade check now accepts that initial
+position when it is at or beyond the required command. It still rejects failed
+attempts and older state. The database regression failed before the fix and
+passes afterward. Normal `run-instance-commands`, without `--force`, also passes
+after creating the fifth synthetic account.
+
+The receipt migration targets the source's current release, 2.33.0. An earlier
+staging-only attempt mistakenly targeted 2.20.0 and rolled the runtime metadata
+cursor backward. Its failed state is preserved privately. Staging was rolled
+back to the verified database/attachment snapshot, the corrected migration was
+applied normally, and the fifth-account tests were repeated. No production data
+or migration history was rewritten. `/healthz` and `/client-config` both returned
+200 after the correction.
