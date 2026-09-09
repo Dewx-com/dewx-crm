@@ -146,7 +146,7 @@ export class UserService {
           await this.globalWorkspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
             workspace.id,
             'workspaceMember',
-            { shouldBypassPermissionChecks: !respectPermissions },
+            respectPermissions ? undefined : { shouldBypassPermissionChecks: true },
           );
 
         return await workspaceMemberRepository.find({
@@ -263,7 +263,7 @@ export class UserService {
           await this.globalWorkspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
             workspace.id,
             'workspaceMember',
-            { shouldBypassPermissionChecks: !respectPermissions },
+            respectPermissions ? undefined : { shouldBypassPermissionChecks: true },
           );
 
         return await workspaceMemberRepository.find({

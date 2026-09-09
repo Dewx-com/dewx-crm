@@ -24,7 +24,7 @@ const {UserService} = require('/app/packages/twenty-server/dist/engine/core-modu
    globalWorkspaceOrmManager:{getRepository:async(_id,_name,opts)=>{options=opts;return{find:async()=>[]};},executeInWorkspaceContext:async(fn,ctx)=>{auth=ctx;return fn();}}
   });
   if(method==='loadWorkspaceMembers')await service[method](workspace,false,true);else await service[method](workspace,true);
-  assert.equal(options.shouldBypassPermissionChecks,false);assert.equal(auth,undefined);
+  assert.equal(options,undefined);assert.equal(auth,undefined);
   if(method==='loadWorkspaceMembers')await service[method](workspace);else await service[method](workspace);
   assert.equal(options.shouldBypassPermissionChecks,true);assert.equal(auth.type,'system');
  }

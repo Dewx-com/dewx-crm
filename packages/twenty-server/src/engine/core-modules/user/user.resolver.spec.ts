@@ -108,7 +108,7 @@ describe('workspace member bootstrap', () => {
       expect(manager.getRepository).toHaveBeenCalledWith(
         workspace.id,
         'workspaceMember',
-        { shouldBypassPermissionChecks: false },
+        undefined,
       );
       expect(
         manager.executeInWorkspaceContext.mock.calls[0][1],
