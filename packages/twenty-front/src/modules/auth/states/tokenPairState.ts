@@ -7,7 +7,7 @@ export const TOKEN_PAIR_LOCAL_STORAGE_KEY = 'tokenPairState';
 export const tokenPairState = createAtomState<AuthTokenPair | null>({
   key: TOKEN_PAIR_LOCAL_STORAGE_KEY,
   defaultValue: null,
-  useLocalStorage: true,
+  useSessionStorage: true,
   localStorageOptions: { getOnInit: true },
   validateInitFn: (payload) => isValidAuthTokenPair(payload),
 });

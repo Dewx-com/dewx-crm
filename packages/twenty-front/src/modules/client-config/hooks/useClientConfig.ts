@@ -202,6 +202,7 @@ export const useClientConfig = (): UseClientConfigResult => {
       setDomainConfiguration({
         defaultSubdomain: clientConfig?.defaultSubdomain,
         frontDomain: clientConfig?.frontDomain,
+        isSharedDomainEnabled: clientConfig?.isSharedDomainEnabled ?? false,
         publicFunctionDomain: clientConfig?.publicFunctionDomain,
       });
       setCanManageFeatureFlags(clientConfig?.canManageFeatureFlags);

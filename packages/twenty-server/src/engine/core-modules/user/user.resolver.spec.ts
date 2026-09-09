@@ -95,7 +95,16 @@ describe('workspace member bootstrap', () => {
       const repository = { find: jest.fn().mockResolvedValue([]) };
       const manager = {
         getRepository: jest.fn().mockResolvedValue(repository),
-        executeInWorkspaceContext: jest.fn((callback) => withWorkspaceContext({ authContext: { type: 'user', userWorkspaceId: 'caller' }, userWorkspaceRoleMap: { caller: 'caller-role' }, apiKeyRoleMap: {} } as any, callback)),
+        executeInWorkspaceContext: jest.fn((callback, _authContext?: unknown) =>
+          withWorkspaceContext(
+            {
+              authContext: { type: 'user', userWorkspaceId: 'caller' },
+              userWorkspaceRoleMap: { caller: 'caller-role' },
+              apiKeyRoleMap: {},
+            } as any,
+            callback,
+          ),
+        ),
       };
       const service = Object.assign(Object.create(UserService.prototype), {
         globalWorkspaceOrmManager: manager,

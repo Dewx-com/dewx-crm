@@ -30,9 +30,11 @@ describe('WorkspaceDomainsService workspace aliases', () => {
   >;
   let service: WorkspaceDomainsService;
   let isMultiWorkspaceEnabled: boolean;
+  let isSharedDomainEnabled: boolean;
 
   beforeEach(() => {
     isMultiWorkspaceEnabled = true;
+    isSharedDomainEnabled = false;
     workspaceRepository = {
       find: jest.fn(),
       findOne: jest.fn(),
@@ -68,6 +70,7 @@ describe('WorkspaceDomainsService workspace aliases', () => {
             'team.prospectengine.com': PROSPECT_ENGINE_WORKSPACE_ID,
           },
           IS_MULTIWORKSPACE_ENABLED: isMultiWorkspaceEnabled,
+          IS_SHARED_DOMAIN_ENABLED: isSharedDomainEnabled,
           DEFAULT_SUBDOMAIN: 'login',
         };
 
@@ -224,4 +227,63 @@ describe('WorkspaceDomainsService workspace aliases', () => {
       subdomainUrl: 'https://client.prospectengine.com/',
     });
   });
+  it('resolves account tokens on the shared origin without selecting a default account', async () => {
+    isSharedDomainEnabled = true;
+    domainServerConfigService.getFrontUrl.mockReturnValue(
+      new URL('https://team.prospectengine.com'),
+    );
+    workspaceRepository.findOne.mockResolvedValue(prospectEngineWorkspace);
+
+    expect(
+      await service.resolveWorkspaceAndPublicDomain(
+        'https://team.prospectengine.com',
+      ),
+    ).toEqual({
+      workspace: undefined,
+      publicDomain: null,
+      isIsolatedOrigin: false,
+    });
+    expect(workspaceRepository.findOne).not.toHaveBeenCalled();
+    expect(
+      await service.getWorkspaceForToken(
+        'https://team.prospectengine.com',
+        PROSPECT_ENGINE_WORKSPACE_ID,
+      ),
+    ).toBe(prospectEngineWorkspace);
+    expect(workspaceRepository.findOne).toHaveBeenCalledWith({
+      where: { id: PROSPECT_ENGINE_WORKSPACE_ID },
+      relations: ['workspaceSSOIdentityProviders'],
+    });
+    expect(service.getWorkspaceUrls(prospectEngineWorkspace)).toEqual({
+      customUrl: undefined,
+      subdomainUrl: 'https://team.prospectengine.com/',
+    });
+  });
+
+  it('does not treat another scheme, port, or hostname as the shared origin', () => {
+    isSharedDomainEnabled = true;
+    for (const origin of [
+      'http://prospectengine.com',
+      'https://prospectengine.com:444',
+      'https://prospectengine.com.attacker.example',
+    ]) {
+      expect(service.isSharedOrigin(origin)).toBe(false);
+    }
+  });
 });
+
+// Constructor dependencies are injected below; keep their unrelated module graphs out of this unit test.
+jest.mock(
+  'src/engine/core-modules/twenty-config/twenty-config.service',
+  () => ({ TwentyConfigService: class TwentyConfigService {} }),
+);
+jest.mock('src/engine/core-modules/workspace/workspace.entity', () => ({
+  WorkspaceEntity: class WorkspaceEntity {},
+}));
+jest.mock(
+  'src/engine/core-modules/domain/domain-server-config/services/domain-server-config.service',
+  () => ({ DomainServerConfigService: class DomainServerConfigService {} }),
+);
+jest.mock('src/engine/core-modules/public-domain/public-domain.entity', () => ({
+  PublicDomainEntity: class PublicDomainEntity {},
+}));

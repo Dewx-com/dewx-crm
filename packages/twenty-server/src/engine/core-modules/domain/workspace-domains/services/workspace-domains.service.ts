@@ -137,6 +137,14 @@ export class WorkspaceDomainsService {
     publicDomain: PublicDomainEntity | null;
     isIsolatedOrigin: boolean;
   }> {
+    if (this.isSharedOrigin(origin)) {
+      return {
+        workspace: undefined,
+        publicDomain: null,
+        isIsolatedOrigin: false,
+      };
+    }
+
     const aliasWorkspaceId = this.getAliasWorkspaceIdFromOrigin(origin);
 
     if (isDefined(aliasWorkspaceId)) {
@@ -345,6 +353,13 @@ export class WorkspaceDomainsService {
     customDomain,
     isCustomDomainEnabled,
   }: WorkspaceDomainConfig) {
+    if (this.isSharedDomainEnabled()) {
+      return {
+        customUrl: undefined,
+        subdomainUrl: this.domainServerConfigService.getFrontUrl().toString(),
+      };
+    }
+
     return {
       customUrl:
         isCustomDomainEnabled && customDomain
@@ -358,9 +373,9 @@ export class WorkspaceDomainsService {
     workspace: WorkspaceDomainConfig & Pick<WorkspaceEntity, 'id'>,
   ) {
     const workspaceUrls = this.getWorkspaceUrls(workspace);
-    const aliasHostname = this.getTeamWorkspaceDomainAliasHostname(
-      workspace.id,
-    );
+    const aliasHostname = this.isSharedDomainEnabled()
+      ? undefined
+      : this.getTeamWorkspaceDomainAliasHostname(workspace.id);
 
     if (!isDefined(aliasHostname)) {
       return workspaceUrls;
@@ -379,7 +394,7 @@ export class WorkspaceDomainsService {
     const aliasWorkspaceId = this.getAliasWorkspaceIdFromOrigin(origin);
     const workspaceUrls = this.getWorkspaceUrls(workspace);
 
-    if (aliasWorkspaceId !== workspace.id) {
+    if (this.isSharedDomainEnabled() || aliasWorkspaceId !== workspace.id) {
       return workspaceUrls;
     }
 
@@ -413,5 +428,30 @@ export class WorkspaceDomainsService {
 
   async findByCustomDomain(customDomain: string) {
     return this.workspaceRepository.findOne({ where: { customDomain } });
+  }
+
+  isSharedDomainEnabled(): boolean {
+    return this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED') === true;
+  }
+
+  isSharedOrigin(origin: string): boolean {
+    return (
+      this.isSharedDomainEnabled() &&
+      new URL(origin).origin ===
+        this.domainServerConfigService.getFrontUrl().origin
+    );
+  }
+
+  async getWorkspaceForToken(origin: string, workspaceId: string) {
+    if (this.isSharedOrigin(origin)) {
+      return (
+        (await this.workspaceRepository.findOne({
+          where: { id: workspaceId },
+          relations: ['workspaceSSOIdentityProviders'],
+        })) ?? undefined
+      );
+    }
+
+    return this.getWorkspaceByOriginOrDefaultWorkspace(origin);
   }
 }

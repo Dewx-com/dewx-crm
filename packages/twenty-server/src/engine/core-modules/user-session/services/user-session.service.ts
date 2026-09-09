@@ -104,8 +104,40 @@ export class UserSessionService {
         return;
       }
 
+      if (
+        origin === 'sign_in' &&
+        !sessionInput.isImpersonating &&
+        this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED')
+      ) {
+        for (const token of this.userSessionCookieService.extractBrowserSessionTokens(
+          request,
+        )) {
+          try {
+            const { payload } = await this.resolveSession(token);
+            if ((payload.userId ?? payload.sub) !== sessionInput.userId) {
+              await this.revokeSessionByToken(
+                token,
+                UserSessionRevokedReason.Superseded,
+              );
+              this.userSessionCookieService.clearBrowserSessionCookies(
+                response,
+              );
+            }
+          } catch (error) {
+            if (
+              !(error instanceof AuthException) ||
+              error.code !== AuthExceptionCode.UNAUTHENTICATED
+            )
+              throw error;
+          }
+        }
+      }
+
       const presentedSessionToken =
-        this.userSessionCookieService.extractSessionTokenFromRequest(request);
+        this.userSessionCookieService.extractSessionTokenFromRequest(
+          request,
+          sessionInput.workspaceId ?? null,
+        );
 
       if (isDefined(presentedSessionToken)) {
         if (origin === 'renewal_bridge') {
@@ -154,6 +186,7 @@ export class UserSessionService {
         response,
         sessionToken,
         session.expiresAt,
+        session.workspaceId ?? null,
       );
     } catch (error) {
       // Sign-in only: the presented cookie may be the previous account's. On
@@ -161,7 +194,7 @@ export class UserSessionService {
       // must not kill.
       if (origin === 'sign_in') {
         try {
-          this.userSessionCookieService.clearSessionCookie(response);
+          this.userSessionCookieService.clearBrowserSessionCookies(response);
         } catch {}
       }
 

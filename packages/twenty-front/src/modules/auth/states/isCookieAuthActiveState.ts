@@ -6,6 +6,6 @@ export const IS_COOKIE_AUTH_ACTIVE_LOCAL_STORAGE_KEY =
 export const isCookieAuthActiveState = createAtomState<boolean>({
   key: IS_COOKIE_AUTH_ACTIVE_LOCAL_STORAGE_KEY,
   defaultValue: false,
-  useLocalStorage: true,
+  useSessionStorage: true,
   localStorageOptions: { getOnInit: true },
 });

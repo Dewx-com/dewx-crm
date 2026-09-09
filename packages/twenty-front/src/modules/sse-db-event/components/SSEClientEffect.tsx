@@ -1,3 +1,4 @@
+import { getWorkspaceRequestHeaders } from '@/apollo/utils/getWorkspaceRequestHeaders';
 import { useIsLogged } from '@/auth/hooks/useIsLogged';
 import { isCookieAuthActiveState } from '@/auth/states/isCookieAuthActiveState';
 import { tokenPairState } from '@/auth/states/tokenPairState';
@@ -69,13 +70,14 @@ export const SSEClientEffect = () => {
           // token nothing refreshes any more authenticates the stream with a
           // credential that expires and never recovers.
           if (store.get(isCookieAuthActiveState.atom)) {
-            return {};
+            return getWorkspaceRequestHeaders();
           }
 
           const currentTokenPair = store.get(tokenPairState.atom);
           const token = currentTokenPair?.accessOrWorkspaceAgnosticToken?.token;
 
           return {
+            ...getWorkspaceRequestHeaders(),
             Authorization: token ? `Bearer ${token}` : '',
           };
         },

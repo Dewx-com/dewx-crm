@@ -209,20 +209,37 @@ export class AccessTokenService {
         );
       }
 
-      return this.validateToken(token);
+      const context = await this.validateToken(token);
+      this.assertSelectedWorkspace(context, request);
+      return context;
     }
 
     const sessionToken =
       this.userSessionCookieService.extractSessionTokenFromRequest(request);
 
     if (sessionToken) {
-      return this.validateSessionToken(sessionToken);
+      const context = await this.validateSessionToken(sessionToken);
+      this.assertSelectedWorkspace(context, request);
+      return context;
     }
 
     throw new AuthException(
       'Missing authentication token',
       AuthExceptionCode.FORBIDDEN_EXCEPTION,
     );
+  }
+
+  private assertSelectedWorkspace(
+    context: AuthContext,
+    request: Request,
+  ): void {
+    const workspaceId = request.headers['x-workspace-id'];
+    if (workspaceId !== undefined && context.workspace?.id !== workspaceId) {
+      throw new AuthException(
+        'Session does not match the selected account',
+        AuthExceptionCode.UNAUTHENTICATED,
+      );
+    }
   }
 
   private async validateSessionToken(

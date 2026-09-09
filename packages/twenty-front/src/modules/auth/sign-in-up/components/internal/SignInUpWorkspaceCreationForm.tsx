@@ -138,10 +138,14 @@ const StyledAvailabilityDot = styled.div`
 export const SignInUpWorkspaceCreationForm = () => {
   const { t } = useLingui();
   const { createWorkspace } = useSignUpInNewWorkspace();
-  const { frontDomain } = useAtomStateValue(domainConfigurationState);
+  const { frontDomain, isSharedDomainEnabled } = useAtomStateValue(
+    domainConfigurationState,
+  );
   const isMultiWorkspaceEnabled = useAtomStateValue(
     isMultiWorkspaceEnabledState,
   );
+
+  const isSubdomainEnabled = isMultiWorkspaceEnabled && !isSharedDomainEnabled;
 
   const isCreatingWorkspace = useAtomStateValue(isCreatingWorkspaceState);
   const setIsCreatingWorkspace = useSetAtomState(isCreatingWorkspaceState);
@@ -162,13 +166,13 @@ export const SignInUpWorkspaceCreationForm = () => {
     handleSubdomainChange,
     applySuggestionValue,
   } = useWorkspaceSubdomainField({
-    isSubdomainEnabled: isMultiWorkspaceEnabled,
+    isSubdomainEnabled,
   });
 
   const isContinueDisabled =
     workspaceName.trim() === '' ||
     isCreatingWorkspace ||
-    (isMultiWorkspaceEnabled && !isAvailable);
+    (isSubdomainEnabled && !isAvailable);
 
   const openFilePicker = () => {
     hiddenFileInputRef.current?.click();
@@ -206,7 +210,7 @@ export const SignInUpWorkspaceCreationForm = () => {
 
     const isWorkspaceCreated = await createWorkspace({
       displayName: workspaceName.trim(),
-      ...(isMultiWorkspaceEnabled ? { subdomain } : {}),
+      ...(isSubdomainEnabled ? { subdomain } : {}),
       logo,
     });
 
@@ -238,12 +242,10 @@ export const SignInUpWorkspaceCreationForm = () => {
     <StyledContentContainer>
       <StyledHeading>
         <OnboardingStepAnimatedItem index={0}>
-          <StyledTitle>{t`Create your workspace`}</StyledTitle>
+          <StyledTitle>{t`Create your account`}</StyledTitle>
         </OnboardingStepAnimatedItem>
         <OnboardingStepAnimatedItem index={1}>
-          <StyledSubtitle>
-            {t`Move work forward across teams and agents`}
-          </StyledSubtitle>
+          <StyledSubtitle>{t`Set up your company's CRM.`}</StyledSubtitle>
         </OnboardingStepAnimatedItem>
       </StyledHeading>
       <StyledFormSection>
@@ -300,7 +302,7 @@ export const SignInUpWorkspaceCreationForm = () => {
             fullWidth
           />
         </OnboardingStepAnimatedItem>
-        {isMultiWorkspaceEnabled && (
+        {isSubdomainEnabled && (
           <OnboardingStepAnimatedItem index={4}>
             <StyledSubdomainSection>
               <TextInput
@@ -343,9 +345,9 @@ export const SignInUpWorkspaceCreationForm = () => {
           </OnboardingStepAnimatedItem>
         )}
       </StyledFormSection>
-      <OnboardingStepAnimatedItem index={isMultiWorkspaceEnabled ? 5 : 4}>
+      <OnboardingStepAnimatedItem index={isSubdomainEnabled ? 5 : 4}>
         <MainButton
-          title={t`Create workspace`}
+          title={t`Create account`}
           onClick={handleSubmit}
           disabled={isContinueDisabled}
           fullWidth

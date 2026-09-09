@@ -1,3 +1,4 @@
+import { getWorkspaceRequestHeaders } from '@/apollo/utils/getWorkspaceRequestHeaders';
 import { ApolloClient, ApolloLink, type ErrorLike } from '@apollo/client';
 import {
   CombinedGraphQLErrors,
@@ -149,6 +150,7 @@ export class ApolloFactory implements ApolloManager {
             headers: {
               ...headers,
               ...optionHeaders,
+              ...getWorkspaceRequestHeaders(),
               'x-locale': locale,
               ...(isDefined(this.appVersion) && {
                 'X-App-Version': this.appVersion,
@@ -163,6 +165,7 @@ export class ApolloFactory implements ApolloManager {
           headers: {
             ...headers,
             ...optionHeaders,
+            ...getWorkspaceRequestHeaders(),
             authorization: token ? `Bearer ${token}` : '',
             'x-locale': locale,
             ...(isDefined(this.appVersion) && {

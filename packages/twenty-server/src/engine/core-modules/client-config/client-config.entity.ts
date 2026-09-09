@@ -283,6 +283,9 @@ export class ClientConfig {
   @Field(() => String)
   frontDomain: string;
 
+  // The application consumes this through the public REST client configuration.
+  isSharedDomainEnabled?: boolean;
+
   @Field(() => String, { nullable: true })
   publicFunctionDomain: string | null;
 

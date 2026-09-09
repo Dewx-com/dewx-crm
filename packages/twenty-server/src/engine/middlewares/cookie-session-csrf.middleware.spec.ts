@@ -291,4 +291,30 @@ describe('CookieSessionCsrfMiddleware', () => {
       expect(next).toHaveBeenCalled();
     });
   });
+  it('rejects cross-origin sign-out with scoped cookies even without an account header', () => {
+    mockConfig.IS_SHARED_DOMAIN_ENABLED = true;
+    const response = buildResponse();
+    middleware.use(
+      buildRequest({
+        headers: {
+          cookie:
+            '__Host-twenty-session_11111111-1111-4111-8111-111111111111=sess_account',
+          origin: 'https://evil.example.com',
+        },
+      }),
+      response,
+      next,
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(403);
+  });
 });
+
+// Injection supplies these dependencies; avoid loading unrelated application modules.
+jest.mock(
+  'src/engine/core-modules/twenty-config/twenty-config.service',
+  () => ({ TwentyConfigService: class {} }),
+);
+jest.mock('src/engine/core-modules/jwt/services/jwt-wrapper.service', () => ({
+  JwtWrapperService: class {},
+}));

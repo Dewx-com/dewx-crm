@@ -226,7 +226,7 @@ export class JwtAuthStrategy extends PassportStrategy(Strategy, 'jwt') {
       params.userWorkspaceId,
     );
 
-    if (!isDefined(userWorkspace)) {
+    if (!isDefined(userWorkspace) || userWorkspace.userId !== params.userId) {
       return null;
     }
 
