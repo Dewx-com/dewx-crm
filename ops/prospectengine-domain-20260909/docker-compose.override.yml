@@ -1,0 +1,9 @@
+services:
+  server:
+    environment:
+      SERVER_URL: https://app.prospectengine.com
+      TEAM_WORKSPACE_DOMAIN_ALIASES: '{"app.dewx.com":"35f718e0-e670-4aae-bbe7-0a9d0543a4ae","app.prospectengine.com":"35f718e0-e670-4aae-bbe7-0a9d0543a4ae"}'
+  worker:
+    environment:
+      SERVER_URL: https://app.prospectengine.com
+      TEAM_WORKSPACE_DOMAIN_ALIASES: '{"app.dewx.com":"35f718e0-e670-4aae-bbe7-0a9d0543a4ae","app.prospectengine.com":"35f718e0-e670-4aae-bbe7-0a9d0543a4ae"}'
