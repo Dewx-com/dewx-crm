@@ -55,7 +55,8 @@ export const CookieSessionBootEffect = () => {
         const result = await apolloClient.query({
           query: GetCurrentUserDocument,
           fetchPolicy: 'network-only',
-          context: { skipAuthToken: true },
+          // A Bearer-authenticated result cannot prove that a cookie works.
+          context: { skipAuthToken: true, queryDeduplication: false },
         });
 
         return isDefined(result.data?.currentUser)
