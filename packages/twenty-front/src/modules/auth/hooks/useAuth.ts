@@ -119,7 +119,6 @@ export const useAuth = () => {
 
   const clearSessionState = useCallback(() => {
     store.set(isAppEffectRedirectEnabledState.atom, false);
-    sessionStorage.clear();
     store.set(tokenPairState.atom, null);
     store.set(isCookieAuthActiveState.atom, false);
     store.set(currentUserState.atom, null);
@@ -128,6 +127,8 @@ export const useAuth = () => {
     store.set(currentUserWorkspaceState.atom, null);
     clearSessionLocalStorageKeys();
     setLastAuthenticateWorkspaceDomain(null);
+    // Resetting persisted atoms writes their empty values back into storage.
+    sessionStorage.clear();
   }, [store, setLastAuthenticateWorkspaceDomain]);
 
   const clearSession = useCallback(() => {
