@@ -228,3 +228,34 @@ termination. Run `verify-staging-member-removal.cjs` after the account fixtures.
 No message was sent: the synthetic test uses native public invite links and the
 logger email driver. Personal invitation delivery, browser-tab behavior, queued
 jobs/exports, retained work and role-change access still need separate acceptance.
+
+## Customer defaults and router, 10 September
+
+New shared-host accounts use native members-and-invitees discoverability, public
+invite links off and server support impersonation off. Existing account settings
+are preserved. Shared-host signup no longer records a Twenty click-through DPA;
+Twenty document preview/signing uses the native self-hosted notice/refusal.
+Eight signup/deployment-policy tests pass, including both previously failing
+shared-host agreement cases, along with native types, lint and server compilation.
+Prospect Engine's own approved terms and processor agreement are still required.
+
+Full owner browser login exposed a repeated welcome/verify redirect: the shared
+hostname mounted the central router, which has no verification route. Shared-host
+mode now mounts the native CRM router for sign-in, verification and account pages.
+The legacy remembered-domain redirect is disabled in shared mode so it cannot
+reload the same hostname and clear the tab's selected account. Ten route tests,
+frontend types, lint and the complete native frontend build pass. The compiled browser now exchanges its login token, but its next user request
+still lacks an account-selection header and loads the workspace-agnostic context.
+That remaining browser bootstrap defect is under investigation; full browser
+workflow acceptance remains open.
+
+The removal check also creates a note as the shared member and links it to the
+client's contact. After removal, the owner reads the same note title/body and
+contact link; the other account sees no note. Old credentials/files are denied
+and the retained account's SSE stream continues, as before.
+
+
+The installed `verify-staging-agreement-policy.cjs` check passes: shared-host
+preview is marked reference-only, Twenty signing is refused, and existing
+agreement records are unchanged. New-account privacy defaults have unit coverage;
+fresh installed signup will be checked with idempotent provisioning.

@@ -88,3 +88,9 @@ check takes at least one native 30-second heartbeat. A/B fixtures must exist fir
 It can be rerun: A membership is recreated through the synthetic invite link.
 This verifies existing-session revocation; disabling/rotating public invitation
 links and delivering personal invitations are separate checks.
+
+
+Run `verify-staging-agreement-policy.cjs` with the same API container command to
+check the shared-host Twenty agreement refusal. It preserves existing synthetic
+agreement rows and asserts that signing cannot add another. Prospect Engine's own
+approved terms and agreement remain a release requirement.
