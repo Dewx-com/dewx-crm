@@ -22,6 +22,16 @@ export const PUBLIC_ASSET_CACHE_CONTROL = 'public, max-age=3600';
 // presigned URL to clients that never authenticated.
 export const PRESIGNED_URL_NO_STORE_CACHE_CONTROL = 'private, no-store';
 
+// Logos are used before sign-in; email images must remain readable by recipients.
+export const requiresFileSession = (
+  fileFolder: FileFolder,
+  isSharedDomainEnabled: boolean,
+): boolean =>
+  isSharedDomainEnabled &&
+  fileFolder !== FileFolder.CorePicture &&
+  fileFolder !== FileFolder.EmailImage &&
+  fileFolder !== FileFolder.PublicAsset;
+
 export const fileFolderConfigs: Record<FileFolder, FileFolderConfig> = {
   [FileFolder.CorePicture]: {
     ignoreExpirationToken: true,

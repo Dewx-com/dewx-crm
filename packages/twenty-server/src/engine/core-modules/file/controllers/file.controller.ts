@@ -26,7 +26,11 @@ import {
   FileException,
   FileExceptionCode,
 } from 'src/engine/core-modules/file/file.exception';
-import { PUBLIC_ASSET_CACHE_CONTROL } from 'src/engine/core-modules/file/interfaces/file-folder.interface';
+import {
+  PUBLIC_ASSET_CACHE_CONTROL,
+  PRESIGNED_URL_NO_STORE_CACHE_CONTROL,
+  requiresFileSession,
+} from 'src/engine/core-modules/file/interfaces/file-folder.interface';
 import { FileApiExceptionFilter } from 'src/engine/core-modules/file/filters/file-api-exception.filter';
 import {
   FileByIdGuard,
@@ -34,6 +38,7 @@ import {
 } from 'src/engine/core-modules/file/guards/file-by-id.guard';
 import { FileService } from 'src/engine/core-modules/file/services/file.service';
 import { setFileResponseHeaders } from 'src/engine/core-modules/file/utils/set-file-response-headers.utils';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { NoPermissionGuard } from 'src/engine/guards/no-permission.guard';
 import { PublicEndpointGuard } from 'src/engine/guards/public-endpoint.guard';
 
@@ -45,6 +50,7 @@ export class FileController {
   constructor(
     private readonly fileService: FileService,
     private readonly serverFileStorageService: ServerFileStorageService,
+    private readonly twentyConfigService: TwentyConfigService,
   ) {}
 
   // Serves application registration assets (logo, gallery images) by their
@@ -196,25 +202,34 @@ export class FileController {
     // oxlint-disable-next-line typescript/no-explicit-any
     const workspaceId = (req as any)?.workspaceId;
 
-    const fileResponse = await this.fileService
-      .getFilePresignedUrlOrStreamById({
-        fileId,
-        workspaceId,
-        fileFolder,
-      })
-      .catch((error) => {
-        this.logger.error(
-          'getFilePresignedUrlOrStreamById failed unexpectedly',
-          {
-            error,
-          },
-        );
-
-        throw new FileException(
-          'Error retrieving file',
-          FileExceptionCode.INTERNAL_SERVER_ERROR,
-        );
+    const sessionBound = requiresFileSession(
+      fileFolder,
+      this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED'),
+    );
+    // A storage redirect cannot recheck membership on the next request.
+    const fileRead = sessionBound
+      ? this.fileService
+          .getFileStreamById({
+            fileId,
+            workspaceId,
+            allowedFileFolders: [fileFolder],
+          })
+          .then((file) => (file ? { ...file, type: 'stream' as const } : null))
+      : this.fileService.getFilePresignedUrlOrStreamById({
+          fileId,
+          workspaceId,
+          fileFolder,
+        });
+    const fileResponse = await fileRead.catch((error) => {
+      this.logger.error('getFilePresignedUrlOrStreamById failed unexpectedly', {
+        error,
       });
+
+      throw new FileException(
+        'Error retrieving file',
+        FileExceptionCode.INTERNAL_SERVER_ERROR,
+      );
+    });
 
     if (fileResponse === null) {
       throw new FileException(
@@ -228,6 +243,9 @@ export class FileController {
     }
 
     setFileResponseHeaders(res, fileResponse.mimeType, fileFolder);
+    if (sessionBound) {
+      res.setHeader('Cache-Control', PRESIGNED_URL_NO_STORE_CACHE_CONTROL);
+    }
 
     try {
       await pipeline(fileResponse.stream, res);

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
+import { TokenModule } from 'src/engine/core-modules/auth/token/token.module';
 import { FileStorageModule } from 'src/engine/core-modules/file-storage/file-storage.module';
 import { FileAiChatModule } from 'src/engine/core-modules/file/file-ai-chat/file-ai-chat.module';
 import { FileDeletionJob } from 'src/engine/core-modules/file/jobs/file-deletion.job';
@@ -25,6 +26,7 @@ import { FileService } from './services/file.service';
 @Module({
   imports: [
     JwtModule,
+    TokenModule,
     TypeOrmModule.forFeature([FileEntity, WorkspaceEntity, ApplicationEntity]),
     PermissionsModule,
     FileStorageModule,

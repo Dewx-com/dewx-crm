@@ -42,8 +42,15 @@ seat limit, merchant verification, and terms gate live checkout.
 Run focused regression tests, changed-file lint, server/frontend type checks,
 builds, isolated API/browser scenarios, and the 50-account/5-concurrent timing
 check. Record actual results here. Never present a phase as complete without
-its evidence. Email/calendar sync, outreach, WhatsApp automation, and AI are
+its evidence. The expanded plan approved on 10 September includes customer-owned
+email/calendar connections and CRM workflows, including disconnect, failure and
+execution-history checks. Campaign outreach, WhatsApp automation, and AI remain
 outside this release. Enterprise-marked source is not reused for new features.
+
+The completion goal is the full verified production product, including ownership,
+teams, core CRM, reports, connected workflows, subscriptions, migration, support,
+monitoring and restore. Continue independent implementation while verifying the
+licensing path; this authorizes neither a license purchase nor a gate bypass.
 
 ## Account capacity gate found during implementation
 
@@ -76,9 +83,28 @@ Server and frontend type checks pass, as do the server build and type-aware
 lint on all 43 changed TypeScript files. Native oxfmt formatting passes. The form suite preserves the real controls and
 handlers while stubbing Linaria's compile-time styling layer in Jest.
 
+## Private downloads prepared, 10 September
+
+In shared-domain mode, signed private-file links also require a current account
+session or valid account API/application credential. The existing authentication
+service checks membership, expiry and account selection on every download. Private
+files stream through the CRM with `private, no-store`; no reusable storage redirect
+is issued. Signed logos and email images retain their public-facing behavior.
+Office documents offer an authenticated download because the external Office
+previewer cannot use the account session; browser-rendered previews remain.
+
+Checks: 64 server regression tests and 11 frontend preview/download tests pass.
+Native server typecheck (`tsgo`), frontend typecheck, changed-file type-aware lint
+and server compilation (7,453 files) pass. The old guard failed 10 of the 15 new
+access checks before the fix. Evidence: `state/evidence/pe-saas-0910-files/` in
+the Dewx operator repository. Plain server `tsc` also exposed an Express request
+clone typing issue, which was fixed; that compiler additionally reports existing
+dependency-resolution errors, so use the repository's native `tsgo` target.
+
 This is a draft foundation, not a customer-account release. Ownership,
 provisioning, subscriptions, support, migration, the frontend production build,
-and browser acceptance remain open. In particular, native signed file URLs do not recheck membership on
-access; private-file revocation, existing SSE connections, and queued work
-need their own acceptance checks before claiming immediate removal. No
-production configuration or customer data is changed by this source patch.
+and browser acceptance remain open. Existing SSE connections and queued work
+still need revocation checks. Before rollout, allow previously issued storage
+URLs and old cached responses to expire; downloaded copies cannot be recalled.
+The private-file change still needs installed browser acceptance. No production
+configuration or customer data is changed by this source patch.

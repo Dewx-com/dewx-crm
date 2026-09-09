@@ -22,6 +22,7 @@ import {
 import { FileApiExceptionFilter } from 'src/engine/core-modules/file/filters/file-api-exception.filter';
 import { FileByIdGuard } from 'src/engine/core-modules/file/guards/file-by-id.guard';
 import { FileService } from 'src/engine/core-modules/file/services/file.service';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { NoPermissionGuard } from 'src/engine/guards/no-permission.guard';
 import { PublicEndpointGuard } from 'src/engine/guards/public-endpoint.guard';
 
@@ -51,6 +52,7 @@ describe('FileController', () => {
   let controller: FileController;
   let fileService: FileService;
   let serverFileStorageService: ServerFileStorageService;
+  const getConfig = jest.fn();
   const mock_FileByIdGuard: CanActivate = { canActivate: jest.fn(() => true) };
   const mock_PublicEndpointGuard: CanActivate = {
     canActivate: jest.fn(() => true),
@@ -60,9 +62,11 @@ describe('FileController', () => {
   };
 
   beforeEach(async () => {
+    getConfig.mockReturnValue(false);
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FileController],
       providers: [
+        { provide: TwentyConfigService, useValue: { get: getConfig } },
         {
           provide: FileService,
           useValue: {
@@ -104,6 +108,62 @@ describe('FileController', () => {
   });
 
   describe('getFileById', () => {
+    it('streams shared-host private files without a reusable storage redirect or cache', async () => {
+      getConfig.mockReturnValue(true);
+      const stream = createMockStream();
+      jest
+        .spyOn(fileService, 'getFileStreamById')
+        .mockResolvedValue({ stream, mimeType: 'application/pdf' });
+      const response = createMockResponse();
+
+      await controller.getFileById(
+        response as unknown as Parameters<FileController['getFileById']>[0],
+        { workspaceId: 'account-id' } as unknown as Parameters<
+          FileController['getFileById']
+        >[1],
+        FileFolder.FilesField,
+        'private-file',
+      );
+
+      expect(fileService.getFileStreamById).toHaveBeenCalledWith({
+        workspaceId: 'account-id',
+        fileId: 'private-file',
+        allowedFileFolders: [FileFolder.FilesField],
+      });
+      expect(
+        fileService.getFilePresignedUrlOrStreamById,
+      ).not.toHaveBeenCalled();
+      expect(response.redirect).not.toHaveBeenCalled();
+      expect(response.setHeader).toHaveBeenLastCalledWith(
+        'Cache-Control',
+        'private, no-store',
+      );
+      expect(mockPipeline).toHaveBeenCalledWith(stream, response);
+    });
+
+    it('reports missing private files without falling back to a storage redirect', async () => {
+      getConfig.mockReturnValue(true);
+      jest.spyOn(fileService, 'getFileStreamById').mockResolvedValue(null);
+
+      await expect(
+        controller.getFileById(
+          createMockResponse() as unknown as Parameters<
+            FileController['getFileById']
+          >[0],
+          { workspaceId: 'account-id' } as unknown as Parameters<
+            FileController['getFileById']
+          >[1],
+          FileFolder.FilesField,
+          'missing-file',
+        ),
+      ).rejects.toThrow(
+        new FileException('File not found', FileExceptionCode.FILE_NOT_FOUND),
+      );
+      expect(
+        fileService.getFilePresignedUrlOrStreamById,
+      ).not.toHaveBeenCalled();
+    });
+
     it('should 302 redirect when presigned URL is available', async () => {
       jest
         .spyOn(fileService, 'getFilePresignedUrlOrStreamById')
