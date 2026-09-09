@@ -22036,3 +22036,23 @@ msgstr "Either the link is wrong or what it pointed at has been removed."
 #. js-lingui-id: pJeTmq
 msgid "Back to your workspace"
 msgstr "Back to your workspace"
+
+#: src/modules/auth/sign-in-up/components/internal/SignInUpWorkspaceCreationForm.tsx
+msgid "Create your account"
+msgstr "Create your account"
+
+#: src/modules/auth/sign-in-up/components/internal/SignInUpWorkspaceCreationForm.tsx
+msgid "Set up your company's CRM."
+msgstr "Set up your company's CRM."
+
+#: src/modules/auth/sign-in-up/components/internal/SignInUpWorkspaceCreationForm.tsx
+msgid "Create account"
+msgstr "Create account"
+
+#: src/modules/activities/files/components/DocumentViewer.tsx
+msgid "Download this file to view it."
+msgstr "Download this file to view it."
+
+#: src/modules/auth/sign-in-up/components/SignInUpPurposeNote.tsx
+msgid "Manage your contacts, sales pipeline, and team in your own CRM."
+msgstr "Manage your contacts, sales pipeline, and team in your own CRM."

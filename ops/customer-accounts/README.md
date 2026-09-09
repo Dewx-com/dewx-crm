@@ -151,3 +151,30 @@ import check inside the built Linux runtime with
 worker modules in fresh processes. A remote Chromium session loaded the actual
 sign-in page. This establishes startup, not the remaining account/file browser
 acceptance. Runtime evidence: `state/evidence/pe-saas-0910-runtime/`.
+
+## Installed signup findings, 10 September
+
+Two synthetic owners created and activated different accounts through the real
+staging APIs. Each could read their own account; sending the other account's ID
+with their valid credential was denied in both directions. These checks do not
+yet cover shared-member tabs, record/file access, membership removal or billing.
+
+The compiled browser exposed three untranslated IDs on account creation. Five
+customer-account/download messages are now in the source catalog and all 31
+compiled catalogs, with native English fallback. The shared-host sign-in page
+describes a customer CRM. `node ops/customer-accounts/check-customer-catalogs.mjs`
+checks actual compiled messages; the remote browser verifies the readable form
+and its Create account button. Native frontend types, changed-file lint and the
+production build pass. Existing translations are preserved; native compilation
+also refreshes the pseudo-locale's earlier hand-added messages.
+
+Initial account creation took 15.8/15.3 seconds and activation 16.9/13.0 seconds
+under the staging CPU cap while build checks were running. This is above the
+10-second target, not a passing performance benchmark. An external company-logo
+lookup ignored `ALLOW_REQUESTS_TO_TWENTY_ICONS=false` and accounted for about 15
+seconds before activation. That fix and a fresh timing sample are in progress.
+The 50-account benchmark still requires legitimate license capacity.
+
+The staging fixture currently disables email verification and uses a logger
+email driver, so verification/recovery delivery has not been proven. No customer
+data, live checkout, external mail or production configuration is involved.
