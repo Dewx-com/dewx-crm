@@ -47,6 +47,8 @@ import { ConnectedAccountMetadataService } from 'src/engine/metadata-modules/con
 import { UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
+import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
+import { resolveRolePermissionConfig } from 'src/engine/twenty-orm/utils/resolve-role-permission-config.util';
 import { STANDARD_ROLE } from 'src/engine/workspace-manager/twenty-standard-application/constants/standard-role.constant';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 
@@ -142,11 +144,17 @@ export class UserService {
 
     return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
       async () => {
+        const rolePermissionConfig = respectPermissions
+          ? resolveRolePermissionConfig(getWorkspaceContext())
+          : { shouldBypassPermissionChecks: true as const };
+
+        if (!rolePermissionConfig) return [];
+
         const workspaceMemberRepository =
           await this.globalWorkspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
             workspace.id,
             'workspaceMember',
-            respectPermissions ? undefined : { shouldBypassPermissionChecks: true },
+            rolePermissionConfig,
           );
 
         return await workspaceMemberRepository.find({
@@ -259,11 +267,17 @@ export class UserService {
 
     return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
       async () => {
+        const rolePermissionConfig = respectPermissions
+          ? resolveRolePermissionConfig(getWorkspaceContext())
+          : { shouldBypassPermissionChecks: true as const };
+
+        if (!rolePermissionConfig) return [];
+
         const workspaceMemberRepository =
           await this.globalWorkspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
             workspace.id,
             'workspaceMember',
-            respectPermissions ? undefined : { shouldBypassPermissionChecks: true },
+            rolePermissionConfig,
           );
 
         return await workspaceMemberRepository.find({

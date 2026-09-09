@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
 const {UserResolver} = require('/app/packages/twenty-server/dist/engine/core-modules/user/user.resolver.js');
+const {withWorkspaceContext} = require('/app/packages/twenty-server/dist/engine/twenty-orm/storage/orm-workspace-context.storage.js');
+const requestContext={authContext:{type:'user',userWorkspaceId:'caller'},userWorkspaceRoleMap:{caller:'caller-role'},apiKeyRoleMap:{}};
 const {UserService} = require('/app/packages/twenty-server/dist/engine/core-modules/user/services/user.service.js');
 (async () => {
  const workspace={id:'workspace',activationStatus:'ACTIVE'};
@@ -21,10 +23,10 @@ const {UserService} = require('/app/packages/twenty-server/dist/engine/core-modu
   let options,auth;
   const service=Object.assign(Object.create(UserService.prototype),{
    refreshWorkspaceIfPendingOrOngoingCreation:async()=>workspace,
-   globalWorkspaceOrmManager:{getRepository:async(_id,_name,opts)=>{options=opts;return{find:async()=>[]};},executeInWorkspaceContext:async(fn,ctx)=>{auth=ctx;return fn();}}
+   globalWorkspaceOrmManager:{getRepository:async(_id,_name,opts)=>{options=opts;return{find:async()=>[]};},executeInWorkspaceContext:async(fn,ctx)=>{auth=ctx;return withWorkspaceContext(requestContext,fn);}}
   });
   if(method==='loadWorkspaceMembers')await service[method](workspace,false,true);else await service[method](workspace,true);
-  assert.equal(options,undefined);assert.equal(auth,undefined);
+  assert.deepEqual(options,{intersectionOf:['caller-role']});assert.equal(auth,undefined);
   if(method==='loadWorkspaceMembers')await service[method](workspace);else await service[method](workspace);
   assert.equal(options.shouldBypassPermissionChecks,true);assert.equal(auth.type,'system');
  }

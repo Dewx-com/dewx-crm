@@ -1,3 +1,4 @@
+import { withWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
 import { UserResolver } from './user.resolver';
 import { UserService } from './services/user.service';
 import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
@@ -94,7 +95,7 @@ describe('workspace member bootstrap', () => {
       const repository = { find: jest.fn().mockResolvedValue([]) };
       const manager = {
         getRepository: jest.fn().mockResolvedValue(repository),
-        executeInWorkspaceContext: jest.fn((callback) => callback()),
+        executeInWorkspaceContext: jest.fn((callback) => withWorkspaceContext({ authContext: { type: 'user', userWorkspaceId: 'caller' }, userWorkspaceRoleMap: { caller: 'caller-role' }, apiKeyRoleMap: {} } as any, callback)),
       };
       const service = Object.assign(Object.create(UserService.prototype), {
         globalWorkspaceOrmManager: manager,
