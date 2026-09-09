@@ -94,3 +94,9 @@ Run `verify-staging-agreement-policy.cjs` with the same API container command to
 check the shared-host Twenty agreement refusal. It preserves existing synthetic
 agreement rows and asserts that signing cannot add another. Prospect Engine's own
 approved terms and agreement remain a release requirement.
+
+
+Run `verify-staging-core.cjs` with the API container command above for companies,
+contacts, opportunities and tasks. It reuses owners A/B, creates synthetic linked
+records, changes the deal stage, completes a task and checks cross-account denial.
+It retains those synthetic records for inspection.

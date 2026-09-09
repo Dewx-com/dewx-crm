@@ -259,3 +259,20 @@ The installed `verify-staging-agreement-policy.cjs` check passes: shared-host
 preview is marked reference-only, Twenty signing is refused, and existing
 agreement records are unchanged. New-account privacy defaults have unit coverage;
 fresh installed signup will be checked with idempotent provisioning.
+
+
+## Installed credential-change and core CRM checks, 10 September
+
+The browser now completes login-token exchange on the shared origin and reaches
+profile setup with the selected account. Apollo had reused an in-flight generic
+current-user query after the token changed. Explicit user reloads and the
+cookie-only startup probe now request independent network responses. The real
+Apollo regression failed before the change; five focused tests, frontend types,
+lint and the full native build pass. Browser onboarding and full CRM UI acceptance
+continue separately.
+
+`verify-staging-core.cjs` passes against the installed server: a company and linked
+contact, an owned opportunity with currency and a stage transition, and an assigned
+dated task linked to the contact and completed. All four record types are readable
+in their account and hidden from the second owner. These are API checks, not a
+claim that browser CRUD has passed.
