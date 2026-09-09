@@ -1,3 +1,4 @@
+import { domainConfigurationState } from '@/domain-manager/states/domainConfigurationState';
 import { NavigationDrawerOpenedSection } from '@/navigation-menu-item/display/sections/components/NavigationDrawerOpenedSection';
 import { NavigationDrawerWorkspaceSectionSkeletonLoader } from '@/object-metadata/components/NavigationDrawerWorkspaceSectionSkeletonLoader';
 
@@ -67,6 +68,19 @@ export const MainNavigationDrawerScrollableItems = () => {
   // no Today). Roki, 2026-08-25: "why a client should see Clients? That's for us." Staff keep the
   // full drawer below, unchanged.
   const { isClientSeat } = useClientSeat();
+  const { isSharedDomainEnabled } = useAtomStateValue(domainConfigurationState);
+
+  if (isSharedDomainEnabled) {
+    return (
+      <StyledScrollableItemsContainer>
+        <NavigationDrawerOpenedSection />
+        <Suspense fallback={<NavigationDrawerWorkspaceSectionSkeletonLoader />}>
+          <FavoritesSectionDispatcher />
+          <WorkspaceSectionDispatcher />
+        </Suspense>
+      </StyledScrollableItemsContainer>
+    );
+  }
   if (isClientSeat) {
     return (
       <StyledScrollableItemsContainer>
