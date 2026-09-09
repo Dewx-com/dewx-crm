@@ -8,6 +8,8 @@ import { NodeEnvironment } from 'src/engine/core-modules/twenty-config/interface
 import { METADATA_GRAPHQL_OPERATIONS_TO_CACHE } from 'src/engine/api/graphql/graphql-config/constants/metadata-graphql-operations-to-cache.constant';
 import { useCachedMetadata } from 'src/engine/api/graphql/graphql-config/hooks/use-cached-metadata';
 import { MetadataGraphQLApiModule } from 'src/engine/api/graphql/metadata-graphql-api.module';
+import { type AccessTokenService } from 'src/engine/core-modules/auth/token/services/access-token.service';
+import { useSubscriptionSessionValidation } from 'src/engine/core-modules/graphql/hooks/use-subscription-session-validation.hook';
 import { type CacheStorageService } from 'src/engine/core-modules/cache-storage/services/cache-storage.service';
 import { ClientConfig } from 'src/engine/core-modules/client-config/client-config.entity';
 import { type ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
@@ -32,6 +34,7 @@ export const metadataModuleFactory = async (
   i18nService: I18nService,
   _featureFlagService: FeatureFlagService,
   workspaceCacheService: WorkspaceCacheService,
+  accessTokenService: AccessTokenService,
 ): Promise<YogaDriverConfig> => {
   const config: YogaDriverConfig = {
     autoSchemaFile: true,
@@ -45,6 +48,11 @@ export const metadataModuleFactory = async (
     },
     resolvers: { JSON: GraphQLJSON },
     plugins: [
+      useSubscriptionSessionValidation({
+        isEnabled: twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED'),
+        validateRequest: (request) =>
+          accessTokenService.validateTokenByRequest(request),
+      }),
       ...(Sentry.isInitialized() ? [useSentryTracing()] : []),
       useGraphQLErrorHandlerHook({
         metricsService: metricsService,

@@ -104,7 +104,23 @@ dependency-resolution errors, so use the repository's native `tsgo` target.
 This is a draft foundation, not a customer-account release. Ownership,
 provisioning, subscriptions, support, migration, the frontend production build,
 and browser acceptance remain open. Existing SSE connections and queued work
-still need revocation checks. Before rollout, allow previously issued storage
+still need acceptance checks. Before rollout, allow previously issued storage
 URLs and old cached responses to expire; downloaded copies cannot be recalled.
 The private-file change still needs installed browser acceptance. No production
 configuration or customer data is changed by this source patch.
+
+## Subscription delivery prepared, 10 September
+
+Core and metadata GraphQL subscriptions now revalidate the original account
+credential before releasing each event in shared-domain mode. Removed membership,
+expired/revoked credentials, changed account/principal, and failed authorization
+lookups stop delivery and close the source iterator. Another account's stream
+continues. Idle streams close when their next event arrives; this is a delivery
+check, not an immediate idle-connection termination claim. The existing client
+handles completion through its destroy/recreate flow.
+
+Ten tests using the actual GraphQL/Envelop subscription pipeline pass, including
+queued-event denial and iterator cleanup. Full native server types, changed-file
+type-aware lint and server compilation (7,455 files) pass. Evidence lives in
+`state/evidence/pe-saas-0910-streams/` in the operator repository. Installed
+acceptance and queued-job authorization remain open.
