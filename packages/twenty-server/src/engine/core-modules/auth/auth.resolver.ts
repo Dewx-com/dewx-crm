@@ -507,7 +507,6 @@ export class AuthResolver {
   @UseGuards(CaptchaGuard, PublicEndpointGuard, NoPermissionGuard)
   async signUpInWorkspace(
     @Args() signUpInput: SignUpInput,
-    @AuthProvider() authProvider: AuthProviderEnum,
   ): Promise<SignUpDTO> {
     const currentWorkspace = await this.authService.findWorkspaceForSignInUp({
       workspaceInviteHash: signUpInput.workspaceInviteHash,
@@ -581,7 +580,7 @@ export class AuthResolver {
     const loginToken = await this.loginTokenService.generateLoginToken(
       user.email,
       workspace.id,
-      authProvider,
+      AuthProviderEnum.Password,
     );
 
     return {
