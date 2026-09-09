@@ -138,3 +138,18 @@ benchmark still requires the applicable license.
 instance. Both submissions must carry the same UUID and receive the real capacity
 refusal. This proves the compiled form uses the retry contract without creating
 another account.
+
+## Two accounts in one browser
+
+Run `verify-staging-browser-tabs.cjs` in the remote Chromium container on the
+private staging network, with `/test-state` and `/evidence` mounted. It joins a
+synthetic member to A/B, signs in through the UI, opens each account in its own
+tab, and checks selected-account identity and cookie-only record isolation. It
+then switches B to A and back, verifies A stays unchanged, reloads both tabs and
+checks customer navigation. The complete run passed and saved `member-tab-a.png`
+and `member-tab-b.png`. Screenshots bring each remote headless tab forward first;
+background-tab capture otherwise timed out after the functional assertions.
+
+Invited members no longer inherit the creator's pending invite-team onboarding
+step. The three focused server regressions and the installed switch/reload
+scenario pass. Owner setup remains available to the account creator.
