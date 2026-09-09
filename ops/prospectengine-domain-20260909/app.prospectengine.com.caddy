@@ -1,0 +1,9 @@
+app.prospectengine.com {
+    encode zstd gzip
+    @hashed_assets path /assets/*
+    header @hashed_assets {
+        Cache-Control "public, max-age=31536000, immutable"
+        defer
+    }
+    reverse_proxy 127.0.0.1:3000
+}
