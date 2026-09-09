@@ -61,6 +61,7 @@ import { UserService } from 'src/engine/core-modules/user/services/user.service'
 import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-invitation/services/workspace-invitation.service';
 import { AuthProviderEnum } from 'src/engine/core-modules/workspace/types/workspace.type';
+import { WorkspaceDiscoverability } from 'src/engine/core-modules/workspace/types/workspace-discoverability.type';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import {
   WorkspaceException,
@@ -592,6 +593,9 @@ export class SignInUpService {
     const shouldGrantServerAdmin = !(await this.hasServerAdmin());
 
     const isWorkEmailFound = isWorkEmail(email);
+    const isSharedDomainEnabled = this.twentyConfigService.get(
+      'IS_SHARED_DOMAIN_ENABLED',
+    );
 
     const workspaceId = v4();
     const workspaceCustomApplicationId = v4();
@@ -612,6 +616,14 @@ export class SignInUpService {
             displayName,
             inviteHash: v4(),
             activationStatus: WorkspaceActivationStatus.PENDING_CREATION,
+            ...(isSharedDomainEnabled
+              ? {
+                  allowImpersonation: false,
+                  isPublicInviteLinkEnabled: false,
+                  workspaceDiscoverability:
+                    WorkspaceDiscoverability.MEMBERS_AND_INVITEES,
+                }
+              : {}),
           });
 
           const workspace = await queryRunner.manager.save(
@@ -695,15 +707,12 @@ export class SignInUpService {
             queryRunner,
           );
 
-          // Click-through DPA: the DPA is incorporated by reference into the
-          // ToS/signup, so acceptance = execution. Only relevant on Twenty's
-          // managed cloud (multi-workspace), where Twenty is the Processor
-          // hosting the data; on self-hosted deployments Twenty is not the
-          // Processor, so there is nothing to record. Done atomically with
-          // workspace creation so we can later prove what was agreed. (Billing
-          // is an independent feature flag and must not be used to detect cloud.)
+          // Shared-domain customer hosting is our deployment, not Twenty's cloud.
+          // Do not record acceptance of a Twenty agreement for those accounts.
           if (
-            this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED') === true
+            this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED') ===
+              true &&
+            !isSharedDomainEnabled
           ) {
             await queryRunner.manager.save(
               DpaAgreementEntity,
