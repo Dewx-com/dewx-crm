@@ -118,7 +118,7 @@ describe('workspace member bootstrap', () => {
       expect(manager.getRepository).toHaveBeenCalledWith(
         workspace.id,
         'workspaceMember',
-        undefined,
+        { intersectionOf: ['caller-role'] },
       );
       expect(
         manager.executeInWorkspaceContext.mock.calls[0][1],

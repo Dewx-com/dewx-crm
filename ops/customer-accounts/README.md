@@ -102,7 +102,7 @@ clone typing issue, which was fixed; that compiler additionally reports existing
 dependency-resolution errors, so use the repository's native `tsgo` target.
 
 This is a draft foundation, not a customer-account release. Ownership,
-provisioning, subscriptions, support, migration, the frontend production build,
+provisioning, subscriptions, support, migration,
 and browser acceptance remain open. Existing SSE connections and queued work
 still need acceptance checks. Before rollout, allow previously issued storage
 URLs and old cached responses to expire; downloaded copies cannot be recalled.
@@ -124,3 +124,22 @@ queued-event denial and iterator cleanup. Full native server types, changed-file
 type-aware lint and server compilation (7,455 files) pass. Evidence lives in
 `state/evidence/pe-saas-0910-streams/` in the operator repository. Installed
 acceptance and queued-job authorization remain open.
+
+## Team assignment and frontend build, 10 September
+
+Bulk role assignment now resolves every target membership inside the selected
+account. A foreign membership or mixed-account batch is rejected before any role
+is changed. The existing caller-role resolver test expectation was updated to
+match the explicit caller permission context already implemented in PR5.
+
+Thirteen team/user resolver tests pass; two of the five new assignment cases
+failed before the account filter was added. Native server types, changed role-file
+lint and server compilation pass. The full native Nx frontend production build,
+including its 11 dependency tasks, also passes. Evidence:
+`state/evidence/pe-saas-0910-team/` in the operator repository.
+
+Private staging is being initialized from the compiled source with synthetic
+data and an internal Docker network. The first startup exposed a circular import
+between file request authentication and the auth graph. Runtime acceptance is
+pending the module-wiring fix; neither compilation nor focused tests establish
+installed acceptance.

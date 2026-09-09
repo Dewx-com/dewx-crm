@@ -364,6 +364,7 @@ export class UserRoleService {
     const userWorkspaces = await this.userWorkspaceRepository.find({
       where: {
         id: In(userWorkspaceIds),
+        workspaceId,
       },
     });
 
