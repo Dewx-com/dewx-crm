@@ -229,6 +229,33 @@ describe('JwtAuthStrategy', () => {
   });
 
   describe('ACCESS token validation', () => {
+    it.each([undefined, 'stale-workspace-member-id'])(
+      'resolves the current actor when the token member ID is %s',
+      async (workspaceMemberId) => {
+        workspaceStore['workspace-id'] = Object.assign(new WorkspaceEntity(), {
+          id: 'workspace-id',
+          activationStatus: WorkspaceActivationStatus.ACTIVE,
+        });
+        userStore['valid-user-id'] = { id: 'valid-user-id' };
+        userWorkspaceRepository.findOne.mockResolvedValue({
+          id: 'membership-id',
+          userId: 'valid-user-id',
+          workspaceId: 'workspace-id',
+        });
+
+        const context = await createStrategy().validate({
+          sub: 'valid-user-id',
+          type: JwtTokenTypeEnum.ACCESS,
+          userWorkspaceId: 'membership-id',
+          workspaceId: 'workspace-id',
+          workspaceMemberId,
+        } as JwtPayload);
+
+        expect(context.workspaceMemberId).toBe('workspace-member-id');
+        expect(context.workspaceMemberId).toBe(context.workspaceMember?.id);
+      },
+    );
+
     it('rejects a membership belonging to another user', async () => {
       const workspace = Object.assign(new WorkspaceEntity(), {
         id: 'workspace-id',
