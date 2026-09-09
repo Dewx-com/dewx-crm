@@ -138,8 +138,16 @@ lint and server compilation pass. The full native Nx frontend production build,
 including its 11 dependency tasks, also passes. Evidence:
 `state/evidence/pe-saas-0910-team/` in the operator repository.
 
-Private staging is being initialized from the compiled source with synthetic
-data and an internal Docker network. The first startup exposed a circular import
-between file request authentication and the auth graph. Runtime acceptance is
-pending the module-wiring fix; neither compilation nor focused tests establish
-installed acceptance.
+Private staging runs the compiled source with synthetic data, HTTPS and an
+internal Docker network. The first startup exposed a circular import between file
+request authentication and the auth graph. File HTTP routes now have their own
+module importing authentication; the file services used by the auth graph remain
+independent of that request boundary.
+
+Fresh native database migrations, the HTTPS health check, all three compiled
+entry-module imports, native server types and changed-file lint pass. Run the
+import check inside the built Linux runtime with
+`node ops/customer-accounts/check-runtime-imports.mjs`; it checks web, command and
+worker modules in fresh processes. A remote Chromium session loaded the actual
+sign-in page. This establishes startup, not the remaining account/file browser
+acceptance. Runtime evidence: `state/evidence/pe-saas-0910-runtime/`.
