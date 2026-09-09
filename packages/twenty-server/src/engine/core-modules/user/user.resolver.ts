@@ -283,6 +283,7 @@ export class UserResolver {
     const workspaceMemberEntities = await this.userService.loadWorkspaceMembers(
       workspace,
       false,
+      true,
     );
 
     const userWorkspaces = await this.userWorkspaceRepository.find({
@@ -308,29 +309,35 @@ export class UserResolver {
       });
 
     const toWorkspaceMemberDtoArgs =
-      workspaceMemberEntities.map<ToWorkspaceMemberDtoArgs>(
+      workspaceMemberEntities.flatMap<ToWorkspaceMemberDtoArgs>(
         (workspaceMemberEntity) => {
           const userWorkspace = userWorkspacesByUserIdMap.get(
             workspaceMemberEntity.userId,
           );
 
           if (!isDefined(userWorkspace)) {
-            throw new Error('UserEntity workspace not found');
+            // A stale member must not prevent every valid user from signing in.
+            return [];
           }
 
           const userWorkspaceRoles = rolesByUserWorkspacesMap.get(
             userWorkspace.id,
           );
 
-          if (!isDefined(userWorkspaceRoles)) {
-            throw new Error('UserEntity workspace roles not found');
+          if (
+            !isDefined(userWorkspaceRoles) ||
+            userWorkspaceRoles.length === 0
+          ) {
+            return [];
           }
 
-          return {
-            userWorkspace,
-            userWorkspaceRoles,
-            workspaceMemberEntity,
-          };
+          return [
+            {
+              userWorkspace,
+              userWorkspaceRoles,
+              workspaceMemberEntity,
+            },
+          ];
         },
       );
 
@@ -350,7 +357,7 @@ export class UserResolver {
     if (!workspace) return [];
 
     const workspaceMemberEntities =
-      await this.userService.loadDeletedWorkspaceMembersOnly(workspace);
+      await this.userService.loadDeletedWorkspaceMembersOnly(workspace, true);
 
     return this.workspaceMemberTranspiler.toDeletedWorkspaceMemberDtos(
       workspaceMemberEntities,
