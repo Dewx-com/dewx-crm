@@ -156,8 +156,8 @@ acceptance. Runtime evidence: `state/evidence/pe-saas-0910-runtime/`.
 
 Two synthetic owners created and activated different accounts through the real
 staging APIs. Each could read their own account; sending the other account's ID
-with their valid credential was denied in both directions. These checks do not
-yet cover shared-member tabs, record/file access, membership removal or billing.
+with their valid credential was denied in both directions. Record and file checks below extend this evidence; shared-member tabs and billing
+remain separate acceptance checks.
 
 The compiled browser exposed three untranslated IDs on account creation. Five
 customer-account/download messages are now in the source catalog and all 31
@@ -172,9 +172,59 @@ Initial account creation took 15.8/15.3 seconds and activation 16.9/13.0 seconds
 under the staging CPU cap while build checks were running. This is above the
 10-second target, not a passing performance benchmark. An external company-logo
 lookup ignored `ALLOW_REQUESTS_TO_TWENTY_ICONS=false` and accounted for about 15
-seconds before activation. That fix and a fresh timing sample are in progress.
-The 50-account benchmark still requires legitimate license capacity.
+seconds before activation. Signup now honors that setting. Its three regression
+cases pass, including the disabled case that failed before the change; native
+server types, lint and compilation pass. A new account took 621ms to create and
+11,622ms to activate with the setting disabled. Activation therefore still needs
+optimization, and this sample does not prove p95. The 50-account benchmark still
+requires legitimate license capacity.
 
 The staging fixture currently disables email verification and uses a logger
 email driver, so verification/recovery delivery has not been proven. No customer
 data, live checkout, external mail or production configuration is involved.
+
+The real contact API also passes create/read isolation checks for the first two
+owners. A first write immediately after activating a new account exposed an actor
+ID missing from its pre-activation access token. Token validation already resolves
+the current member; it now uses that verified member ID for record attribution.
+Twenty-nine authentication tests, including missing/stale actor claims, pass along
+with native server types, lint and compilation. A fourth fresh owner then activated and created its first contact using the same
+pre-activation credential. Creation took 366ms and activation 11,976ms; first-write
+and cross-account isolation checks passed. This is still above the setup target.
+
+
+## Attachment and restore acceptance, 10 September
+
+The staging API uploads a private file through the native signed-upload flow,
+attaches it to a contact and returns its signed download URL. The owner downloads
+exact stored bytes using the account cookie alone. Anonymous access and another
+account's cookie are denied; foreign attachment IDs return no records. The
+response has `private, no-store` and no storage redirect.
+
+A database dump and attachment snapshot were taken with only the synthetic app
+briefly stopped, then restored into a fresh Postgres volume and storage directory
+on a separate internal network. The same login, contact isolation and attachment
+byte/denial checks passed against the restore. Restore containers were stopped
+after verification; private snapshots remain on the server. This proves synthetic
+restore only, not customer migration or production recovery. Reproduction and
+remaining checks are in `STAGING.md`.
+
+## Shared-member removal acceptance, 10 September
+
+An invited member joined two synthetic accounts and used both account cookies in
+one jar. Invitation signup initially produced a login token without its provider,
+so session creation failed on the required auth-provider column. The password
+signup resolver now sets the provider it actually validated. Ten resolver tests,
+native types, lint and compilation pass; the new regression failed before the fix.
+
+The installed check now passes with current code: both account cookies and Bearer
+tokens work, then account A's owner removes the member. Previously issued account
+A tokens/cookies lose account and contact access, and its retained signed file URL
+returns 403. The same member's account B access remains usable. Already-open SSE
+streams close for A before the next heartbeat while B continues delivering.
+This proves live stream revocation at the next delivery, not immediate idle socket
+termination. Run `verify-staging-member-removal.cjs` after the account fixtures.
+
+No message was sent: the synthetic test uses native public invite links and the
+logger email driver. Personal invitation delivery, browser-tab behavior, queued
+jobs/exports, retained work and role-change access still need separate acceptance.
