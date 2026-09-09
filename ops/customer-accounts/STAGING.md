@@ -124,3 +124,17 @@ back to the verified database/attachment snapshot, the corrected migration was
 applied normally, and the fifth-account tests were repeated. No production data
 or migration history was rewritten. `/healthz` and `/client-config` both returned
 200 after the correction.
+
+## Provisioning and compiled form retries
+
+Run `verify-staging-provisioning.cjs` on `pe-saas-0910` using the API acceptance
+container above. It consumes the fifth and final permitted fixture account, then
+reuses it. It never raises the license limit. It checks concurrent requests,
+payload binding, replay at capacity, private defaults, empty initial CRM records
+and a first write. Keep `/test-state/owner-e.json` between reruns. A 50-account
+benchmark still requires the applicable license.
+
+`verify-staging-signup-form.cjs` also submits twice against the full fixture
+instance. Both submissions must carry the same UUID and receive the real capacity
+refusal. This proves the compiled form uses the retry contract without creating
+another account.

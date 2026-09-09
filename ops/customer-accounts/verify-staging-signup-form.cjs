@@ -68,6 +68,22 @@ const { randomBytes } = require('node:crypto');
     console.log(
       'PASS compiled browser: CRM sign-in wording, readable account form and accessible Create account button',
     );
+    await page.getByPlaceholder('Apple', { exact: true }).fill('Form retry CRM');
+    const requestIds = [];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const responsePromise = page.waitForResponse((response) => {
+        if (!response.url().endsWith('/metadata')) return false;
+        return response.request().postDataJSON()?.operationName === 'SignUpInNewWorkspace';
+      });
+      await page.getByRole('button', { name: 'Create account', exact: true }).click();
+      const response = await responsePromise;
+      const body = await response.json();
+      assert.ok(body.errors?.some((error) => /workspace limit|enterprise key/i.test(error.message)));
+      requestIds.push(response.request().postDataJSON().variables.input.requestId);
+    }
+    assert.match(requestIds[0], /^[0-9a-f-]{36}$/);
+    assert.equal(requestIds[1], requestIds[0]);
+    console.log('PASS compiled form sends a stable request ID across retries and respects the account capacity limit');
     console.log('TITLE', await page.title());
     console.log(
       'BODY',

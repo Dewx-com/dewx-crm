@@ -276,3 +276,28 @@ contact, an owned opportunity with currency and a stage transition, and an assig
 dated task linked to the contact and completed. All four record types are readable
 in their account and hidden from the second owner. These are API checks, not a
 claim that browser CRUD has passed.
+
+## Signup retries and empty customer accounts, 10 September
+
+A signed-in user's setup request now carries a UUID retained across form retries
+and remounts. A receipt is committed in the same transaction as the account and
+membership. Concurrent copies return that account; changed details, deleted
+accounts, removed memberships and suspended accounts are refused. A short
+PostgreSQL advisory lock also serializes capacity checks. Activation stays
+outside that transaction. The five-account license gate is unchanged.
+
+Shared-host customer accounts skip native demonstration records. Native CRM
+schemas and views still initialize. Fresh fifth-account acceptance confirms an
+empty contacts/companies/deals list, private account defaults, first record write,
+one membership after concurrent retries, payload mismatch rejection and capacity
+rejection. Creation took 533 ms; activation took 15.2 seconds during the frontend
+build. This is a functional check, not a passing p95 benchmark.
+
+Checks: 24 focused server authentication/retry/policy tests and the frontend form
+retry regression pass, along with native types, changed-file lint and complete
+server/frontend builds. The compiled browser sends the same request ID on retry
+and displays the capacity refusal. The native schema generator added the input
+field to frontend GraphQL types. Receipt migration and subsequent instance upgrade
+checks pass on private staging; see STAGING.md for the migration correction and
+its database regression. Ownership, billing, support and full release acceptance
+remain open.

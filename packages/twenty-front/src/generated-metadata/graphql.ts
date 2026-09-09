@@ -5481,6 +5481,7 @@ export type SignUp = {
 
 export type SignUpInNewWorkspaceInput = {
   displayName?: InputMaybe<Scalars['String']['input']>;
+  requestId?: InputMaybe<Scalars['String']['input']>;
   subdomain?: InputMaybe<Scalars['String']['input']>;
 };
 

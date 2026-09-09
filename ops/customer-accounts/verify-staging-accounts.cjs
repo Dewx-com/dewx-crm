@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { randomBytes } = require('node:crypto');
+const { randomBytes, randomUUID } = require('node:crypto');
 const { request } = require('playwright');
 
 const origin = 'https://pe-saas-0910-app:3047';
@@ -72,13 +72,20 @@ async function owner(letter) {
       'Existing fixture membership must still be available',
     );
   } else {
+    fixture.requestId ??= randomUUID();
+    save();
     const start = performance.now();
     const created = await gql(
       client,
       `mutation($input: SignUpInNewWorkspaceInput) {
       signUpInNewWorkspace(input: $input) { workspace { id } loginToken { token } }
     }`,
-      { input: { displayName: `Acceptance CRM ${letter.toUpperCase()}` } },
+      {
+        input: {
+          displayName: `Acceptance CRM ${letter.toUpperCase()}`,
+          requestId: fixture.requestId,
+        },
+      },
       userAuth,
     );
     fixture.workspaceId = created.data.signUpInNewWorkspace.workspace.id;

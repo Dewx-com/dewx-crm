@@ -54,8 +54,10 @@ describe('workspace signup policy', () => {
       const manager = {
         save: jest.fn(async (_entity, value) => value),
         update: jest.fn(),
+        findOneBy: jest.fn().mockResolvedValue(null),
+        insert: jest.fn(),
       };
-      const queryRunner = { manager };
+      const queryRunner = { manager, query: jest.fn() };
       const service: SignInUpService = Object.assign(
         Object.create(SignInUpService.prototype),
         {
@@ -92,7 +94,10 @@ describe('workspace signup policy', () => {
       const user = { id: 'owner', email } as UserEntity;
       const result = await service.signUpOnNewWorkspace(
         { type: 'existingUser', existingUser: user },
-        { displayName: 'Acceptance CRM' },
+        {
+          displayName: 'Acceptance CRM',
+          requestId: '72c8ef0c-c724-4b97-a725-e83293476135',
+        },
       );
 
       expect(result.user).toBe(user);

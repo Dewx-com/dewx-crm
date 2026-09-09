@@ -906,6 +906,11 @@ export class WorkspaceService {
     workspaceId: string;
     schemaName: string;
   }): Promise<void> {
+    // Customer accounts start empty; demonstration records belong to demo setups.
+    if (this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED')) {
+      return;
+    }
+
     const {
       flatObjectMetadataMaps,
       flatFieldMetadataMaps,
