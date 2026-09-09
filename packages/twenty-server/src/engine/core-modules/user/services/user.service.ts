@@ -126,6 +126,7 @@ export class UserService {
   async loadWorkspaceMembers(
     workspace: Pick<WorkspaceEntity, 'id' | 'activationStatus'>,
     withDeleted = false,
+    respectPermissions = false,
   ) {
     // The given workspace can be a stale cache snapshot right after activateWorkspace ran on another instance (#20322)
     const refreshedWorkspace =
@@ -135,7 +136,9 @@ export class UserService {
       return [];
     }
 
-    const authContext = buildSystemAuthContext(workspace.id);
+    const authContext = respectPermissions
+      ? undefined
+      : buildSystemAuthContext(workspace.id);
 
     return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
       async () => {
@@ -143,7 +146,7 @@ export class UserService {
           await this.globalWorkspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
             workspace.id,
             'workspaceMember',
-            { shouldBypassPermissionChecks: true },
+            { shouldBypassPermissionChecks: !respectPermissions },
           );
 
         return await workspaceMemberRepository.find({
@@ -244,12 +247,15 @@ export class UserService {
 
   async loadDeletedWorkspaceMembersOnly(
     workspace: Pick<WorkspaceEntity, 'id' | 'activationStatus'>,
+    respectPermissions = false,
   ) {
     if (!isWorkspaceProvisioned(workspace)) {
       return [];
     }
 
-    const authContext = buildSystemAuthContext(workspace.id);
+    const authContext = respectPermissions
+      ? undefined
+      : buildSystemAuthContext(workspace.id);
 
     return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
       async () => {
@@ -257,7 +263,7 @@ export class UserService {
           await this.globalWorkspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
             workspace.id,
             'workspaceMember',
-            { shouldBypassPermissionChecks: true },
+            { shouldBypassPermissionChecks: !respectPermissions },
           );
 
         return await workspaceMemberRepository.find({
