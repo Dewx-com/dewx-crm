@@ -301,3 +301,29 @@ field to frontend GraphQL types. Receipt migration and subsequent instance upgra
 checks pass on private staging; see STAGING.md for the migration correction and
 its database regression. Ownership, billing, support and full release acceptance
 remain open.
+
+## Persistent customer ownership
+
+New shared-host accounts record their creator as the primary owner. The native
+2.33 migration backfills only explicit creation receipts with active administrator
+memberships; legacy accounts require an owner chosen during migration. The owner
+can hand over to an existing administrator, remains a member after transfer, and
+can then be removed by the new owner.
+
+Ownership, team changes and global user deletion share a PostgreSQL advisory
+lock. User deletion checks every account before making changes. Native permission
+transactions roll back if they would remove the owner's full administrator
+access; separate record-scope writes also protect that role. Only the owner can
+delete the customer CRM or change its security settings. Native impersonation
+cannot assume the owner identity, including through a token issued before the
+target became the owner.
+
+Installed API acceptance passes transfer, competing-change refusal, owner
+removal/demotion and record-restriction denial, impersonation revocation, retained
+work and continued access to the other account. The focused suites pass 31
+ownership/signup/user checks and 30 impersonation/JWT checks. The member Settings
+page adds recipient-email confirmation, shows protected ownership, and suppresses
+owner removal, role changes and impersonation. Its compiled browser acceptance
+is recorded in `STAGING.md`. Durable customer-visible ownership audit, timed
+support grants, legacy owner reconciliation and the remaining full release
+criteria are still open.

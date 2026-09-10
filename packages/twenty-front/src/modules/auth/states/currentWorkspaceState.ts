@@ -12,6 +12,7 @@ export type CurrentWorkspace = Pick<
   | 'logo'
   | 'displayName'
   | 'allowImpersonation'
+  | 'primaryOwnerUserId'
   | 'featureFlags'
   | 'activationStatus'
   | 'billingSubscriptions'

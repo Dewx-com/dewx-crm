@@ -153,3 +153,45 @@ background-tab capture otherwise timed out after the functional assertions.
 Invited members no longer inherit the creator's pending invite-team onboarding
 step. The three focused server regressions and the installed switch/reload
 scenario pass. Owner setup remains available to the account creator.
+
+## Customer ownership
+
+The native 2.33.0 migration `AddCustomerAccountOwnerFastInstanceCommand` records
+an owner from an explicit creation receipt and active administrator membership.
+It does not infer ownership for legacy accounts A–D. Fixture E has a creation
+receipt and an owner. The migration and `/healthz` and `/client-config` checks pass.
+
+`verify-staging-ownership.cjs` uses E and an administrator from B, accepting a
+private invitation through the normal authenticated invitation path. Run it in
+the Node 24 Alpine container with the same mounts and network as the API checks,
+plus `--env-file /opt/pe-crm-build/saas-stage-0910/app.env` for its real PostgreSQL
+lock assertion. That private file remains on the server.
+
+The installed checks pass: a non-owner cannot transfer ownership, delete the CRM,
+enable support impersonation, remove or demote the owner, or restrict their
+object, field or record access. A held database lock rejects concurrent transfer.
+After transfer, the former owner loses transfer authority; global user deletion
+refuses before damaging any other membership. Transfer-back and removal reject
+old access while preserving the removed person's note and other account.
+The script leaves E owned by E and removes B from E. No external email is sent.
+
+`verify-staging-ownership-browser.cjs` exercises the Settings controls in remote
+Chromium, including typed recipient confirmation and removal after transfer-back.
+The complete installed run passes with two UI logins, protected owner controls,
+typed recipient confirmation, transfer in both directions and former-owner removal,
+with no browser errors. `new-owner-settings.png` shows the handoff controls.
+Ownership changes currently have operational logs; a durable customer-visible
+audit and timed support grants are separate remaining release checks.
+
+Owner impersonation is denied by the native shared authorization service at
+issuance, login-token exchange and authenticated requests. Three takeover
+regressions failed before the guard; all four owner-policy cases and 26 JWT
+authentication cases pass after it. The installed ownership scenario also passes
+with an access token issued while the target is an ordinary administrator, then
+rejected immediately after that target becomes the owner.
+
+Exact button-name selection initially failed because the shared ButtonText
+component included visually clipped loading dots in its accessible name. Marking
+that decoration `aria-hidden` preserves the visible loading effect and keeps the
+button name stable. Native formatting/lint and the complete UI/frontend build
+pass; the same exact-label browser scenario now passes without a locator workaround.
