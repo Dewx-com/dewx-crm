@@ -13,6 +13,8 @@ import { ApiPath } from 'twenty-shared/types';
 import { NodeEnvironment } from 'src/engine/core-modules/twenty-config/interfaces/node-environment.interface';
 
 import { DirectExecutionService } from 'src/engine/api/graphql/direct-execution/direct-execution.service';
+import { AccessTokenService } from 'src/engine/core-modules/auth/token/services/access-token.service';
+import { useSubscriptionSessionValidation } from 'src/engine/core-modules/graphql/hooks/use-subscription-session-validation.hook';
 import { useDirectExecution } from 'src/engine/api/graphql/direct-execution/hooks/use-direct-execution.hook';
 import { type FlatAuthContextUser } from 'src/engine/core-modules/auth/types/flat-auth-context-user.type';
 import { CoreEngineModule } from 'src/engine/core-modules/core-engine.module';
@@ -47,12 +49,18 @@ export class GraphQLConfigService implements GqlOptionsFactory<
     private readonly i18nService: I18nService,
     private readonly directExecutionService: DirectExecutionService,
     private readonly featureFlagService: FeatureFlagService,
+    private readonly accessTokenService: AccessTokenService,
   ) {}
 
   createGqlOptions(): YogaDriverConfig {
     const isDebugMode =
       this.twentyConfigService.get('NODE_ENV') === NodeEnvironment.DEVELOPMENT;
     const plugins = [
+      useSubscriptionSessionValidation({
+        isEnabled: this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED'),
+        validateRequest: (request) =>
+          this.accessTokenService.validateTokenByRequest(request),
+      }),
       useDirectExecution({
         directExecutionService: this.directExecutionService,
         featureFlagService: this.featureFlagService,

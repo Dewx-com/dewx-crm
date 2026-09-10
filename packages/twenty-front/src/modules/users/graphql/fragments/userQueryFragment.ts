@@ -53,6 +53,7 @@ export const USER_QUERY_FRAGMENT = gql`
       logo
       inviteHash
       allowImpersonation
+      primaryOwnerUserId
       activationStatus
       isPublicInviteLinkEnabled
       workspaceDiscoverability

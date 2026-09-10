@@ -1,4 +1,11 @@
-import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
+import { CustomerAccountOwnershipService } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.service';
+import { STANDARD_ROLE } from 'src/engine/workspace-manager/twenty-standard-application/constants/standard-role.constant';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
@@ -22,6 +29,7 @@ export class RoleRecordScopeService implements OnModuleInit {
     @InjectRepository(RoleEntity)
     private readonly roleRepository: Repository<RoleEntity>,
     private readonly workspaceCacheService: WorkspaceCacheService,
+    private readonly customerAccountOwnershipService: CustomerAccountOwnershipService,
   ) {}
 
   // Idempotent: the same SQL the instance command runs, so an install that never ran the
@@ -55,7 +63,22 @@ export class RoleRecordScopeService implements OnModuleInit {
     fieldMetadataId: string;
     value: string;
   }): Promise<RoleRecordScopeEntity> {
-    await this.assertRoleInWorkspace(input.workspaceId, input.roleId);
+    const role = await this.assertRoleInWorkspace(
+      input.workspaceId,
+      input.roleId,
+    );
+    if (
+      role.universalIdentifier === STANDARD_ROLE.admin.universalIdentifier &&
+      (
+        await this.customerAccountOwnershipService.getWorkspace(
+          input.workspaceId,
+        )
+      ).primaryOwnerUserId
+    ) {
+      throw new ForbiddenException(
+        'The account owner must retain access to all records. Use a separate team role.',
+      );
+    }
 
     // Keyed by FIELD, not just by object, so one object can carry more than one condition and they
     // are ANDed in the query (the util already loops over the list). That is what lets a client role
@@ -117,7 +140,7 @@ export class RoleRecordScopeService implements OnModuleInit {
   private async assertRoleInWorkspace(
     workspaceId: string,
     roleId: string,
-  ): Promise<void> {
+  ): Promise<RoleEntity> {
     const role = await this.roleRepository.findOne({
       where: { id: roleId, workspaceId },
     });
@@ -125,5 +148,6 @@ export class RoleRecordScopeService implements OnModuleInit {
     if (!role) {
       throw new Error(`Role ${roleId} does not exist in this workspace`);
     }
+    return role;
   }
 }

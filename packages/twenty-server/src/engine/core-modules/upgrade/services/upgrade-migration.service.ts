@@ -303,21 +303,26 @@ export class UpgradeMigrationService {
   async areAllWorkspacesAtCommand({
     commandName,
     workspaceIds,
+    initialCommandNamesAtOrAfter,
   }: {
     commandName: string;
     workspaceIds: string[];
+    initialCommandNamesAtOrAfter: string[];
   }): Promise<boolean> {
     if (workspaceIds.length === 0) {
       return true;
     }
 
-    const completedCount = await this.upgradeMigrationRepository
+    // Fresh workspaces are initialized at the current schema and do not have
+    // individual execution rows for commands that predate their creation.
+    const completed = await this.upgradeMigrationRepository
       .createQueryBuilder('migration')
-      .where({
-        name: commandName,
-        status: 'completed',
-        workspaceId: In(workspaceIds),
-      })
+      .select('COUNT(DISTINCT migration."workspaceId")', 'count')
+      .where({ status: 'completed', workspaceId: In(workspaceIds) })
+      .andWhere(
+        '(migration.name = :commandName OR (migration."isInitial" = true AND migration.name IN (:...initialCommandNamesAtOrAfter)))',
+        { commandName, initialCommandNamesAtOrAfter },
+      )
       .andWhere(
         `migration.attempt = (
           SELECT MAX(sub.attempt)
@@ -326,9 +331,9 @@ export class UpgradeMigrationService {
           AND sub."workspaceId" = migration."workspaceId"
         )`,
       )
-      .getCount();
+      .getRawOne<{ count: string }>();
 
-    return completedCount === workspaceIds.length;
+    return Number(completed?.count) === workspaceIds.length;
   }
 
   async getLastAttemptedInstanceCommand(): Promise<{

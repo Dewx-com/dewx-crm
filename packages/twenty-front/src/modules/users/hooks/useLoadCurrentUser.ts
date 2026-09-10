@@ -50,6 +50,8 @@ export const useLoadCurrentUser = () => {
     const currentUserResult = await client.query({
       query: GetCurrentUserDocument,
       fetchPolicy: 'network-only',
+      // A token swap must not reuse an in-flight query under the old credential.
+      context: { queryDeduplication: false },
     });
 
     if (isDefined(currentUserResult.error)) {

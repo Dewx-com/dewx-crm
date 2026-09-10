@@ -1,3 +1,4 @@
+import { domainConfigurationState } from '@/domain-manager/states/domainConfigurationState';
 import { i18n } from '@lingui/core';
 import { I18nProvider } from '@lingui/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -13,6 +14,16 @@ import {
   resetJotaiStore,
 } from '@/ui/utilities/state/jotai/jotaiStore';
 import { dynamicActivate } from '~/utils/i18n/dynamicActivate';
+
+// Jest does not run Linaria's CSS extraction. Keep the real DOM/components and
+// their event handlers; this form suite checks behavior, not generated styles.
+jest.mock('@linaria/react', () => ({
+  styled: new Proxy((component: unknown) => () => component, {
+    get: (_target, tag: string) => () => tag,
+  }),
+}));
+
+jest.mock('@linaria/core', () => ({ css: () => '' }));
 
 const createWorkspaceMock = jest.fn();
 const applySuggestionValueMock = jest.fn();
@@ -76,7 +87,7 @@ describe('SignInUpWorkspaceCreationForm', () => {
       renderForm();
 
       const createButton = screen.getByRole('button', {
-        name: 'Create workspace',
+        name: 'Create account',
       });
       expect(createButton).toBeEnabled();
 
@@ -102,9 +113,7 @@ describe('SignInUpWorkspaceCreationForm', () => {
       renderForm();
 
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Create workspace' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
       });
 
       expect(jotaiStore.get(isCreatingWorkspaceState.atom)).toBe(true);
@@ -123,9 +132,7 @@ describe('SignInUpWorkspaceCreationForm', () => {
       renderForm();
 
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Create workspace' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
       });
 
       expect(jotaiStore.get(isCreatingWorkspaceState.atom)).toBe(false);
@@ -152,7 +159,7 @@ describe('SignInUpWorkspaceCreationForm', () => {
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Create workspace' }),
+        screen.getByRole('button', { name: 'Create account' }),
       ).toBeDisabled();
 
       fireEvent.click(screen.getByRole('button', { name: 'mystripe' }));
@@ -175,9 +182,7 @@ describe('SignInUpWorkspaceCreationForm', () => {
       expect(screen.queryByLabelText('Subdomain')).not.toBeInTheDocument();
 
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Create workspace' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
       });
 
       expect(createWorkspaceMock).toHaveBeenCalledWith({
@@ -187,6 +192,31 @@ describe('SignInUpWorkspaceCreationForm', () => {
       expect(createWorkspaceMock.mock.calls[0][0]).not.toHaveProperty(
         'subdomain',
       );
+    });
+  });
+  it('creates a shared-host account without choosing a subdomain', async () => {
+    setMultiWorkspaceEnabled(true);
+    jotaiStore.set(domainConfigurationState.atom, {
+      frontDomain: 'app.example.com',
+      isSharedDomainEnabled: true,
+    });
+    useWorkspaceSubdomainFieldMock.mockReturnValue({
+      workspaceName: 'Customer',
+      subdomain: '',
+      status: 'idle',
+      isAvailable: false,
+      suggestions: [],
+      handleWorkspaceNameChange: handleWorkspaceNameChangeMock,
+      handleSubdomainChange: handleSubdomainChangeMock,
+    });
+    renderForm();
+    expect(screen.queryByText('Workspace URL')).not.toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    });
+    expect(createWorkspaceMock).toHaveBeenCalledWith({
+      displayName: 'Customer',
+      logo: undefined,
     });
   });
 });

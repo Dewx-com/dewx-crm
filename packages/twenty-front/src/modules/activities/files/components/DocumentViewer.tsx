@@ -5,6 +5,8 @@ import {
   fetchCsvPreview,
 } from '@/activities/files/utils/fetchCsvPreview';
 import { getFileType } from '@/activities/files/utils/getFileType';
+import { domainConfigurationState } from '@/domain-manager/states/domainConfigurationState';
+import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import DocViewer, { DocViewerRenderers } from '@cyntler/react-doc-viewer';
 import '@cyntler/react-doc-viewer/dist/index.css';
 import { styled } from '@linaria/react';
@@ -204,6 +206,7 @@ export const DocumentViewer = ({
 }: DocumentViewerProps) => {
   const { theme } = useContext(ThemeContext);
   const { t } = useLingui();
+  const { isSharedDomainEnabled } = useAtomStateValue(domainConfigurationState);
   const [csvPreview, setCsvPreview] = useState<CsvPreviewData | undefined>(
     undefined,
   );
@@ -287,14 +290,13 @@ export const DocumentViewer = ({
     );
   }
 
-  if (isMsOfficeFile && isPrivateUrl(documentUrl)) {
+  // Office previews use an external service that cannot access account sessions.
+  if (isMsOfficeFile && (isSharedDomainEnabled || isPrivateUrl(documentUrl))) {
     return (
       <StyledDocumentViewerContainer>
         <StyledUnavailablePreviewContainer>
           <StyledLightMessage>
-            <Trans>
-              This file cannot be previewed because it is hosted locally.
-            </Trans>
+            <Trans>Download this file to view it.</Trans>
           </StyledLightMessage>
           <Button
             Icon={IconDownload}

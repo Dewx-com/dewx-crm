@@ -229,6 +229,55 @@ describe('JwtAuthStrategy', () => {
   });
 
   describe('ACCESS token validation', () => {
+    it.each([undefined, 'stale-workspace-member-id'])(
+      'resolves the current actor when the token member ID is %s',
+      async (workspaceMemberId) => {
+        workspaceStore['workspace-id'] = Object.assign(new WorkspaceEntity(), {
+          id: 'workspace-id',
+          activationStatus: WorkspaceActivationStatus.ACTIVE,
+        });
+        userStore['valid-user-id'] = { id: 'valid-user-id' };
+        userWorkspaceRepository.findOne.mockResolvedValue({
+          id: 'membership-id',
+          userId: 'valid-user-id',
+          workspaceId: 'workspace-id',
+        });
+
+        const context = await createStrategy().validate({
+          sub: 'valid-user-id',
+          type: JwtTokenTypeEnum.ACCESS,
+          userWorkspaceId: 'membership-id',
+          workspaceId: 'workspace-id',
+          workspaceMemberId,
+        } as JwtPayload);
+
+        expect(context.workspaceMemberId).toBe('workspace-member-id');
+        expect(context.workspaceMemberId).toBe(context.workspaceMember?.id);
+      },
+    );
+
+    it('rejects a membership belonging to another user', async () => {
+      const workspace = Object.assign(new WorkspaceEntity(), {
+        id: 'workspace-id',
+      });
+      workspaceStore[workspace.id] = workspace;
+      userStore['valid-user-id'] = { id: 'valid-user-id' };
+      userWorkspaceRepository.findOne.mockResolvedValue({
+        id: 'membership-id',
+        userId: 'another-user',
+        workspaceId: workspace.id,
+      });
+      strategy = createStrategy();
+      await expect(
+        strategy.validate({
+          sub: 'valid-user-id',
+          type: JwtTokenTypeEnum.ACCESS,
+          userWorkspaceId: 'membership-id',
+          workspaceId: workspace.id,
+        } as JwtPayload),
+      ).rejects.toThrow('User or user workspace not found');
+    });
+
     it('should throw AuthExceptionCode if type is ACCESS, no jti, and user not found', async () => {
       const validUserId = 'valid-user-id';
       const validUserWorkspaceId = randomUUID();
@@ -329,6 +378,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               user: { id: validUserId, lastName: 'lastNameDefault' },
               workspace: { id: validWorkspaceId },
             };
@@ -378,6 +428,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: otherWorkspaceId,
               user: { id: validUserId },
               workspace: { id: otherWorkspaceId },
@@ -504,6 +555,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: { id: validUserId },
               workspace: { id: validWorkspaceId },
@@ -590,6 +642,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: { id: validUserId },
               workspace: { id: validWorkspaceId },
@@ -633,6 +686,7 @@ describe('JwtAuthStrategy', () => {
 
       userWorkspaceRepository.findOne.mockResolvedValue({
         id: validUserWorkspaceId,
+        userId: validUserId,
         user: { id: validUserId, lastName: 'lastNameDefault' },
         workspace: { id: validWorkspaceId },
       });
@@ -669,6 +723,7 @@ describe('JwtAuthStrategy', () => {
 
       userWorkspaceRepository.findOne.mockResolvedValue({
         id: validUserWorkspaceId,
+        userId: validUserId,
         user: { id: validUserId, lastName: 'lastNameDefault' },
         workspace: { id: validWorkspaceId },
       });
@@ -704,6 +759,7 @@ describe('JwtAuthStrategy', () => {
       workspaceStore[validWorkspaceId] = mockWorkspace;
       userWorkspaceRepository.findOne.mockResolvedValue({
         id: validUserWorkspaceId,
+        userId: validUserId,
         user: { id: validUserId, lastName: 'lastNameDefault' },
         workspace: { id: validWorkspaceId },
       });
@@ -760,6 +816,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: mockUser,
               workspace: mockWorkspace,
@@ -774,6 +831,7 @@ describe('JwtAuthStrategy', () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({
           id: validUserWorkspaceId,
+          userId: validUserId,
           user: { id: 'valid-user-id' },
           workspace: mockWorkspace,
         });
@@ -828,6 +886,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: mockUser,
               workspace: mockWorkspace,
@@ -890,6 +949,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: mockUser,
               workspace: mockWorkspace,
@@ -908,6 +968,7 @@ describe('JwtAuthStrategy', () => {
         })
         .mockResolvedValueOnce({
           id: validUserWorkspaceId,
+          userId: validUserId,
           user: { id: 'valid-user-id' },
           workspace: mockWorkspace,
         });
@@ -965,6 +1026,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: mockUser,
               workspace: mockWorkspace,
@@ -983,6 +1045,7 @@ describe('JwtAuthStrategy', () => {
         })
         .mockResolvedValueOnce({
           id: validUserWorkspaceId,
+          userId: validUserId,
           user: { id: 'valid-user-id' },
           workspace: mockWorkspace,
         });
@@ -1074,6 +1137,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: mockUser,
               workspace: mockWorkspace,
@@ -1092,6 +1156,7 @@ describe('JwtAuthStrategy', () => {
         })
         .mockResolvedValueOnce({
           id: validUserWorkspaceId,
+          userId: validUserId,
           user: mockUser,
           workspace: mockWorkspace,
         });
@@ -1155,6 +1220,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: mockUser,
               workspace: mockWorkspace,
@@ -1173,6 +1239,7 @@ describe('JwtAuthStrategy', () => {
         })
         .mockResolvedValueOnce({
           id: validUserWorkspaceId,
+          userId: validUserId,
           user: mockUser,
           workspace: mockWorkspace,
         });
@@ -1224,6 +1291,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               user: { id: validUserId, lastName: 'lastNameDefault' },
               workspace: { id: validWorkspaceId },
             };
@@ -1243,3 +1311,31 @@ describe('JwtAuthStrategy', () => {
     });
   });
 });
+
+// Constructor dependencies are injected below; keep their unrelated module graphs out of this unit test.
+jest.mock(
+  'src/engine/core-modules/twenty-config/twenty-config.service',
+  () => ({ TwentyConfigService: class TwentyConfigService {} }),
+);
+jest.mock('src/engine/core-modules/workspace/workspace.entity', () => ({
+  WorkspaceEntity: class WorkspaceEntity {},
+}));
+jest.mock(
+  'src/engine/core-entity-cache/services/core-entity-cache.service',
+  () => ({ CoreEntityCacheService: class CoreEntityCacheService {} }),
+);
+jest.mock(
+  'src/engine/workspace-cache/services/workspace-cache.service',
+  () => ({ WorkspaceCacheService: class WorkspaceCacheService {} }),
+);
+jest.mock('src/engine/core-modules/jwt/services/jwt-wrapper.service', () => ({
+  JwtWrapperService: class JwtWrapperService {},
+}));
+jest.mock(
+  'src/engine/core-modules/user-workspace/user-workspace.entity',
+  () => ({ UserWorkspaceEntity: class UserWorkspaceEntity {} }),
+);
+jest.mock(
+  'src/engine/metadata-modules/permissions/permissions.service',
+  () => ({ PermissionsService: class PermissionsService {} }),
+);

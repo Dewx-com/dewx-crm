@@ -22041,3 +22041,68 @@ msgstr "Either the link is wrong or what it pointed at has been removed."
 #. js-lingui-id: pJeTmq
 msgid "Back to your workspace"
 msgstr "Back to your workspace"
+
+#. js-lingui-id: Hy1lfH
+#: src/modules/settings/members/components/MemberInfosTab.tsx
+msgid "Account owner"
+msgstr ""
+
+#. js-lingui-id: BfCcSO
+#: src/modules/settings/members/components/MemberPermissionsTab.tsx
+msgid "Account ownership"
+msgstr ""
+
+#. js-lingui-id: +j5zxJ
+#: src/modules/settings/members/components/MemberPermissionsTab.tsx
+msgid "Give this administrator ownership of your CRM. You will remain an administrator, and the new owner can remove your access."
+msgstr ""
+
+#. js-lingui-id: Ac6LVo
+#: src/modules/settings/members/components/MemberInfosTab.tsx
+msgid "Manage this member’s access to the CRM"
+msgstr ""
+
+#. js-lingui-id: gEQUkW
+#: src/modules/settings/members/components/MemberPermissionsTab.tsx
+msgid "Ownership transferred"
+msgstr ""
+
+#. js-lingui-id: MVt5QJ
+#: src/modules/settings/members/components/MemberPermissionsTab.tsx
+msgid "The account owner keeps full administrator access. Transfer ownership before changing their role."
+msgstr ""
+
+#. js-lingui-id: xZauoF
+#: src/modules/settings/members/components/MemberPermissionsTab.tsx
+msgid "This member will control the CRM and its team. Only the new owner can transfer ownership back. Type their email to confirm."
+msgstr ""
+
+#. js-lingui-id: 9r23vu
+#: src/modules/settings/members/components/MemberPermissionsTab.tsx
+msgid "Transfer account ownership"
+msgstr ""
+
+#. js-lingui-id: GKTv/k
+#: src/modules/settings/members/components/MemberInfosTab.tsx
+msgid "Transfer ownership before removing this member."
+msgstr ""
+
+#. js-lingui-id: lpnCmX
+#: src/modules/settings/profile/components/DeleteAccount.tsx
+msgid "Transfer ownership to another administrator before leaving this CRM or deleting your account."
+msgstr ""
+
+#. js-lingui-id: OeyTWA
+#: src/modules/settings/profile/components/DeleteAccount.tsx
+msgid "Unable to delete your account"
+msgstr ""
+
+#. js-lingui-id: KXnrww
+#: src/modules/settings/profile/components/DeleteAccount.tsx
+msgid "Unable to leave this CRM"
+msgstr ""
+
+#. js-lingui-id: /VlkJW
+#: src/modules/settings/members/components/MemberPermissionsTab.tsx
+msgid "Unable to transfer ownership"
+msgstr ""

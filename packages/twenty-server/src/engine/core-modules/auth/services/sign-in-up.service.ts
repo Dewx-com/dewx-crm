@@ -1,3 +1,5 @@
+import { CUSTOMER_ACCOUNT_ACCESS_LOCK } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.service';
+import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
@@ -11,7 +13,10 @@ import {
   type DataSource,
   type QueryRunner,
 } from 'typeorm';
-import { v4 } from 'uuid';
+import { v4, validate as isUuid } from 'uuid';
+
+import { WorkspaceCreationRequestEntity } from 'src/engine/core-modules/auth/entities/workspace-creation-request.entity';
+import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 
 import { POSTGRESQL_ERROR_CODES } from 'src/engine/api/graphql/workspace-query-runner/constants/postgres-error-codes.constants';
 import { USER_SIGNUP_EVENT_NAME } from 'src/engine/api/graphql/workspace-query-runner/constants/user-signup-event-name.constants';
@@ -61,6 +66,7 @@ import { UserService } from 'src/engine/core-modules/user/services/user.service'
 import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-invitation/services/workspace-invitation.service';
 import { AuthProviderEnum } from 'src/engine/core-modules/workspace/types/workspace.type';
+import { WorkspaceDiscoverability } from 'src/engine/core-modules/workspace/types/workspace-discoverability.type';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import {
   WorkspaceException,
@@ -550,7 +556,7 @@ export class SignInUpService {
 
   async signUpOnNewWorkspace(
     userData: ExistingUserOrPartialUserWithPicture['userData'],
-    options?: { displayName?: string; subdomain?: string },
+    options?: { displayName?: string; subdomain?: string; requestId?: string },
   ) {
     const email =
       userData.type === 'newUserWithPicture'
@@ -567,8 +573,6 @@ export class SignInUpService {
       );
     }
 
-    await this.assertWorkspaceCreationAllowed(userData);
-
     const displayName = options?.displayName?.trim();
 
     if (!displayName) {
@@ -583,23 +587,118 @@ export class SignInUpService {
 
     const requestedSubdomain = options?.subdomain;
 
-    if (isDefined(requestedSubdomain)) {
-      await this.subdomainManagerService.validateSubdomainOrThrow(
-        requestedSubdomain,
+    const isWorkEmailFound = isWorkEmail(email);
+    const isSharedDomainEnabled = this.twentyConfigService.get(
+      'IS_SHARED_DOMAIN_ENABLED',
+    );
+    const requestId = options?.requestId;
+
+    if (
+      (isSharedDomainEnabled || isDefined(requestId)) &&
+      (!isDefined(requestId) ||
+        !isUuid(requestId) ||
+        userData.type !== 'existingUser')
+    ) {
+      throw new AuthException(
+        'A valid account setup request ID and signed-in user are required',
+        AuthExceptionCode.INVALID_INPUT,
       );
     }
 
-    const shouldGrantServerAdmin = !(await this.hasServerAdmin());
-
-    const isWorkEmailFound = isWorkEmail(email);
-
-    const workspaceId = v4();
+    const payloadHash = createHash('sha256')
+      .update(
+        JSON.stringify({ displayName, subdomain: requestedSubdomain ?? null }),
+      )
+      .digest('hex');
+    let workspaceId = v4();
+    let isWorkspaceCommitted = false;
     const workspaceCustomApplicationId = v4();
 
     try {
-      const { user, workspace } = await this.dataSource.transaction(
+      const { user, workspace, isReplay } = await this.dataSource.transaction(
         async (entityManager) => {
           const queryRunner = entityManager.queryRunner as QueryRunner;
+
+          // ponytail: serialize short creation transactions to enforce the instance
+          // capacity limit as well as retries; activation runs outside this lock.
+          await queryRunner.query(
+            "SELECT pg_advisory_xact_lock(hashtextextended('workspace-creation', 0))",
+          );
+
+          if (isDefined(requestId) && userData.type === 'existingUser') {
+            const receipt = await queryRunner.manager.findOneBy(
+              WorkspaceCreationRequestEntity,
+              { userId: userData.existingUser.id, requestId },
+            );
+
+            if (isDefined(receipt)) {
+              if (receipt.payloadHash !== payloadHash) {
+                throw new AuthException(
+                  'This account setup request was already used with different details',
+                  AuthExceptionCode.INVALID_INPUT,
+                );
+              }
+
+              const workspace = await queryRunner.manager.findOneBy(
+                WorkspaceEntity,
+                { id: receipt.workspaceId },
+              );
+              const membership = await queryRunner.manager.findOneBy(
+                UserWorkspaceEntity,
+                {
+                  userId: userData.existingUser.id,
+                  workspaceId: receipt.workspaceId,
+                },
+              );
+
+              if (
+                !isDefined(workspace) ||
+                !isDefined(membership) ||
+                [
+                  WorkspaceActivationStatus.SUSPENDED,
+                  WorkspaceActivationStatus.INACTIVE,
+                ].includes(workspace.activationStatus)
+              ) {
+                throw new AuthException(
+                  'The account from this setup request is no longer available',
+                  AuthExceptionCode.FORBIDDEN_EXCEPTION,
+                );
+              }
+
+              workspaceId = workspace.id;
+              return { user: userData.existingUser, workspace, isReplay: true };
+            }
+          }
+
+          await this.assertWorkspaceCreationAllowed(userData);
+          if (isSharedDomainEnabled && userData.type === 'existingUser') {
+            const [lock] = await queryRunner.query(
+              'SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS acquired',
+              [CUSTOMER_ACCOUNT_ACCESS_LOCK],
+            );
+            if (!lock?.acquired) {
+              throw new AuthException(
+                'Account access is being updated. Try again.',
+                AuthExceptionCode.FORBIDDEN_EXCEPTION,
+              );
+            }
+            const currentUser = await queryRunner.manager.findOneBy(
+              UserEntity,
+              { id: userData.existingUser.id },
+            );
+            if (!currentUser) {
+              throw new AuthException(
+                'Your user account is no longer available.',
+                AuthExceptionCode.FORBIDDEN_EXCEPTION,
+              );
+            }
+          }
+          if (isDefined(requestedSubdomain)) {
+            await this.subdomainManagerService.validateSubdomainOrThrow(
+              requestedSubdomain,
+            );
+          }
+          const shouldGrantServerAdmin = !(await this.hasServerAdmin());
 
           const workspaceToCreate = this.workspaceRepository.create({
             id: workspaceId,
@@ -612,6 +711,18 @@ export class SignInUpService {
             displayName,
             inviteHash: v4(),
             activationStatus: WorkspaceActivationStatus.PENDING_CREATION,
+            ...(isSharedDomainEnabled
+              ? {
+                  primaryOwnerUserId:
+                    userData.type === 'existingUser'
+                      ? userData.existingUser.id
+                      : undefined,
+                  allowImpersonation: false,
+                  isPublicInviteLinkEnabled: false,
+                  workspaceDiscoverability:
+                    WorkspaceDiscoverability.MEMBERS_AND_INVITEES,
+                }
+              : {}),
           });
 
           const workspace = await queryRunner.manager.save(
@@ -628,7 +739,10 @@ export class SignInUpService {
               queryRunner,
             );
 
-          if (isWorkEmailFound) {
+          if (
+            isWorkEmailFound &&
+            this.twentyConfigService.get('ALLOW_REQUESTS_TO_TWENTY_ICONS')
+          ) {
             const logoUrl = `${TWENTY_ICONS_BASE_URL}/${getDomainFromEmailOrThrow(email)}`;
             const logoFile =
               await this.fileCorePictureService.uploadWorkspaceLogoFromUrl({
@@ -692,15 +806,12 @@ export class SignInUpService {
             queryRunner,
           );
 
-          // Click-through DPA: the DPA is incorporated by reference into the
-          // ToS/signup, so acceptance = execution. Only relevant on Twenty's
-          // managed cloud (multi-workspace), where Twenty is the Processor
-          // hosting the data; on self-hosted deployments Twenty is not the
-          // Processor, so there is nothing to record. Done atomically with
-          // workspace creation so we can later prove what was agreed. (Billing
-          // is an independent feature flag and must not be used to detect cloud.)
+          // Shared-domain customer hosting is our deployment, not Twenty's cloud.
+          // Do not record acceptance of a Twenty agreement for those accounts.
           if (
-            this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED') === true
+            this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED') ===
+              true &&
+            !isSharedDomainEnabled
           ) {
             await queryRunner.manager.save(
               DpaAgreementEntity,
@@ -717,13 +828,26 @@ export class SignInUpService {
             );
           }
 
-          return { user, workspace };
+          if (isDefined(requestId)) {
+            await queryRunner.manager.insert(WorkspaceCreationRequestEntity, {
+              userId: user.id,
+              requestId,
+              payloadHash,
+              workspaceId: workspace.id,
+            });
+          }
+
+          return { user, workspace, isReplay: false };
         },
       );
 
-      void this.eventLogEmitterService
-        .createContext({ workspaceId })
-        .insertWorkspaceEvent(WORKSPACE_CREATED_EVENT, {});
+      isWorkspaceCommitted = true;
+
+      if (!isReplay) {
+        void this.eventLogEmitterService
+          .createContext({ workspaceId })
+          .insertWorkspaceEvent(WORKSPACE_CREATED_EVENT, {});
+      }
 
       if (this.billingService.isBillingEnabled()) {
         await this.billingService.ensureBillingCustomer({
@@ -749,9 +873,11 @@ export class SignInUpService {
 
       throw error;
     } finally {
-      await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
-        'flatApplicationMaps',
-      ]);
+      if (isWorkspaceCommitted) {
+        await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
+          'flatApplicationMaps',
+        ]);
+      }
     }
   }
 

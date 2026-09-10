@@ -1225,7 +1225,10 @@ export class WorkspaceEntityManager extends EntityManager {
         {} as Record<string, ObjectLiteral>,
       );
 
-      const filesFieldSync = new FilesFieldSync(this.internalContext);
+      const filesFieldSync = new FilesFieldSync(
+        this.internalContext,
+        this.authContext,
+      );
 
       let filesFieldDiffByEntityIndex = null;
       let filesFieldFileIds = null;

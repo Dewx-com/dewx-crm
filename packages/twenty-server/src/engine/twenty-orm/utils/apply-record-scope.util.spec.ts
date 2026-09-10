@@ -178,3 +178,93 @@ describe('applyRecordScopeToJoinedRelations', () => {
     expect(sub.condition).toBe('a = b');
   });
 });
+
+describe('attachment target visibility', () => {
+  const attachment = { id: 'attachment', nameSingular: 'attachment' } as any;
+  const context = {
+    ...internalContext,
+    workspaceId: PERSON_ID,
+    flatFieldMetadataMaps: maps({
+      [CLIENT_FIELD_ID]: {
+        id: CLIENT_FIELD_ID,
+        name: 'client',
+        type: FieldMetadataType.SELECT,
+        objectMetadataId: PERSON_ID,
+      },
+      target: {
+        id: 'target',
+        name: 'targetPerson',
+        type: FieldMetadataType.MORPH_RELATION,
+        objectMetadataId: 'attachment',
+        relationTargetObjectMetadataId: PERSON_ID,
+        settings: { joinColumnName: 'targetPersonId' },
+      },
+    }),
+    flatObjectMetadataMaps: maps({
+      attachment,
+      [PERSON_ID]: {
+        id: PERSON_ID,
+        nameSingular: 'person',
+        isSystem: false,
+        isCustom: false,
+      },
+    }),
+    objectIdByNameSingular: { attachment: 'attachment', person: PERSON_ID },
+  } as any;
+
+  it('filters attachment reads and mutations by the target scope without an attachment scope', () => {
+    const qb = makeSelectBuilder();
+    qb.expressionMap.mainAlias.name = 'attachment';
+    applyRecordScopeToMainAlias({
+      queryBuilder: qb as any,
+      objectMetadata: attachment,
+      objectsPermissions: scoped,
+      internalContext: context,
+    });
+    const condition = qb.andWhere.mock.calls[0][0];
+    expect(condition).toContain(
+      '"attachment"."targetPersonId" IS NULL OR EXISTS',
+    );
+    expect(condition).toContain('"peAttachmentTarget0"."deletedAt" IS NULL');
+    expect(condition).toContain(
+      '"peAttachmentTarget0"."client" = :peAttachmentScope_attachment_0_0',
+    );
+    expect(qb.setParameter).toHaveBeenCalledWith(
+      'peAttachmentScope_attachment_0_0',
+      'MCS_MICROMINDER',
+    );
+  });
+
+  it('denies attachments to an unreadable object even without a record scope', () => {
+    const qb = makeSelectBuilder();
+    qb.expressionMap.mainAlias.name = 'attachment';
+    applyRecordScopeToMainAlias({
+      queryBuilder: qb as any,
+      objectMetadata: attachment,
+      objectsPermissions: {},
+      internalContext: context,
+    });
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      '"attachment"."targetPersonId" IS NULL',
+    );
+  });
+
+  it('also filters joined attachments without removing the visible parent row', () => {
+    const join = {
+      alias: { name: 'files' },
+      metadata: { target: 'attachment' },
+      condition: 'original_join',
+    };
+    const qb = makeSelectBuilder([join]);
+    applyRecordScopeToJoinedRelations({
+      queryBuilder: qb as any,
+      objectsPermissions: scoped,
+      internalContext: context,
+    });
+    expect(join.condition).toContain('(original_join) AND');
+    expect(join.condition).toContain(
+      '"files"."targetPersonId" IS NULL OR EXISTS',
+    );
+    expect(qb.andWhere).not.toHaveBeenCalled();
+  });
+});

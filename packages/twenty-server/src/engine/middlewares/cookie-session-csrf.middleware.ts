@@ -39,6 +39,10 @@ export class CookieSessionCsrfMiddleware implements NestMiddleware {
     if (
       !isDefined(
         this.userSessionCookieService.extractSessionTokenFromRequest(request),
+      ) &&
+      !(
+        this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED') &&
+        this.userSessionCookieService.hasSessionCookie(request)
       )
     ) {
       return next();

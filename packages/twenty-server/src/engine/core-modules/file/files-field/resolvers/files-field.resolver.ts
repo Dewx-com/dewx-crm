@@ -16,6 +16,8 @@ import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorat
 import { SettingsPermissionGuard } from 'src/engine/guards/settings-permission.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { streamToBuffer } from 'src/utils/stream-to-buffer';
+import { getWorkspaceAuthContext } from 'src/engine/core-modules/auth/storage/workspace-auth-context.storage';
+import { getFileUploadPrincipalId } from 'src/engine/core-modules/file/utils/get-file-upload-principal-id.util';
 
 @UseGuards(WorkspaceAuthGuard)
 @UsePipes(ResolverValidationPipe)
@@ -46,6 +48,9 @@ export class FilesFieldResolver {
       filename,
       workspaceId,
       fieldMetadataId,
+      uploadedByPrincipalId: getFileUploadPrincipalId(
+        getWorkspaceAuthContext(),
+      ),
     });
   }
 
@@ -71,6 +76,9 @@ export class FilesFieldResolver {
       filename,
       workspaceId,
       fieldMetadataUniversalIdentifier,
+      uploadedByPrincipalId: getFileUploadPrincipalId(
+        getWorkspaceAuthContext(),
+      ),
     });
   }
 }

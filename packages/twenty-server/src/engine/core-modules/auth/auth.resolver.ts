@@ -507,7 +507,6 @@ export class AuthResolver {
   @UseGuards(CaptchaGuard, PublicEndpointGuard, NoPermissionGuard)
   async signUpInWorkspace(
     @Args() signUpInput: SignUpInput,
-    @AuthProvider() authProvider: AuthProviderEnum,
   ): Promise<SignUpDTO> {
     const currentWorkspace = await this.authService.findWorkspaceForSignInUp({
       workspaceInviteHash: signUpInput.workspaceInviteHash,
@@ -581,7 +580,7 @@ export class AuthResolver {
     const loginToken = await this.loginTokenService.generateLoginToken(
       user.email,
       workspace.id,
-      authProvider,
+      AuthProviderEnum.Password,
     );
 
     return {
@@ -628,7 +627,11 @@ export class AuthResolver {
 
     const { user, workspace } = await this.signInUpService.signUpOnNewWorkspace(
       { type: 'existingUser', existingUser: fullUser },
-      { displayName: input?.displayName, subdomain: input?.subdomain },
+      {
+        displayName: input?.displayName,
+        subdomain: input?.subdomain,
+        requestId: input?.requestId,
+      },
     );
 
     const loginToken = await this.loginTokenService.generateLoginToken(
@@ -809,10 +812,10 @@ export class AuthResolver {
     origin: string,
     tokenWorkspaceId: string,
   ): Promise<WorkspaceEntity> {
-    const workspace =
-      await this.workspaceDomainsService.getWorkspaceByOriginOrDefaultWorkspace(
-        origin,
-      );
+    const workspace = await this.workspaceDomainsService.getWorkspaceForToken(
+      origin,
+      tokenWorkspaceId,
+    );
 
     assertIsDefinedOrThrow(
       workspace,
@@ -996,13 +999,15 @@ export class AuthResolver {
     @Args('refreshToken', { nullable: true }) refreshToken?: string,
   ): Promise<boolean> {
     try {
+      const sessionTokens =
+        this.userSessionCookieService.extractBrowserSessionTokens(context.req);
       await this.userSessionService.signOut({
-        sessionToken:
-          this.userSessionCookieService.extractSessionTokenFromRequest(
-            context.req,
-          ),
+        sessionToken: sessionTokens[0],
         refreshToken,
       });
+      for (const sessionToken of sessionTokens.slice(1)) {
+        await this.userSessionService.signOut({ sessionToken });
+      }
     } finally {
       // This mutation is public and SameSite=Lax keeps the cookie off cross-site
       // POSTs, so clearing unconditionally would let any site sign a visitor out.
@@ -1010,7 +1015,9 @@ export class AuthResolver {
         isDefined(context.req.res) &&
         this.userSessionCookieService.hasSessionCookie(context.req)
       ) {
-        this.userSessionCookieService.clearSessionCookie(context.req.res);
+        this.userSessionCookieService.clearBrowserSessionCookies(
+          context.req.res,
+        );
       }
     }
 

@@ -207,6 +207,9 @@ export class ClientConfigService {
       ),
       defaultSubdomain: this.twentyConfigService.get('DEFAULT_SUBDOMAIN'),
       frontDomain: this.domainServerConfigService.getFrontUrl().hostname,
+      isSharedDomainEnabled: this.twentyConfigService.get(
+        'IS_SHARED_DOMAIN_ENABLED',
+      ),
       publicFunctionDomain:
         this.domainServerConfigService.getPublicBaseHostnameOrUndefined() ??
         null,

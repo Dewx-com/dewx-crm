@@ -76,6 +76,10 @@ export const SettingsWorkspaceMember = () => {
     },
   });
 
+  const isOwner = Boolean(
+    member?.userId && member.userId === currentWorkspace?.primaryOwnerUserId,
+  );
+
   const tabListComponentId = `${SETTINGS_WORKSPACE_MEMBER_TABS.COMPONENT_INSTANCE_ID}-${workspaceMemberId}`;
   const activeTabId = useAtomComponentStateValue(
     activeTabIdComponentState,
@@ -118,7 +122,7 @@ export const SettingsWorkspaceMember = () => {
   );
 
   const handleDeleteMember = async () => {
-    if (!member?.id) return;
+    if (!member?.id || isOwner) return;
     try {
       await deleteUserFromWorkspace({
         variables: { workspaceMemberIdToDelete: member.id },
@@ -217,6 +221,7 @@ export const SettingsWorkspaceMember = () => {
                 member={member}
                 onImpersonate={
                   canImpersonate &&
+                  !isOwner &&
                   isDefined(member.userId) &&
                   isDefined(currentUser?.id) &&
                   member.userId !== currentUser.id
@@ -224,7 +229,10 @@ export const SettingsWorkspaceMember = () => {
                     : undefined
                 }
                 onNameChange={debouncedUpdateName}
-                onDelete={() => openModal(DELETE_MEMBER_MODAL_ID)}
+                isOwner={isOwner}
+                onDelete={
+                  isOwner ? undefined : () => openModal(DELETE_MEMBER_MODAL_ID)
+                }
               />
             )}
 

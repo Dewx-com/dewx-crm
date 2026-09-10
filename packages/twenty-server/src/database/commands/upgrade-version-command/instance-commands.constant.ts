@@ -149,6 +149,8 @@ import { EncryptEmptyApplicationVariablesSlowInstanceCommand } from 'src/databas
 import { AddWritabilityToMetadataFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-32/2-32-instance-command-fast-1786713600000-add-writability-to-metadata';
 import { AddUninstallLogicFunctionIdToApplicationFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-32/2-32-instance-command-fast-1786959731000-add-uninstall-logic-function-id-to-application';
 import { BackfillUninstallLogicFunctionIdOnApplicationSlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-32/2-32-instance-command-slow-1786959731001-backfill-uninstall-logic-function-id-on-application';
+import { CreateWorkspaceCreationRequestFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-33/2-33-instance-command-fast-1788992465889-create-workspace-creation-request';
+import { AddCustomerAccountOwnerFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-33/2-33-instance-command-fast-1788996228063-add-customer-account-owner';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -300,4 +302,6 @@ export const INSTANCE_COMMANDS = [
   AddUninstallLogicFunctionIdToApplicationFastInstanceCommand,
   BackfillUninstallLogicFunctionIdOnApplicationSlowInstanceCommand,
   CreateRoleRecordScopeTableFastInstanceCommand,
+  CreateWorkspaceCreationRequestFastInstanceCommand,
+  AddCustomerAccountOwnerFastInstanceCommand,
 ];

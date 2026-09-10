@@ -1,3 +1,4 @@
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
 import { useReadDefaultDomainFromConfiguration } from '@/domain-manager/hooks/useReadDefaultDomainFromConfiguration';
 import { domainConfigurationState } from '@/domain-manager/states/domainConfigurationState';
@@ -11,6 +12,11 @@ export const useIsCurrentLocationOnAWorkspace = () => {
     isMultiWorkspaceEnabledState,
   );
   const domainConfiguration = useAtomStateValue(domainConfigurationState);
+  const currentWorkspace = useAtomStateValue(currentWorkspaceState);
+
+  if (domainConfiguration.isSharedDomainEnabled) {
+    return { isOnAWorkspace: isDefined(currentWorkspace) };
+  }
 
   if (
     isMultiWorkspaceEnabled &&

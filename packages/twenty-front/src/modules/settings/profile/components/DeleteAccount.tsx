@@ -1,5 +1,6 @@
 import { useAuth } from '@/auth/hooks/useAuth';
 import { availableWorkspacesState } from '@/auth/states/availableWorkspacesState';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { currentUserState } from '@/auth/states/currentUserState';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
@@ -36,6 +37,10 @@ export const DeleteAccount = () => {
   const [deleteUserAccount] = useMutation(DeleteUserAccountDocument);
   const [deleteUserFromWorkspace] = useMutation(DeleteUserWorkspaceDocument);
   const currentUser = useAtomStateValue(currentUserState);
+  const currentWorkspace = useAtomStateValue(currentWorkspaceState);
+  const isOwner = Boolean(
+    currentUser?.id && currentUser.id === currentWorkspace?.primaryOwnerUserId,
+  );
   const userEmail = currentUser?.email;
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const currentWorkspaceMemberId = currentWorkspaceMember?.id;
@@ -47,8 +52,17 @@ export const DeleteAccount = () => {
   const userHasMultipleWorkspaces = availableWorkspacesCount > 1;
 
   const deleteAccount = async () => {
-    await deleteUserAccount();
-    await signOut();
+    try {
+      await deleteUserAccount();
+      await signOut();
+    } catch (error) {
+      enqueueErrorSnackBar({
+        message:
+          error instanceof Error
+            ? error.message
+            : t`Unable to delete your account`,
+      });
+    }
   };
 
   const leaveWorkspace = async () => {
@@ -59,12 +73,17 @@ export const DeleteAccount = () => {
       return;
     }
 
-    await deleteUserFromWorkspace?.({
-      variables: {
-        workspaceMemberIdToDelete: currentWorkspaceMemberId,
-      },
-    });
-    await signOut();
+    try {
+      await deleteUserFromWorkspace({
+        variables: { workspaceMemberIdToDelete: currentWorkspaceMemberId },
+      });
+      await signOut();
+    } catch (error) {
+      enqueueErrorSnackBar({
+        message:
+          error instanceof Error ? error.message : t`Unable to leave this CRM`,
+      });
+    }
   };
 
   return (
@@ -72,9 +91,11 @@ export const DeleteAccount = () => {
       <H2Title
         title={t`Danger zone`}
         description={
-          userHasMultipleWorkspaces
-            ? t`Delete account and all the associated data or leave workspace`
-            : t`Delete account and all the associated data`
+          isOwner
+            ? t`Transfer ownership to another administrator before leaving this CRM or deleting your account.`
+            : userHasMultipleWorkspaces
+              ? t`Delete account and all the associated data or leave workspace`
+              : t`Delete account and all the associated data`
         }
       />
       <StyledDangerActions>
@@ -84,6 +105,7 @@ export const DeleteAccount = () => {
             onClick={() => openModal(LEAVE_WORKSPACE_MODAL_ID)}
             variant="secondary"
             title={t`Leave workspace`}
+            disabled={isOwner}
           />
         )}
         <Button
@@ -91,6 +113,7 @@ export const DeleteAccount = () => {
           onClick={() => openModal(DELETE_ACCOUNT_MODAL_ID)}
           variant="secondary"
           title={t`Delete account`}
+          disabled={isOwner}
         />
       </StyledDangerActions>
       {userHasMultipleWorkspaces && (

@@ -18,7 +18,11 @@ export const ButtonText = ({
       >
         {title}
       </div>
-      <div className={styles.ellipsis} data-loading={isLoading || undefined}>
+      <div
+        className={styles.ellipsis}
+        data-loading={isLoading || undefined}
+        aria-hidden="true"
+      >
         ...
       </div>
     </div>

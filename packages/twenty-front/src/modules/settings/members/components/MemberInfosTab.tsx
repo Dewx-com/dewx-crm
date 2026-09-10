@@ -15,7 +15,8 @@ type MemberInfosTabProps = {
   member: WorkspaceMember;
   onNameChange: (firstName: string, lastName: string) => void;
   onImpersonate?: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
+  isOwner?: boolean;
 };
 
 const StyledNameRow = styled.div`
@@ -34,6 +35,7 @@ export const MemberInfosTab = ({
   onNameChange,
   onImpersonate,
   onDelete,
+  isOwner = false,
 }: MemberInfosTabProps) => {
   const [firstName, setFirstName] = useState(member.name.firstName);
   const [lastName, setLastName] = useState(member.name.lastName);
@@ -85,8 +87,12 @@ export const MemberInfosTab = ({
 
       <Section>
         <H2Title
-          title={t`Admin`}
-          description={t`Perform administrative actions or permanently delete this user`}
+          title={isOwner ? t`Account owner` : t`Admin`}
+          description={
+            isOwner
+              ? t`Transfer ownership before removing this member.`
+              : t`Manage this member’s access to the CRM`
+          }
         />
         <StyledActionRow>
           {onImpersonate && (
@@ -97,13 +103,15 @@ export const MemberInfosTab = ({
               onClick={onImpersonate}
             />
           )}
-          <Button
-            accent="danger"
-            title={t`Delete account`}
-            variant="secondary"
-            size="small"
-            onClick={onDelete}
-          />
+          {onDelete && (
+            <Button
+              accent="danger"
+              title={t`Remove member`}
+              variant="secondary"
+              size="small"
+              onClick={onDelete}
+            />
+          )}
         </StyledActionRow>
       </Section>
     </>

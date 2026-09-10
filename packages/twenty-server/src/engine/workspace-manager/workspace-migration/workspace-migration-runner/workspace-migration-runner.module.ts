@@ -1,3 +1,4 @@
+import { CustomerAccountOwnershipModule } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.module';
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -18,6 +19,7 @@ import { WorkspaceMigrationRunnerService } from 'src/engine/workspace-manager/wo
 
 @Module({
   imports: [
+    CustomerAccountOwnershipModule,
     FeatureFlagModule,
     TypeORMModule,
     WorkspaceMetadataVersionModule,

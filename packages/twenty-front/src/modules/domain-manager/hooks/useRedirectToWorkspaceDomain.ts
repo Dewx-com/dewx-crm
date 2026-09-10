@@ -21,13 +21,20 @@ export const useRedirectToWorkspaceDomain = () => {
     target?: string,
   ) => {
     if (!isMultiWorkspaceEnabled) return;
-    redirect(
-      buildWorkspaceUrl(baseUrl, pathname, {
-        ...searchParams,
-        ...(await buildSearchParamsFromUrlSyncedStates()),
-      }),
-      target,
-    );
+    const url = buildWorkspaceUrl(baseUrl, pathname, {
+      ...searchParams,
+      ...(await buildSearchParamsFromUrlSyncedStates()),
+    });
+
+    // A same-origin account change must bootstrap from an empty tab session.
+    // The destination's login token is verified by the server before loading data.
+    if (
+      new URL(url).origin === window.location.origin &&
+      (!target || target === '_self')
+    ) {
+      sessionStorage.clear();
+    }
+    redirect(url, target);
   };
 
   return {

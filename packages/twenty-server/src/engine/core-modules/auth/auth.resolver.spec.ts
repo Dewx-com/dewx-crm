@@ -304,6 +304,16 @@ describe('AuthResolver', () => {
       ).mockResolvedValue(false);
     });
 
+    it('issues a password login token for a public invitation signup', async () => {
+      await resolver.signUpInWorkspace(signUpInput);
+
+      expect(loginTokenService.generateLoginToken).toHaveBeenCalledWith(
+        signUpInput.email,
+        workspace.id,
+        AuthProviderEnum.Password,
+      );
+    });
+
     it('returns the team alias from a validated pending Sales or Operations invitation', async () => {
       (
         workspaceInvitationService.isTeamWorkspaceLaneInvitation as jest.Mock
@@ -315,10 +325,7 @@ describe('AuthResolver', () => {
         subdomainUrl: 'https://app.prospectengine.com/',
       });
 
-      const result = await resolver.signUpInWorkspace(
-        signUpInput,
-        AuthProviderEnum.Password,
-      );
+      const result = await resolver.signUpInWorkspace(signUpInput);
 
       expect(result.workspace.workspaceUrls).toEqual({
         customUrl: 'https://team.prospectengine.com/',
@@ -358,10 +365,7 @@ describe('AuthResolver', () => {
         subdomainUrl: 'https://app.prospectengine.com/',
       });
 
-      const result = await resolver.signUpInWorkspace(
-        signUpInput,
-        AuthProviderEnum.Password,
-      );
+      const result = await resolver.signUpInWorkspace(signUpInput);
 
       expect(result.workspace.workspaceUrls.customUrl).toBe(
         'https://team.prospectengine.com/',
@@ -382,10 +386,7 @@ describe('AuthResolver', () => {
         subdomainUrl: 'https://app.prospectengine.com/',
       });
 
-      const result = await resolver.signUpInWorkspace(
-        signUpInput,
-        AuthProviderEnum.Password,
-      );
+      const result = await resolver.signUpInWorkspace(signUpInput);
 
       expect(result.workspace.workspaceUrls).toEqual({
         customUrl: undefined,

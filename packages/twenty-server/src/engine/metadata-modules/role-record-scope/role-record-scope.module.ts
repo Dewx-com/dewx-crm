@@ -1,3 +1,4 @@
+import { CustomerAccountOwnershipModule } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -10,6 +11,7 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
 
 @Module({
   imports: [
+    CustomerAccountOwnershipModule,
     TypeOrmModule.forFeature([RoleRecordScopeEntity, RoleEntity]),
     WorkspaceCacheModule,
     // The resolver is gated by SettingsPermissionGuard(ROLES), and that guard injects

@@ -70,6 +70,7 @@ export class FileUploadService {
     fileFolder,
     fieldMetadataId,
     fieldMetadataUniversalIdentifier,
+    uploadedByPrincipalId,
   }: {
     workspaceId: string;
     filename: string;
@@ -77,6 +78,7 @@ export class FileUploadService {
     fileFolder: FileFolder;
     fieldMetadataId?: string;
     fieldMetadataUniversalIdentifier?: string;
+    uploadedByPrincipalId?: string;
   }): Promise<FileUploadTargetDTO> {
     if (
       !DIRECT_UPLOAD_FILE_FOLDERS.includes(
@@ -130,6 +132,7 @@ export class FileUploadService {
       settings: {
         isTemporaryFile: true,
         toDelete: false,
+        uploadedByPrincipalId,
       },
     });
 
@@ -283,11 +286,23 @@ export class FileUploadService {
   async completeFileUpload({
     workspaceId,
     fileId,
+    uploadedByPrincipalId,
   }: {
     workspaceId: string;
     fileId: string;
+    uploadedByPrincipalId?: string;
   }): Promise<FileWithSignedUrlDTO> {
     const file = await this.findFileOrThrow({ workspaceId, fileId });
+    if (
+      file.settings?.uploadedByPrincipalId &&
+      file.settings.uploadedByPrincipalId !== uploadedByPrincipalId
+    ) {
+      throw new FileUploadException(
+        'File not found',
+        FileUploadExceptionCode.FILE_NOT_FOUND,
+        { userFriendlyMessage: msg`File not found.` },
+      );
+    }
     const [fileFolder] = file.path.split('/');
 
     // Restrict to files created through createFileUpload so this mutation

@@ -1,3 +1,4 @@
+import { AvailableWorkspaceItem } from '@/ui/navigation/navigation-drawer/components/MultiWorkspaceDropdown/internal/components/AvailableWorkspaceItem';
 import { DEFAULT_WORKSPACE_LOGO } from '@/ui/navigation/navigation-drawer/constants/DefaultWorkspaceLogo';
 
 import { useAuth } from '@/auth/hooks/useAuth';
@@ -6,9 +7,7 @@ import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { countAvailableWorkspaces } from '@/auth/utils/availableWorkspacesUtils';
 import { supportChatState } from '@/client-config/states/supportChatState';
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
-import { useBuildWorkspaceUrl } from '@/domain-manager/hooks/useBuildWorkspaceUrl';
 import { useRedirectToDefaultDomain } from '@/domain-manager/hooks/useRedirectToDefaultDomain';
-import { useRedirectToWorkspaceDomain } from '@/domain-manager/hooks/useRedirectToWorkspaceDomain';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader/DropdownMenuHeader';
@@ -40,13 +39,7 @@ import {
   IconUserPlus,
 } from 'twenty-ui/icon';
 import { LightIconButton } from 'twenty-ui/input';
-import {
-  MenuItem,
-  MenuItemSelectAvatar,
-  UndecoratedLink,
-} from 'twenty-ui/navigation';
-import { type AvailableWorkspace } from '~/generated-metadata/graphql';
-import { getWorkspaceUrl } from '~/utils/getWorkspaceUrl';
+import { MenuItem, UndecoratedLink } from 'twenty-ui/navigation';
 import { getAbsoluteImageUrl } from '~/utils/image/getAbsoluteImageUrl';
 
 const StyledDescription = styled.div`
@@ -60,11 +53,9 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
     isMultiWorkspaceEnabledState,
   );
   const { t } = useLingui();
-  const { redirectToWorkspaceDomain } = useRedirectToWorkspaceDomain();
   const availableWorkspaces = useAtomStateValue(availableWorkspacesState);
   const availableWorkspacesCount =
     countAvailableWorkspaces(availableWorkspaces);
-  const { buildWorkspaceUrl } = useBuildWorkspaceUrl();
   const { redirectToDefaultDomain } = useRedirectToDefaultDomain();
   const { closeDropdown } = useCloseDropdown();
   const { signOut } = useAuth();
@@ -85,12 +76,6 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
   const handleSupport = () => {
     window.FrontChat?.('show');
     closeDropdown(MULTI_WORKSPACE_DROPDOWN_ID);
-  };
-
-  const handleChange = async (availableWorkspace: AvailableWorkspace) => {
-    redirectToWorkspaceDomain(
-      getWorkspaceUrl(availableWorkspace.workspaceUrls),
-    );
   };
 
   const createWorkspace = () => {
@@ -158,29 +143,11 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
               .filter(({ id }) => id !== currentWorkspace?.id)
               .slice(0, 3)
               .map((availableWorkspace) => (
-                <UndecoratedLink
+                <AvailableWorkspaceItem
                   key={availableWorkspace.id}
-                  to={buildWorkspaceUrl(
-                    getWorkspaceUrl(availableWorkspace.workspaceUrls),
-                  )}
-                  onClick={(event) => {
-                    event?.preventDefault();
-                    handleChange(availableWorkspace);
-                  }}
-                >
-                  <MenuItemSelectAvatar
-                    text={availableWorkspace.displayName ?? t`(No name)`}
-                    avatar={
-                      <Avatar
-                        placeholder={availableWorkspace.displayName || ''}
-                        avatarUrl={getAbsoluteImageUrl(
-                          availableWorkspace.logo ?? DEFAULT_WORKSPACE_LOGO,
-                        )}
-                      />
-                    }
-                    selected={false}
-                  />
-                </UndecoratedLink>
+                  availableWorkspace={availableWorkspace}
+                  isSelected={false}
+                />
               ))}
             {availableWorkspacesCount > 4 && (
               <MenuItem

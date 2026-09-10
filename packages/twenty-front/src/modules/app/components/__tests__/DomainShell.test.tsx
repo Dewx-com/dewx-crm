@@ -4,6 +4,7 @@ import { Provider as JotaiProvider } from 'jotai';
 import { DomainShell } from '@/app/components/DomainShell';
 import { clientConfigApiStatusState } from '@/client-config/states/clientConfigApiStatusState';
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
+import { domainConfigurationState } from '@/domain-manager/states/domainConfigurationState';
 import {
   jotaiStore,
   resetJotaiStore,
@@ -126,4 +127,22 @@ describe('DomainShell', () => {
 
     expect(screen.getByText('WORKSPACE_APP')).toBeInTheDocument();
   });
+
+  it.each(['/welcome', '/verify', '/objects/people'])(
+    'mounts the CRM router on the shared hostname at %s before an account is loaded',
+    (path) => {
+      setClientConfigLoaded(true);
+      jotaiStore.set(isMultiWorkspaceEnabledState.atom, true);
+      jotaiStore.set(domainConfigurationState.atom, {
+        ...jotaiStore.get(domainConfigurationState.atom),
+        isSharedDomainEnabled: true,
+      });
+      window.history.pushState({}, '', path);
+
+      renderShell();
+
+      expect(screen.getByText('WORKSPACE_APP')).toBeInTheDocument();
+      expect(screen.queryByText('ROOT_APP')).not.toBeInTheDocument();
+    },
+  );
 });

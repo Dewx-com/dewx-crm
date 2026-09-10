@@ -12,6 +12,7 @@ export type CurrentWorkspace = Pick<
   | 'logo'
   | 'displayName'
   | 'allowImpersonation'
+  | 'primaryOwnerUserId'
   | 'featureFlags'
   | 'activationStatus'
   | 'billingSubscriptions'
@@ -55,6 +56,6 @@ export type CurrentWorkspace = Pick<
 export const currentWorkspaceState = createAtomState<CurrentWorkspace | null>({
   key: 'currentWorkspaceState',
   defaultValue: null,
-  useLocalStorage: true,
+  useSessionStorage: true,
   localStorageOptions: { getOnInit: true },
 });

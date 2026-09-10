@@ -40,8 +40,12 @@ export const useSignUpInNewWorkspace = () => {
     logo?: File;
   } = {}): Promise<boolean> => {
     try {
+      const requestId =
+        sessionStorage.getItem('workspaceCreationRequestId') ??
+        crypto.randomUUID();
+      sessionStorage.setItem('workspaceCreationRequestId', requestId);
       const { data } = await signUpInNewWorkspaceMutation({
-        variables: { input: { displayName, subdomain } },
+        variables: { input: { displayName, subdomain, requestId } },
       });
       assertIsDefinedOrThrow(data?.signUpInNewWorkspace);
 
@@ -70,6 +74,7 @@ export const useSignUpInNewWorkspace = () => {
 
       if (!isMultiWorkspaceEnabled) {
         await getAuthTokensFromLoginToken(loginToken);
+        sessionStorage.removeItem('workspaceCreationRequestId');
         return true;
       }
 
@@ -80,6 +85,7 @@ export const useSignUpInNewWorkspace = () => {
         '_self',
       );
 
+      sessionStorage.removeItem('workspaceCreationRequestId');
       return true;
     } catch (error) {
       enqueueErrorSnackBar(

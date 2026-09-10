@@ -1,3 +1,4 @@
+import { CustomerAccountOwnershipModule } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -45,6 +46,7 @@ import { StandardObjectsPrefillModule } from 'src/engine/workspace-manager/stand
 
 @Module({
   imports: [
+    CustomerAccountOwnershipModule,
     TypeORMModule,
     TypeOrmModule.forFeature([
       BillingSubscriptionEntity,

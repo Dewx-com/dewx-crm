@@ -353,11 +353,22 @@ export class UserWorkspaceService {
     if (softDelete) {
       // roleTarget has no deletedAt column, so its rows cannot be soft deleted.
       // Access stays gated by the soft-deleted userWorkspace.
-      await this.userWorkspaceRepository.softDelete({ id: userWorkspaceId });
+      await this.userWorkspaceRepository.softDelete({
+        id: userWorkspaceId,
+        workspaceId,
+      });
     } else {
       await this.roleTargetRepository.delete(workspaceId, { userWorkspaceId }); // TODO remove once userWorkspace foreign key is added on roleTarget
-      await this.userWorkspaceRepository.delete({ id: userWorkspaceId });
+      await this.userWorkspaceRepository.delete({
+        id: userWorkspaceId,
+        workspaceId,
+      });
     }
+
+    await this.coreEntityCacheService.invalidate(
+      'userWorkspaceEntity',
+      userWorkspaceId,
+    );
   }
 
   async findAvailableWorkspacesByEmail(email: string) {
@@ -375,15 +386,16 @@ export class UserWorkspaceService {
       },
     });
 
-    // HIDDEN workspaces are never advertised in the root-domain picker, even to
-    // their own members — they must sign in from the workspace URL directly.
+    // Shared-host accounts remain visible to their members without public discovery.
+    // Legacy hidden workspaces still require their dedicated domain.
     const alreadyMemberWorkspaces = user
       ? user.userWorkspaces
           .map(({ workspace }) => ({ workspace }))
           .filter(
             ({ workspace }) =>
+              this.workspaceDomainsService.isSharedDomainEnabled() ||
               workspace.workspaceDiscoverability !==
-              WorkspaceDiscoverability.HIDDEN,
+                WorkspaceDiscoverability.HIDDEN,
           )
       : [];
 
@@ -408,8 +420,7 @@ export class UserWorkspaceService {
     const workspacesFromApprovedAccessDomainIds =
       workspacesFromApprovedAccessDomain.map(({ workspace }) => workspace.id);
 
-    // HIDDEN removes the picker convenience only; invited users can still join
-    // through the direct invitation link, which carries its own token.
+    // Invitations are private to the verified email; shared-host users need no subdomain.
     const workspacesFromInvitations = (
       await this.workspaceInvitationService.findInvitationsByEmail(email)
     )
@@ -419,8 +430,9 @@ export class UserWorkspaceService {
             ...alreadyMemberWorkspacesIds,
             ...workspacesFromApprovedAccessDomainIds,
           ].includes(workspace.id) &&
-          workspace.workspaceDiscoverability !==
-            WorkspaceDiscoverability.HIDDEN,
+          (this.workspaceDomainsService.isSharedDomainEnabled() ||
+            workspace.workspaceDiscoverability !==
+              WorkspaceDiscoverability.HIDDEN),
       )
       .map((appToken) => ({
         workspace: appToken.workspace,

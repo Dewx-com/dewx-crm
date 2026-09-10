@@ -1,3 +1,4 @@
+import { CustomerAccountOwnershipService } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.service';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import assert from 'assert';
@@ -63,6 +64,7 @@ export class UserService {
     private readonly workspaceDomainsService: WorkspaceDomainsService,
     private readonly emailVerificationService: EmailVerificationService,
     private readonly workspaceService: WorkspaceService,
+    private readonly customerAccountOwnershipService: CustomerAccountOwnershipService,
     private readonly globalWorkspaceOrmManager: GlobalWorkspaceOrmManager,
     private readonly userRoleService: UserRoleService,
     private readonly userWorkspaceService: UserWorkspaceService,
@@ -290,6 +292,12 @@ export class UserService {
   }
 
   async deleteUser(userId: string) {
+    return this.customerAccountOwnershipService.runExclusive(() =>
+      this.deleteUserWithAccessLock(userId),
+    );
+  }
+
+  private async deleteUserWithAccessLock(userId: string) {
     const user = await this.userRepository.findOne({
       where: {
         id: userId,
@@ -299,10 +307,15 @@ export class UserService {
 
     userValidator.assertIsDefinedOrThrow(user);
 
+    // Check every account before removing anything from any account.
     for (const userWorkspace of user.userWorkspaces) {
-      await this.removeUserFromWorkspaceAndPotentiallyDeleteWorkspace(
-        userWorkspace,
+      await this.customerAccountOwnershipService.assertUserCanLeave(
+        userWorkspace.workspaceId,
+        userId,
       );
+    }
+    for (const userWorkspace of user.userWorkspaces) {
+      await this.removeUserFromWorkspaceWithAccessLock(userWorkspace);
     }
 
     await this.userRepository.softDelete({ id: userId });
@@ -316,7 +329,17 @@ export class UserService {
     });
   }
 
-  async deleteUserWorkspaceAndPotentiallyDeleteUser({
+  async deleteUserWorkspaceAndPotentiallyDeleteUser(args: {
+    userId: string;
+    workspaceId: string;
+    actingUserWorkspaceId?: string;
+  }) {
+    return this.customerAccountOwnershipService.runExclusive(() =>
+      this.deleteUserWorkspaceWithAccessLock(args),
+    );
+  }
+
+  private async deleteUserWorkspaceWithAccessLock({
     userId,
     workspaceId,
     actingUserWorkspaceId,
@@ -342,7 +365,7 @@ export class UserService {
       throw new Error('User workspace not found.');
     }
 
-    await this.removeUserFromWorkspaceAndPotentiallyDeleteWorkspace(
+    await this.removeUserFromWorkspaceWithAccessLock(
       userWorkspace,
       actingUserWorkspaceId,
     );
@@ -355,11 +378,15 @@ export class UserService {
     return userWorkspace;
   }
 
-  async removeUserFromWorkspaceAndPotentiallyDeleteWorkspace(
+  private async removeUserFromWorkspaceWithAccessLock(
     userWorkspace: UserWorkspaceEntity,
     actingUserWorkspaceId?: string,
   ) {
     const workspaceId = userWorkspace.workspaceId;
+    await this.customerAccountOwnershipService.assertUserCanLeave(
+      workspaceId,
+      userWorkspace.userId,
+    );
     const authContext = buildSystemAuthContext(workspaceId);
 
     const workspaceMembers =

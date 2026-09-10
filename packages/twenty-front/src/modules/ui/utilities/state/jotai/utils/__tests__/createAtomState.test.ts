@@ -9,6 +9,7 @@ const validateInitFn = (payload: NonNullable<Stored>) =>
 describe('createAtomState validated localStorage', () => {
   afterEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('hydrates a persisted value that passes validateInitFn', () => {
@@ -37,5 +38,32 @@ describe('createAtomState validated localStorage', () => {
     });
 
     expect(createStore().get(state.atom)).toBeNull();
+  });
+  it('validates tab-local state independently of other tabs', () => {
+    localStorage.setItem(
+      'tabAccount',
+      JSON.stringify({ token: 'other-account' }),
+    );
+    sessionStorage.setItem('tabAccount', JSON.stringify({ invalid: true }));
+    const state = createAtomState<Stored>({
+      key: 'tabAccount',
+      defaultValue: null,
+      useSessionStorage: true,
+      validateInitFn,
+    });
+    expect(createStore().get(state.atom)).toBeNull();
+    sessionStorage.setItem(
+      'tabAccount',
+      JSON.stringify({ token: 'this-account' }),
+    );
+    const nextState = createAtomState<Stored>({
+      key: 'tabAccount',
+      defaultValue: null,
+      useSessionStorage: true,
+      validateInitFn,
+    });
+    expect(createStore().get(nextState.atom)).toEqual({
+      token: 'this-account',
+    });
   });
 });

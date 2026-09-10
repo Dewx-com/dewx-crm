@@ -1,3 +1,7 @@
+import { currentUserState } from '@/auth/states/currentUserState';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
+import { useAtomState } from '@/ui/utilities/state/jotai/hooks/useAtomState';
+import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { SettingsRolePermissions } from '@/settings/roles/role-permissions/components/SettingsRolePermissions';
 import { type RoleWithPartialMembers } from '@/settings/roles/types/RoleWithPartialMembers';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
@@ -16,10 +20,14 @@ import { Button } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useMutation } from '@apollo/client/react';
-import { UpdateWorkspaceMemberRoleDocument } from '~/generated-metadata/graphql';
+import {
+  TransferWorkspaceOwnershipDocument,
+  UpdateWorkspaceMemberRoleDocument,
+} from '~/generated-metadata/graphql';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 
 const CONFIRM_ROLE_CHANGE_MODAL_ID = 'confirm-role-change-modal';
+const TRANSFER_OWNERSHIP_MODAL_ID = 'transfer-account-ownership-modal';
 
 const StyledNoRoleContainer = styled.div`
   align-items: center;
@@ -52,6 +60,23 @@ export const MemberPermissionsTab = ({
   allRoles,
 }: MemberPermissionsTabProps) => {
   const primaryRole = roles?.[0];
+  const currentUser = useAtomStateValue(currentUserState);
+  const [currentWorkspace, setCurrentWorkspace] = useAtomState(
+    currentWorkspaceState,
+  );
+  const isOwner = Boolean(
+    member.userId && member.userId === currentWorkspace?.primaryOwnerUserId,
+  );
+  const canTransferOwnership = Boolean(
+    currentUser?.id &&
+    currentUser.id === currentWorkspace?.primaryOwnerUserId &&
+    member.userId &&
+    !isOwner &&
+    primaryRole?.universalIdentifier === '20202020-02c2-43f2-b94d-cab1f2b532eb',
+  );
+  const [transferOwnership, { loading: isTransferring }] = useMutation(
+    TransferWorkspaceOwnershipDocument,
+  );
   const { getIcon } = useIcons();
   const navigateSettings = useNavigateSettings();
   const { enqueueSuccessSnackBar, enqueueErrorSnackBar } = useSnackBar();
@@ -75,14 +100,14 @@ export const MemberPermissionsTab = ({
 
   const handleRoleChangeRequest = (newRoleId: string) => {
     const newRole = allRoles.find((role) => role.id === newRoleId);
-    if (!newRole || newRoleId === primaryRole?.id) return;
+    if (isOwner || !newRole || newRoleId === primaryRole?.id) return;
 
     setPendingRole(newRole);
     openModal(CONFIRM_ROLE_CHANGE_MODAL_ID);
   };
 
   const handleConfirmRoleChange = async () => {
-    if (!member?.id || !pendingRole) return;
+    if (isOwner || !member?.id || !pendingRole) return;
 
     try {
       await updateWorkspaceMemberRoleMutation({
@@ -100,6 +125,30 @@ export const MemberPermissionsTab = ({
       });
     } finally {
       setPendingRole(null);
+    }
+  };
+
+  const handleTransferOwnership = async () => {
+    if (!canTransferOwnership || !member.userId || isTransferring) return;
+    try {
+      const result = await transferOwnership({
+        variables: { nextOwnerUserId: member.userId },
+      });
+      const account = result.data?.transferWorkspaceOwnership;
+      if (!account) return;
+      setCurrentWorkspace((previous) =>
+        previous?.id === account.id
+          ? { ...previous, primaryOwnerUserId: account.primaryOwnerUserId }
+          : previous,
+      );
+      enqueueSuccessSnackBar({ message: t`Ownership transferred` });
+    } catch (error) {
+      enqueueErrorSnackBar({
+        message:
+          error instanceof Error
+            ? error.message
+            : t`Unable to transfer ownership`,
+      });
     }
   };
 
@@ -123,11 +172,16 @@ export const MemberPermissionsTab = ({
       <Section>
         <H2Title
           title={t`Role`}
-          description={t`Customize what this user can view and perform`}
+          description={
+            isOwner
+              ? t`The account owner keeps full administrator access. Transfer ownership before changing their role.`
+              : t`Customize what this user can view and perform`
+          }
         />
         <StyledRoleContainer>
           <StyledRoleSelector>
             <Select
+              disabled={isOwner}
               dropdownId="member-role-select"
               options={rolesOptions}
               value={primaryRole.id}
@@ -145,6 +199,31 @@ export const MemberPermissionsTab = ({
         </StyledRoleContainer>
         <SettingsRolePermissions roleId={primaryRole.id} isEditable={false} />
       </Section>
+
+      {canTransferOwnership && (
+        <Section>
+          <H2Title
+            title={t`Account ownership`}
+            description={t`Give this administrator ownership of your CRM. You will remain an administrator, and the new owner can remove your access.`}
+          />
+          <Button
+            title={t`Transfer ownership`}
+            variant="secondary"
+            disabled={isTransferring}
+            onClick={() => openModal(TRANSFER_OWNERSHIP_MODAL_ID)}
+          />
+          <ConfirmationModal
+            modalInstanceId={TRANSFER_OWNERSHIP_MODAL_ID}
+            title={t`Transfer account ownership`}
+            subtitle={t`This member will control the CRM and its team. Only the new owner can transfer ownership back. Type their email to confirm.`}
+            confirmationValue={member.userEmail}
+            confirmationPlaceholder={member.userEmail}
+            confirmButtonText={t`Transfer ownership`}
+            onConfirmClick={handleTransferOwnership}
+            loading={isTransferring}
+          />
+        </Section>
+      )}
 
       {pendingRole && (
         <ConfirmationModal

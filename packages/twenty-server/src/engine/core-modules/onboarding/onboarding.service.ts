@@ -165,7 +165,22 @@ export class OnboardingService {
     }
 
     if (isInviteTeamPending) {
-      return OnboardingStatus.INVITE_TEAM;
+      // A customer's invited members do not inherit the creator's setup work.
+      // Match the native creator lookup, including soft-deleted memberships.
+      const creator = this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED')
+        ? await this.userWorkspaceRepository.findOne({
+            where: { workspaceId },
+            order: { createdAt: 'ASC' },
+            withDeleted: true,
+          })
+        : undefined;
+
+      if (
+        !this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED') ||
+        creator?.userId === userId
+      ) {
+        return OnboardingStatus.INVITE_TEAM;
+      }
     }
 
     const isPlanRequired =

@@ -14,6 +14,8 @@ import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.ent
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { SettingsPermissionGuard } from 'src/engine/guards/settings-permission.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
+import { getWorkspaceAuthContext } from 'src/engine/core-modules/auth/storage/workspace-auth-context.storage';
+import { getFileUploadPrincipalId } from 'src/engine/core-modules/file/utils/get-file-upload-principal-id.util';
 
 @UseGuards(WorkspaceAuthGuard)
 @UsePipes(ResolverValidationPipe)
@@ -49,6 +51,9 @@ export class FileUploadResolver {
       fileFolder,
       fieldMetadataId,
       fieldMetadataUniversalIdentifier,
+      uploadedByPrincipalId: getFileUploadPrincipalId(
+        getWorkspaceAuthContext(),
+      ),
     });
   }
 
@@ -63,6 +68,9 @@ export class FileUploadResolver {
     return await this.fileUploadService.completeFileUpload({
       workspaceId,
       fileId,
+      uploadedByPrincipalId: getFileUploadPrincipalId(
+        getWorkspaceAuthContext(),
+      ),
     });
   }
 }

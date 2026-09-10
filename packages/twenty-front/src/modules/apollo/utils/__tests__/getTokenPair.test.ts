@@ -238,4 +238,12 @@ describe('getTokenPair', () => {
       expect(result?.accessOrWorkspaceAgnosticToken.token).toBe(unicodeToken);
     });
   });
+  it('does not load another tab account from local storage', () => {
+    jest.restoreAllMocks();
+    sessionStorage.clear();
+    localStorage.setItem(TOKEN_PAIR_LOCAL_STORAGE_KEY, '{"otherTab":true}');
+    expect(getTokenPair()).toBeUndefined();
+    expect(localStorage.getItem(TOKEN_PAIR_LOCAL_STORAGE_KEY)).not.toBeNull();
+    localStorage.removeItem(TOKEN_PAIR_LOCAL_STORAGE_KEY);
+  });
 });

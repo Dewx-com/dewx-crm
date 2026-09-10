@@ -1,3 +1,4 @@
+import { CustomerAccountOwnershipService } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
@@ -89,6 +90,12 @@ import { WorkspaceMigrationValidateBuildAndRunService } from 'src/engine/workspa
 // takes, so a genuinely in-progress activation is never reclaimed.
 const WORKSPACE_ACTIVATION_STALE_LOCK_TIMEOUT_MS = 5 * 60 * 1000;
 
+type WorkspaceUpdateArgs = {
+  payload: Partial<WorkspaceEntity> & { id: string };
+  userWorkspaceId?: string;
+  apiKey: ApiKeyEntity | undefined;
+};
+
 @Injectable()
 // oxlint-disable-next-line twenty/inject-workspace-repository
 export class WorkspaceService {
@@ -157,17 +164,30 @@ export class WorkspaceService {
     private readonly upgradeMigrationService: UpgradeMigrationService,
     private readonly upgradeSequenceReaderService: UpgradeSequenceReaderService,
     private readonly sdkClientGenerationService: SdkClientGenerationService,
+    private readonly customerAccountOwnershipService: CustomerAccountOwnershipService,
   ) {}
 
-  async updateWorkspaceById({
+  private updateRequiresOwner(payload: Partial<WorkspaceEntity>): boolean {
+    return Object.keys(payload).some(
+      (field) =>
+        this.WORKSPACE_FIELD_PERMISSIONS[field] === PermissionFlagType.SECURITY,
+    );
+  }
+
+  async updateWorkspaceById(args: WorkspaceUpdateArgs) {
+    if (!this.updateRequiresOwner(args.payload)) {
+      return this.updateWorkspaceWithAccessCheck(args);
+    }
+    return this.customerAccountOwnershipService.runExclusive(() =>
+      this.updateWorkspaceWithAccessCheck(args),
+    );
+  }
+
+  private async updateWorkspaceWithAccessCheck({
     payload,
     userWorkspaceId,
     apiKey,
-  }: {
-    payload: Partial<WorkspaceEntity> & { id: string };
-    userWorkspaceId?: string;
-    apiKey: ApiKeyEntity | undefined;
-  }) {
+  }: WorkspaceUpdateArgs) {
     const workspace = await this.workspaceRepository.findOneBy({
       id: payload.id,
     });
@@ -181,6 +201,19 @@ export class WorkspaceService {
       apiKey,
       workspaceActivationStatus: workspace.activationStatus,
     });
+
+    if (workspace.primaryOwnerUserId && this.updateRequiresOwner(payload)) {
+      const membership = userWorkspaceId
+        ? await this.userWorkspaceRepository.findOneBy({
+            id: userWorkspaceId,
+            workspaceId: workspace.id,
+          })
+        : null;
+      this.customerAccountOwnershipService.assertCurrentOwner(
+        workspace,
+        membership?.userId ?? '',
+      );
+    }
 
     if (
       isDefined(payload.subdomain) &&
@@ -906,6 +939,11 @@ export class WorkspaceService {
     workspaceId: string;
     schemaName: string;
   }): Promise<void> {
+    // Customer accounts start empty; demonstration records belong to demo setups.
+    if (this.twentyConfigService.get('IS_SHARED_DOMAIN_ENABLED')) {
+      return;
+    }
+
     const {
       flatObjectMetadataMaps,
       flatFieldMetadataMaps,

@@ -11,7 +11,6 @@ import { SecureHttpClientModule } from 'src/engine/core-modules/secure-http-clie
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { PermissionsModule } from 'src/engine/metadata-modules/permissions/permissions.module';
 import { provideWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/provide-workspace-scoped-repository';
-import { FileController } from './controllers/file.controller';
 import { FileEntity } from './entities/file.entity';
 import { FileCorePictureModule } from './file-core-picture/file-core-picture.module';
 import { FileEmailAttachmentModule } from './file-email-attachment/file-email-attachment.module';
@@ -19,7 +18,6 @@ import { FileUploadModule } from './file-upload/file-upload.module';
 import { FileUrlModule } from './file-url/file-url.module';
 import { FileWorkflowModule } from './file-workflow/file-workflow.module';
 import { FilesFieldModule } from './files-field/files-field.module';
-import { FileByIdGuard } from './guards/file-by-id.guard';
 import { FileService } from './services/file.service';
 
 @Module({
@@ -39,7 +37,6 @@ import { FileService } from './services/file.service';
   ],
   providers: [
     FileService,
-    FileByIdGuard,
     FileWorkspaceFolderDeletionJob,
     FileDeletionJob,
     provideWorkspaceScopedRepository(FileEntity),
@@ -54,6 +51,5 @@ import { FileService } from './services/file.service';
     FileEmailAttachmentModule,
     FileUploadModule,
   ],
-  controllers: [FileController],
 })
 export class FileModule {}

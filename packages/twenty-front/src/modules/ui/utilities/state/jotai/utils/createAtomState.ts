@@ -24,13 +24,14 @@ type StateAtom<ValueType> = WritableAtom<
 
 type LocalStorageOptions = { getOnInit?: boolean };
 
-// Wraps the default JSON localStorage so a persisted value that fails
+// Wraps JSON storage so a persisted value that fails
 // validateInitFn falls back to the initial value instead of hydrating the atom
 // with an invalid payload.
-const createValidatedLocalStorage = <ValueType>(
+const createValidatedStorage = <ValueType>(
   validateInitFn: (payload: NonNullable<ValueType>) => boolean,
+  getStorage: () => Storage = () => localStorage,
 ) => {
-  const storage = createJSONStorage<ValueType>(() => localStorage);
+  const storage = createJSONStorage<ValueType>(getStorage);
 
   return {
     ...storage,
@@ -81,13 +82,15 @@ export const createAtomState = <ValueType>({
       { getOnInit: true },
     ) as StateAtom<ValueType>;
   } else if (useSessionStorage) {
-    const storage = createJSONStorage<ValueType>(() => sessionStorage);
+    const storage = isDefined(validateInitFn)
+      ? createValidatedStorage<ValueType>(validateInitFn, () => sessionStorage)
+      : createJSONStorage<ValueType>(() => sessionStorage);
     baseAtom = atomWithStorage<ValueType>(key, defaultValue, storage, {
       getOnInit: true,
     }) as StateAtom<ValueType>;
   } else if (useLocalStorage) {
     const storage = isDefined(validateInitFn)
-      ? createValidatedLocalStorage<ValueType>(validateInitFn)
+      ? createValidatedStorage<ValueType>(validateInitFn)
       : undefined;
     baseAtom = atomWithStorage<ValueType>(
       key,

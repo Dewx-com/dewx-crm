@@ -204,6 +204,7 @@ export class ImpersonationService {
         response,
         impersonatorSessionToken,
         expiresAt,
+        payload.workspaceId,
       );
 
       return true;
