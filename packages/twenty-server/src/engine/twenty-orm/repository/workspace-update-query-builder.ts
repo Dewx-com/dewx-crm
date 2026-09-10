@@ -68,7 +68,10 @@ export class WorkspaceUpdateQueryBuilder<
   }
 
   private get filesFieldSync(): FilesFieldSync {
-    return (this._filesFieldSync ??= new FilesFieldSync(this.internalContext));
+    return (this._filesFieldSync ??= new FilesFieldSync(
+      this.internalContext,
+      this.authContext,
+    ));
   }
 
   constructor(

@@ -43,12 +43,10 @@ describe('current file record access', () => {
   let service: FileRecordAccessService;
 
   beforeEach(() => {
-    jest
-      .mocked(getWorkspaceContext)
-      .mockReturnValue({
-        userWorkspaceRoleMap: { membership: 'member-role' },
-        apiKeyRoleMap: { key: 'api-role' },
-      } as unknown as ReturnType<typeof getWorkspaceContext>);
+    jest.mocked(getWorkspaceContext).mockReturnValue({
+      userWorkspaceRoleMap: { membership: 'member-role' },
+      apiKeyRoleMap: { key: 'api-role' },
+    } as unknown as ReturnType<typeof getWorkspaceContext>);
     findFile.mockResolvedValue(file);
     findAttachment.mockResolvedValue({
       id: 'attachment-record',
@@ -120,12 +118,10 @@ describe('current file record access', () => {
   });
 
   it('denies a missing current role instead of running an unrestricted query', async () => {
-    jest
-      .mocked(getWorkspaceContext)
-      .mockReturnValue({
-        userWorkspaceRoleMap: {},
-        apiKeyRoleMap: {},
-      } as unknown as ReturnType<typeof getWorkspaceContext>);
+    jest.mocked(getWorkspaceContext).mockReturnValue({
+      userWorkspaceRoleMap: {},
+      apiKeyRoleMap: {},
+    } as unknown as ReturnType<typeof getWorkspaceContext>);
     expect(await service.canRead('file', auth)).toBe(false);
     expect(getRepository).not.toHaveBeenCalled();
   });
@@ -140,6 +136,33 @@ describe('current file record access', () => {
     expect(getRepository).toHaveBeenCalledWith('account', 'person', {
       intersectionOf: ['api-role'],
     });
+  });
+
+  it('keeps an uploaded draft private until its uploader attaches it', async () => {
+    findFile.mockResolvedValue({
+      ...file,
+      settings: {
+        isTemporaryFile: true,
+        uploadedByPrincipalId: 'membership:another-membership',
+      },
+    });
+    expect(await service.canRead('file', auth)).toBe(false);
+    expect(getRepository).not.toHaveBeenCalled();
+    findFile.mockResolvedValue({
+      ...file,
+      settings: {
+        isTemporaryFile: true,
+        uploadedByPrincipalId: 'membership:membership',
+      },
+    });
+    findAttachment.mockResolvedValue(null);
+    expect(await service.canRead('file', auth)).toBe(true);
+    findFile.mockResolvedValue(file);
+    findAttachment.mockResolvedValue({
+      id: 'attachment-record',
+      targetPersonId: 'person-record',
+    });
+    expect(await service.canRead('file', auth)).toBe(true);
   });
 
   it('denies missing files and unfinished uploads', async () => {

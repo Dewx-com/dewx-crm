@@ -35,12 +35,14 @@ export class FilesFieldService {
     workspaceId,
     fieldMetadataId,
     fieldMetadataUniversalIdentifier,
+    uploadedByPrincipalId,
   }: {
     file: Buffer;
     filename: string;
     workspaceId: string;
     fieldMetadataId?: string;
     fieldMetadataUniversalIdentifier?: string;
+    uploadedByPrincipalId?: string;
   }): Promise<FileWithSignedUrlDTO> {
     if (!fieldMetadataId && !fieldMetadataUniversalIdentifier) {
       throw new FilesFieldException(
@@ -88,6 +90,7 @@ export class FilesFieldService {
       settings: {
         isTemporaryFile: true,
         toDelete: false,
+        uploadedByPrincipalId,
       },
     });
 

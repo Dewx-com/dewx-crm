@@ -10,6 +10,7 @@ import { buildApplicationAuthContext } from 'src/engine/core-modules/auth/utils/
 import { buildUserAuthContext } from 'src/engine/core-modules/auth/utils/build-user-auth-context.util';
 import { FileEntity } from 'src/engine/core-modules/file/entities/file.entity';
 import { FILE_STATUS } from 'src/engine/core-modules/file/types/file-status.types';
+import { getFileUploadPrincipalId } from 'src/engine/core-modules/file/utils/get-file-upload-principal-id.util';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { isMorphOrRelationFlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/utils/is-morph-or-relation-flat-field-metadata.util';
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
@@ -67,6 +68,12 @@ export class FileRecordAccessService {
       where: { id: fileId },
     });
     if (!file || file.status !== FILE_STATUS.UPLOADED) return false;
+    if (
+      file.settings?.isTemporaryFile &&
+      file.settings.uploadedByPrincipalId &&
+      file.settings.uploadedByPrincipalId !== getFileUploadPrincipalId(auth)
+    )
+      return false;
 
     const { flatFieldMetadataMaps, flatObjectMetadataMaps } =
       await this.workspaceCacheService.getOrRecompute(workspace.id, [

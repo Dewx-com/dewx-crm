@@ -218,7 +218,7 @@ The installed API check passes:
 Server types, seven-file lint, the full server build, and 54 focused tests pass.
 The original saved-link and later attachment-move failures are retained with the
 passing runtime evidence. This covers the current ORM read/write path. ORM v2
-record-scope parity, pending-upload ownership, other private file folders, queued
+record-scope parity, other private file folders, queued
 exports/jobs, and the remaining product acceptance criteria are still open.
 
 The existing A/B account-file scenario also passes after this change: native
@@ -226,3 +226,24 @@ upload and cookie-only download, no storage redirect or cache, and anonymous or
 foreign-account denial. Membership-removal acceptance passes stale Bearer/cookie
 and file-link denial, retained notes and contact links, closure of the removed
 account's SSE stream, and continued access to the other account.
+
+## Unfinished upload ownership
+
+The same installed file-permission scenario now covers both direct uploads and
+native multipart uploads. Before the fix, another member could confirm an
+uploader's pending file, read its preview, or attach the unfinished file to a
+record. New uploads store the authenticated membership, API key, or application
+identity in native file settings. Confirmation, temporary preview access, and
+the shared file-sync validation enforce that identity. Record permissions take
+over after the uploader attaches the file.
+
+The installed check passes other-member confirmation and preview denial, denied
+attachment through both create and update, permitted uploader operations, and
+member access after attachment. Both upload methods preserve the exact bytes.
+Server types, fourteen-file lint, 28 focused tests, and the full server build
+pass. The multipart test uses a named file part so JavaScript key ordering does
+not place the file before the required operations and map fields.
+
+Existing unbound temporary files retain their prior behavior; no uploader was
+guessed and no records were deleted. Legacy upload reconciliation, upload-token
+revocation, other private folders, and the remaining release checks are open.

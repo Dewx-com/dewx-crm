@@ -171,6 +171,7 @@ const {
     const anonymous = await request.newContext({ ignoreHTTPSErrors: true });
     clients.push(anonymous);
     const proof = [];
+    const outcomes = [];
     for (const label of ['visible', 'hidden']) {
       const record = (
         await query(
@@ -196,6 +197,17 @@ const {
         ).status(),
         204,
       );
+      const otherConfirmation = await query(
+        'mutation($id:String!) { completeFileUpload(fileId:$id) { id } }',
+        { id: target.fileId },
+        memberAuth,
+        '/metadata',
+        true,
+      );
+      outcomes.push([
+        `${label} upload cannot be confirmed by another member`,
+        Boolean(otherConfirmation.errors?.length),
+      ]);
       const confirmed = await query(
         'mutation($id:String!) { completeFileUpload(fileId:$id) { id url } }',
         { id: target.fileId },
@@ -209,6 +221,14 @@ const {
         200,
         'Uploaded file preview remains readable before attachment',
       );
+      outcomes.push([
+        `${label} upload preview is private to its uploader`,
+        (
+          await e.client.get(confirmed.data.completeFileUpload.url, {
+            headers: memberAuth,
+          })
+        ).status(),
+      ]);
       const attached = (
         await query(
           'mutation($person:UUID!,$file:UUID!) { createAttachment(data:{targetPersonId:$person,file:[{fileId:$file,label:"permission-proof.txt"}]}) { id file { url } } }',
@@ -254,7 +274,6 @@ const {
     console.log(
       'PASS native file validation rejects reuse of an already attached file ID',
     );
-    const outcomes = [];
     const restrict = async (object, field, value) => {
       const input = {
         roleId: memberRole.id,
@@ -386,6 +405,17 @@ const {
       'mutation($id:String!) { completeFileUpload(fileId:$id) { id } }',
       { id: avatarTarget.fileId },
     );
+    const otherAvatar = await query(
+      'mutation($id:UUID!,$file:UUID!) { updatePerson(id:$id,data:{avatarFile:[{fileId:$file,label:"field-proof.txt"}]}) { id } }',
+      { id: visible.personId, file: avatarTarget.fileId },
+      memberAuth,
+      '/graphql',
+      true,
+    );
+    outcomes.push([
+      'another member cannot attach a draft through a record update',
+      Boolean(otherAvatar.errors?.length),
+    ]);
     const avatar = (
       await query(
         'mutation($id:UUID!,$file:UUID!) { updatePerson(id:$id,data:{avatarFile:[{fileId:$file,label:"field-proof.txt"}]}) { avatarFile { url } } }',
@@ -438,6 +468,126 @@ const {
     console.log(
       'PASS upload preview and owner access preserved; restoring the member permission restores downloads; other account remains accessible',
     );
+    const draftBytes = Buffer.from(`Unattached upload ${randomUUID()}`);
+    const draftTarget = (
+      await query(
+        'mutation($size:Float!,$field:String!) { createFileUpload(filename:"draft-proof.txt",size:$size,fileFolder:FilesField,fieldMetadataId:$field) { fileId uploadUrl contentType } }',
+        { size: draftBytes.length, field: fileField.id },
+      )
+    ).data.createFileUpload;
+    assert.equal(
+      (
+        await anonymous.put(draftTarget.uploadUrl, {
+          headers: { 'content-type': draftTarget.contentType },
+          data: draftBytes,
+        })
+      ).status(),
+      204,
+    );
+    await query(
+      'mutation($id:String!) { completeFileUpload(fileId:$id) { id } }',
+      { id: draftTarget.fileId },
+    );
+    const stolen = await query(
+      'mutation($person:UUID!,$file:UUID!) { createAttachment(data:{targetPersonId:$person,file:[{fileId:$file,label:"draft-proof.txt"}]}) { id file { url } } }',
+      { person: visible.personId, file: draftTarget.fileId },
+      memberAuth,
+      '/graphql',
+      true,
+    );
+    outcomes.push([
+      'another member cannot attach an uploader’s unfinished draft',
+      Boolean(stolen.errors?.length),
+    ]);
+    if (stolen.errors?.length) {
+      const saved = (
+        await query(
+          'mutation($person:UUID!,$file:UUID!) { createAttachment(data:{targetPersonId:$person,file:[{fileId:$file,label:"draft-proof.txt"}]}) { id file { url } } }',
+          { person: visible.personId, file: draftTarget.fileId },
+          e.auth,
+          '/graphql',
+        )
+      ).data.createAttachment;
+      assert.equal(
+        await download(
+          { url: saved.file[0].url, bytes: draftBytes },
+          memberAuth,
+        ),
+        200,
+        'After the uploader attaches the file, its record permissions govern access',
+      );
+    }
+    const multipartBytes = Buffer.from(`Multipart draft ${randomUUID()}`);
+    const multipartResponse = await e.client.post('/metadata', {
+      headers: { ...e.auth, origin, 'apollo-require-preflight': 'true' },
+      multipart: {
+        operations: JSON.stringify({
+          query:
+            'mutation($file:Upload!,$field:String!) { uploadFilesFieldFile(file:$file,fieldMetadataId:$field) { id url } }',
+          variables: { file: null, field: fileField.id },
+        }),
+        map: JSON.stringify({ upload: ['variables.file'] }),
+        upload: {
+          name: 'multipart-proof.txt',
+          mimeType: 'text/plain',
+          buffer: multipartBytes,
+        },
+      },
+    });
+    const multipartResult = await multipartResponse.json();
+    assert.equal(
+      multipartResponse.status(),
+      200,
+      'Native multipart upload must succeed',
+    );
+    assert.ok(
+      !multipartResult.errors,
+      JSON.stringify(multipartResult.errors?.map((error) => error.message)),
+    );
+    assert.ok(
+      multipartResult.data,
+      'Multipart response must contain GraphQL data',
+    );
+    const multipartFile = multipartResult.data.uploadFilesFieldFile;
+    assert.equal(
+      await download({ url: multipartFile.url, bytes: multipartBytes }, e.auth),
+      200,
+    );
+    outcomes.push([
+      'multipart draft preview is private to its uploader',
+      await download(
+        { url: multipartFile.url, bytes: multipartBytes },
+        memberAuth,
+      ),
+    ]);
+    const multipartStolen = await query(
+      'mutation($person:UUID!,$file:UUID!) { createAttachment(data:{targetPersonId:$person,file:[{fileId:$file,label:"multipart-proof.txt"}]}) { id } }',
+      { person: visible.personId, file: multipartFile.id },
+      memberAuth,
+      '/graphql',
+      true,
+    );
+    outcomes.push([
+      'another member cannot attach a multipart draft',
+      Boolean(multipartStolen.errors?.length),
+    ]);
+    if (multipartStolen.errors?.length) {
+      const saved = (
+        await query(
+          'mutation($person:UUID!,$file:UUID!) { createAttachment(data:{targetPersonId:$person,file:[{fileId:$file,label:"multipart-proof.txt"}]}) { file { url } } }',
+          { person: visible.personId, file: multipartFile.id },
+          e.auth,
+          '/graphql',
+        )
+      ).data.createAttachment;
+      assert.equal(
+        await download(
+          { url: saved.file[0].url, bytes: multipartBytes },
+          memberAuth,
+        ),
+        200,
+      );
+    }
     for (const [label, result] of outcomes)
       console.log(
         `${result === true || result === 403 ? 'PASS' : 'FAIL'} ${label}: ${typeof result === 'number' ? `HTTP ${result}` : result ? 'verified' : 'violated'}`,

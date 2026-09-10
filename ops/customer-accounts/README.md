@@ -335,6 +335,8 @@ the file field, record, and attachment parent before streaming bytes. The CRM's
 record filters also make attachments inherit their parent record's visibility,
 which prevents a restricted member from moving a hidden attachment to a visible
 contact to regain its contents. Native permanent-file reuse checks remain in
-place. Upload previews and access restoration are covered by the installed API
-acceptance in `STAGING.md`; pending-upload ownership and the other remaining
-permission checks are not yet release-complete.
+place. New unfinished uploads are bound to the uploading membership, API key, or
+application: another member cannot preview, confirm, or attach them. After
+attachment, record permissions govern access. Both native upload methods and
+access restoration pass installed API acceptance in `STAGING.md`. Legacy unbound
+uploads and the remaining permission checks still require release review.

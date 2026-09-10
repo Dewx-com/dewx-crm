@@ -113,6 +113,7 @@ export class WorkspaceRepositoryV2 {
   private get filesFieldSync(): FilesFieldSync {
     return (this._filesFieldSync ??= new FilesFieldSync(
       this.options.internalContext,
+      this.options.authContext,
     ));
   }
 
