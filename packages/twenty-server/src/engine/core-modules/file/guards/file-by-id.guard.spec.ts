@@ -8,6 +8,7 @@ import { JwtTokenTypeEnum } from 'src/engine/core-modules/auth/types/jwt-token-t
 import { FileByIdGuard } from 'src/engine/core-modules/file/guards/file-by-id.guard';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { FileRecordAccessService } from 'src/engine/core-modules/file/services/file-record-access.service';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const otherWorkspaceId = '22222222-2222-4222-8222-222222222222';
@@ -16,6 +17,7 @@ describe('shared-host private file access', () => {
   const verifyJwtToken = jest.fn();
   const validateTokenByRequest = jest.fn();
   const get = jest.fn();
+  const canRead = jest.fn();
   let guard: FileByIdGuard;
   let request: Request & { workspaceId?: string };
   let context: ExecutionContext;
@@ -31,6 +33,7 @@ describe('shared-host private file access', () => {
       userWorkspaceId: 'membership-id',
     });
     get.mockReturnValue(true);
+    canRead.mockResolvedValue(true);
     guard = new FileByIdGuard(
       {
         verifyJwtToken,
@@ -42,6 +45,7 @@ describe('shared-host private file access', () => {
       } as unknown as JwtWrapperService,
       { validateTokenByRequest } as unknown as AccessTokenService,
       { get } as unknown as TwentyConfigService,
+      { canRead } as unknown as FileRecordAccessService,
     );
     request = {
       params: { id: 'file-id', fileFolder: FileFolder.FilesField },
@@ -67,6 +71,21 @@ describe('shared-host private file access', () => {
   it('denies the same signed link after membership removal', async () => {
     expect(await guard.canActivate(context)).toBe(true);
     validateTokenByRequest.mockRejectedValue(new Error('Membership removed'));
+    expect(await guard.canActivate(context)).toBe(false);
+  });
+
+  it('rechecks record access on every download and denies revoked access', async () => {
+    expect(await guard.canActivate(context)).toBe(true);
+    canRead.mockResolvedValue(false);
+    expect(await guard.canActivate(context)).toBe(false);
+    expect(canRead).toHaveBeenCalledWith(
+      'file-id',
+      expect.objectContaining({ userWorkspaceId: 'membership-id' }),
+    );
+  });
+
+  it('fails closed when record authorization cannot be checked', async () => {
+    canRead.mockRejectedValue(new Error('Unavailable'));
     expect(await guard.canActivate(context)).toBe(false);
   });
 

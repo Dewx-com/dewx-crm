@@ -13,6 +13,7 @@ import { FileTokenJwtPayload } from 'src/engine/core-modules/auth/types/file-tok
 import { JwtTokenTypeEnum } from 'src/engine/core-modules/auth/types/jwt-token-type.enum';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { FileRecordAccessService } from 'src/engine/core-modules/file/services/file-record-access.service';
 
 export const SUPPORTED_FILE_FOLDERS = [
   FileFolder.CorePicture,
@@ -33,6 +34,7 @@ export class FileByIdGuard implements CanActivate {
     private readonly jwtWrapperService: JwtWrapperService,
     private readonly accessTokenService: AccessTokenService,
     private readonly twentyConfigService: TwentyConfigService,
+    private readonly fileRecordAccessService: FileRecordAccessService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -93,6 +95,12 @@ export class FileByIdGuard implements CanActivate {
           (!authContext.userWorkspaceId &&
             !authContext.apiKey &&
             !authContext.application)
+        ) {
+          return false;
+        }
+        if (
+          fileFolder === FileFolder.FilesField &&
+          !(await this.fileRecordAccessService.canRead(fileId, authContext))
         ) {
           return false;
         }

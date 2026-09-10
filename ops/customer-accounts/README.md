@@ -327,3 +327,14 @@ owner removal, role changes and impersonation. Its compiled browser acceptance
 is recorded in `STAGING.md`. Durable customer-visible ownership audit, timed
 support grants, legacy owner reconciliation and the remaining full release
 criteria are still open.
+
+## Files follow current record permissions
+
+Shared-host file downloads now resolve the current member or API role and check
+the file field, record, and attachment parent before streaming bytes. The CRM's
+record filters also make attachments inherit their parent record's visibility,
+which prevents a restricted member from moving a hidden attachment to a visible
+contact to regain its contents. Native permanent-file reuse checks remain in
+place. Upload previews and access restoration are covered by the installed API
+acceptance in `STAGING.md`; pending-upload ownership and the other remaining
+permission checks are not yet release-complete.

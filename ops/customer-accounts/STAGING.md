@@ -195,3 +195,34 @@ component included visually clipped loading dots in its accessible name. Marking
 that decoration `aria-hidden` preserves the visible loading effect and keeps the
 button name stable. Native formatting/lint and the complete UI/frontend build
 pass; the same exact-label browser scenario now passes without a locator workaround.
+
+## Current record and file access
+
+`verify-staging-file-permissions.cjs` uses owner E and a dedicated member from C.
+It keeps that synthetic membership for reruns and restores each temporary role
+restriction; repeated remove/reinvite setup had exhausted the real weekly limit
+for the earlier fixture. Invitation limits and the five-account cap are unchanged.
+
+The installed API check passes:
+
+- Previously saved file links return 403 after attachment, parent-record, or file
+  field access is removed. A person avatar file exercises native field permissions;
+  the system attachment object does not permit field-permission customization.
+- A hidden contact also hides its attachment record. Moving the attachment to a
+  visible contact is refused, the original contact remains, and the saved link
+  still returns 403.
+- Reusing a permanent file ID in another attachment is rejected by native file
+  validation. Upload previews, owner downloads, permitted member downloads,
+  restored permissions, and the member's other account remain usable.
+
+Server types, seven-file lint, the full server build, and 54 focused tests pass.
+The original saved-link and later attachment-move failures are retained with the
+passing runtime evidence. This covers the current ORM read/write path. ORM v2
+record-scope parity, pending-upload ownership, other private file folders, queued
+exports/jobs, and the remaining product acceptance criteria are still open.
+
+The existing A/B account-file scenario also passes after this change: native
+upload and cookie-only download, no storage redirect or cache, and anonymous or
+foreign-account denial. Membership-removal acceptance passes stale Bearer/cookie
+and file-link denial, retained notes and contact links, closure of the removed
+account's SSE stream, and continued access to the other account.
