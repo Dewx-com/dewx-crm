@@ -6,6 +6,7 @@ export const fromWorkspaceEntityToFlat = (
 ): FlatWorkspace => ({
   id: entity.id,
   displayName: entity.displayName,
+  primaryOwnerUserId: entity.primaryOwnerUserId,
   logo: entity.logo,
   logoFileId: entity.logoFileId,
   inviteHash: entity.inviteHash,

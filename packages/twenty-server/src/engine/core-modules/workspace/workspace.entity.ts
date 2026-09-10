@@ -33,6 +33,7 @@ import { PublicDomainEntity } from 'src/engine/core-modules/public-domain/public
 import { WorkspaceSSOIdentityProviderEntity } from 'src/engine/core-modules/sso/workspace-sso-identity-provider.entity';
 import { WasIntroducedInUpgrade } from 'src/engine/core-modules/upgrade/decorators/was-introduced-in-upgrade.decorator';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
+import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { WorkspaceDiscoverability } from 'src/engine/core-modules/workspace/types/workspace-discoverability.type';
 import { AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/agent.entity';
 import { type ModelId } from 'src/engine/metadata-modules/ai/ai-models/types/model-id.type';
@@ -81,6 +82,18 @@ export class WorkspaceEntity {
   @Field({ nullable: true })
   @Column({ nullable: true })
   displayName?: string;
+
+  @Field(() => UUIDScalarType, { nullable: true })
+  @WasIntroducedInUpgrade({
+    upgradeCommandName:
+      '2.33.0_AddCustomerAccountOwnerFastInstanceCommand_1788996228063',
+  })
+  @Column({ type: 'uuid', nullable: true })
+  primaryOwnerUserId?: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'primaryOwnerUserId' })
+  primaryOwner?: Relation<UserEntity> | null;
 
   //deprecated
   @Field({ nullable: true })

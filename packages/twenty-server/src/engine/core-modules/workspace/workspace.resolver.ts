@@ -1,3 +1,4 @@
+import { CustomerAccountOwnershipService } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.service';
 import {
   type ExecutionContext,
   UseFilters,
@@ -88,6 +89,7 @@ const OriginHeader = createParamDecorator(
 export class WorkspaceResolver {
   constructor(
     private readonly workspaceService: WorkspaceService,
+    private readonly customerAccountOwnershipService: CustomerAccountOwnershipService,
     private readonly workspaceDomainsService: WorkspaceDomainsService,
     private readonly userWorkspaceService: UserWorkspaceService,
     private readonly twentyConfigService: TwentyConfigService,
@@ -172,9 +174,37 @@ export class WorkspaceResolver {
     WorkspaceAuthGuard,
     SettingsPermissionGuard(PermissionFlagType.WORKSPACE),
   )
-  async deleteCurrentWorkspace(@AuthWorkspace() { id }: WorkspaceEntity) {
-    await this.workspaceService.suspendWorkspace(id);
-    return this.workspaceService.deleteWorkspace(id, true);
+  async deleteCurrentWorkspace(
+    @AuthWorkspace() { id }: WorkspaceEntity,
+    @AuthUser({ allowUndefined: true }) user?: AuthContextUser,
+  ) {
+    return this.customerAccountOwnershipService.runExclusive(async () => {
+      const workspace =
+        await this.customerAccountOwnershipService.getWorkspace(id);
+      if (workspace.primaryOwnerUserId) {
+        this.customerAccountOwnershipService.assertCurrentOwner(
+          workspace,
+          user?.id ?? '',
+        );
+      }
+      await this.workspaceService.suspendWorkspace(id);
+      return this.workspaceService.deleteWorkspace(id, true);
+    });
+  }
+
+  @Mutation(() => WorkspaceEntity)
+  @UseGuards(UserAuthGuard, WorkspaceAuthGuard, NoPermissionGuard)
+  async transferWorkspaceOwnership(
+    @AuthWorkspace() { id }: WorkspaceEntity,
+    @AuthUser() user: AuthContextUser,
+    @Args('nextOwnerUserId', { type: () => UUIDScalarType })
+    nextOwnerUserId: string,
+  ) {
+    return this.customerAccountOwnershipService.transfer({
+      workspaceId: id,
+      actingUserId: user.id,
+      nextOwnerUserId,
+    });
   }
 
   @ResolveField(() => [BillingSubscriptionEntity])

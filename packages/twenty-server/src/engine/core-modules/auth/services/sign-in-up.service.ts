@@ -1,3 +1,4 @@
+import { CUSTOMER_ACCOUNT_ACCESS_LOCK } from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.service';
 import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
@@ -670,6 +671,28 @@ export class SignInUpService {
           }
 
           await this.assertWorkspaceCreationAllowed(userData);
+          if (isSharedDomainEnabled && userData.type === 'existingUser') {
+            const [lock] = await queryRunner.query(
+              'SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS acquired',
+              [CUSTOMER_ACCOUNT_ACCESS_LOCK],
+            );
+            if (!lock?.acquired) {
+              throw new AuthException(
+                'Account access is being updated. Try again.',
+                AuthExceptionCode.FORBIDDEN_EXCEPTION,
+              );
+            }
+            const currentUser = await queryRunner.manager.findOneBy(
+              UserEntity,
+              { id: userData.existingUser.id },
+            );
+            if (!currentUser) {
+              throw new AuthException(
+                'Your user account is no longer available.',
+                AuthExceptionCode.FORBIDDEN_EXCEPTION,
+              );
+            }
+          }
           if (isDefined(requestedSubdomain)) {
             await this.subdomainManagerService.validateSubdomainOrThrow(
               requestedSubdomain,
@@ -690,6 +713,10 @@ export class SignInUpService {
             activationStatus: WorkspaceActivationStatus.PENDING_CREATION,
             ...(isSharedDomainEnabled
               ? {
+                  primaryOwnerUserId:
+                    userData.type === 'existingUser'
+                      ? userData.existingUser.id
+                      : undefined,
                   allowImpersonation: false,
                   isPublicInviteLinkEnabled: false,
                   workspaceDiscoverability:

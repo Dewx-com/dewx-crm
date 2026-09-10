@@ -2,6 +2,7 @@ import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspac
 
 export const WORKSPACE_ENTITY_NON_CACHED_PROPERTIES = [
   'logoFile',
+  'primaryOwner',
   'appTokens',
   'keyValuePairs',
   'workspaceUsers',

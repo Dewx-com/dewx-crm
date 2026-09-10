@@ -1,3 +1,7 @@
+import {
+  CustomerAccountOwnershipService,
+  OWNER_PERMISSION_METADATA_NAMES,
+} from 'src/engine/core-modules/workspace/ownership/customer-account-ownership.service';
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 
@@ -42,6 +46,7 @@ export class WorkspaceMigrationRunnerService {
     private readonly metricsService: MetricsService,
     private readonly logger: LoggerService,
     private readonly twentyConfigService: TwentyConfigService,
+    private readonly customerAccountOwnershipService: CustomerAccountOwnershipService,
   ) {}
 
   private getLegacyCacheInvalidationPromises({
@@ -215,7 +220,21 @@ export class WorkspaceMigrationRunnerService {
     const runStart = performance.now();
 
     try {
-      const result = await this.executeRun(args);
+      const changesRoles = args.workspaceMigration.actions.some((action) =>
+        OWNER_PERMISSION_METADATA_NAMES.has(action.metadataName),
+      );
+      const workspace = changesRoles
+        ? await this.customerAccountOwnershipService.getWorkspace(
+            args.workspaceId,
+          )
+        : undefined;
+      const result =
+        workspace &&
+        this.customerAccountOwnershipService.isOwnedAndReady(workspace)
+          ? await this.customerAccountOwnershipService.runExclusive(() =>
+              this.executeRun(args),
+            )
+          : await this.executeRun(args);
 
       this.metricsService.recordHistogram({
         key: MetricsKeys.WorkspaceMigrationRunDurationMs,
@@ -414,6 +433,16 @@ export class WorkspaceMigrationRunnerService {
         allAfterCommitSideEffects.push(...afterCommitSideEffects);
       }
 
+      if (
+        actionMetadataNames.some((name) =>
+          OWNER_PERMISSION_METADATA_NAMES.has(name),
+        )
+      ) {
+        await this.customerAccountOwnershipService.assertOwnerRemainsAdministrator(
+          workspaceId,
+          queryRunner,
+        );
+      }
       const commitStart = performance.now();
 
       await queryRunner.commitTransaction();

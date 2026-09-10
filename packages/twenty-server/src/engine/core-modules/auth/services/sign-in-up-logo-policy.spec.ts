@@ -2,7 +2,7 @@ import { SignInUpService } from 'src/engine/core-modules/auth/services/sign-in-u
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { DpaAgreementEntity } from 'src/engine/core-modules/dpa/entities/dpa-agreement.entity';
 import { WorkspaceDiscoverability } from 'src/engine/core-modules/workspace/types/workspace-discoverability.type';
-import { type UserEntity } from 'src/engine/core-modules/user/user.entity';
+import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 
 describe('workspace signup policy', () => {
   it.each([
@@ -54,10 +54,15 @@ describe('workspace signup policy', () => {
       const manager = {
         save: jest.fn(async (_entity, value) => value),
         update: jest.fn(),
-        findOneBy: jest.fn().mockResolvedValue(null),
+        findOneBy: jest.fn(async (entity) =>
+          entity === UserEntity ? user : null,
+        ),
         insert: jest.fn(),
       };
-      const queryRunner = { manager, query: jest.fn() };
+      const queryRunner = {
+        manager,
+        query: jest.fn().mockResolvedValue([{ acquired: true }]),
+      };
       const service: SignInUpService = Object.assign(
         Object.create(SignInUpService.prototype),
         {
@@ -102,6 +107,9 @@ describe('workspace signup policy', () => {
 
       expect(result.user).toBe(user);
       expect(result.workspace.displayName).toBe('Acceptance CRM');
+      expect(result.workspace.primaryOwnerUserId).toBe(
+        shared ? user.id : undefined,
+      );
       expect(manager.save).toHaveBeenCalledWith(
         WorkspaceEntity,
         result.workspace,

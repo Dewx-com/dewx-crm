@@ -53,6 +53,23 @@ export class ImpersonationAuthorizationService {
       targetUserWorkspace,
     );
 
+    // Rechecked at token exchange and on every authenticated request. Becoming
+    // the owner must also invalidate any earlier impersonation of this member.
+    if (
+      targetUserWorkspace.workspace.primaryOwnerUserId &&
+      targetUserWorkspace.userId ===
+        targetUserWorkspace.workspace.primaryOwnerUserId
+    ) {
+      return {
+        allowed: false,
+        level,
+        reason:
+          level === 'server'
+            ? 'SERVER_LEVEL_NOT_ALLOWED'
+            : 'WORKSPACE_LEVEL_NOT_ALLOWED',
+      };
+    }
+
     if (level === 'server') {
       const hasServerLevelImpersonatePermission =
         impersonatorUserWorkspace.user.canImpersonate === true &&
